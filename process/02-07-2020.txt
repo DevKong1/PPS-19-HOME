@@ -1,0 +1,1 @@
+Definizione dell'orgazizzazione della repo git
