@@ -1,0 +1,15 @@
+plugins {
+    id 'java'
+    id 'scala'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("org.scala-lang:scala-library:+")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:+")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:+")
+}
+
