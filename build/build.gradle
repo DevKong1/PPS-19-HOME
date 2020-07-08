@@ -11,5 +11,6 @@ dependencies {
     implementation("org.scala-lang:scala-library:+")
     testImplementation("org.junit.jupiter:junit-jupiter-api:+")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:+")
+	implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2")
 }
 
