@@ -33,4 +33,45 @@ class DeviceTest extends AnyFunSuite {
     assert(light.getIntensity == 100)
   }
 
+  test("The subscription topic is created correctly") {
+    assert(light.getSubTopic == light.room + "/" + light.device_type + "/" + light.name)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The light connects to the MQTT broker correctly") {
+    assert(light.connect == true)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The light connects and disconnects to the MQTT broker correctly") {
+    assert(light.connect == true)
+    assert(light.connect == true)
+    assert(light.disconnect == true)
+    assert(light.disconnect == true)
+    assert(light.connect == true)
+    assert(light.disconnect == true)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The light handles mock received messages correctly") {
+    assert(light.connect == true)
+    light.onMessageReceived("on")
+    assert(light.isOn)
+    light.onMessageReceived("on")
+    assert(light.isOn)
+    light.onMessageReceived("off")
+    assert(!light.isOn)
+    light.onMessageReceived("on")
+    assert(light.isOn)
+    light.onMessageReceived("setIntensity_255")
+    assert(light.getIntensity == 100)
+    light.onMessageReceived("setIntensity_35")
+    assert(light.getIntensity == 35)
+    assertThrows[IllegalArgumentException](light.onMessageReceived("setIntensity_a22"))
+    assert(light.getIntensity == 35)
+    assert(light.disconnect == true)
+  }
+
+  //TODO TEST REAL PUBLISH/SUBSCRIBE MESSAGE EXCHANGE
+  //This test needs the MQTT Broker active and running
 }
