@@ -4,7 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite {
 
-  val light = Light("A","salotto")
+  val light: SimulatedLight = Light("A","salotto")
 
   test("The light has been instantiated correctly") {
     assert(light.name == "A")
@@ -39,22 +39,22 @@ class DeviceTest extends AnyFunSuite {
 
   //This test needs the MQTT Broker active and running
   test("The light connects to the MQTT broker correctly") {
-    assert(light.connect == true)
+    assert(light.connect)
   }
 
   //This test needs the MQTT Broker active and running
   test("The light connects and disconnects to the MQTT broker correctly") {
-    assert(light.connect == true)
-    assert(light.connect == true)
-    assert(light.disconnect == true)
-    assert(light.disconnect == true)
-    assert(light.connect == true)
-    assert(light.disconnect == true)
+    assert(light.connect)
+    assert(light.connect)
+    assert(light.disconnect)
+    assert(light.disconnect)
+    assert(light.connect)
+    assert(light.disconnect)
   }
 
   //This test needs the MQTT Broker active and running
   test("The light handles mock received messages correctly") {
-    assert(light.connect == true)
+    assert(light.connect)
     light.onMessageReceived("on")
     assert(light.isOn)
     light.onMessageReceived("on")
@@ -69,7 +69,7 @@ class DeviceTest extends AnyFunSuite {
     assert(light.getIntensity == 35)
     assertThrows[IllegalArgumentException](light.onMessageReceived("setIntensity_a22"))
     assert(light.getIntensity == 35)
-    assert(light.disconnect == true)
+    assert(light.disconnect)
   }
 
   //TODO TEST REAL PUBLISH/SUBSCRIBE MESSAGE EXCHANGE

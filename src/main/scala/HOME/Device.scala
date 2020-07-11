@@ -96,7 +96,7 @@ sealed trait AssociableDevice extends Device with ConnectionUtils {
       true
   }
 
-  def disconnect(): Boolean = client match {
+  def disconnect: Boolean = client match {
     case null => true
     case _ =>
       client.disconnect()
