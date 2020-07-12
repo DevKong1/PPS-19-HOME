@@ -23,8 +23,23 @@ sealed trait Coordinator {
 sealed trait Profile {
   val name: String
   val description: String
+
+  def applyRoutine(): Unit
+  def onMessageReceived(): Unit
 }
 
-object ProfileManager{
+object Profile {
+
+  private class DEFAULT_PROFILE extends Profile {
+    override val name: String = "DEFAULT"
+    override val description: String = "Default Profile"
+
+    override def applyRoutine(): Unit = {}
+    override def onMessageReceived(): Unit = {}
+  }
+
+  def apply(name: String): Profile = name.toUpperCase match {
+    case _ => new DEFAULT_PROFILE
+  }
 
 }
