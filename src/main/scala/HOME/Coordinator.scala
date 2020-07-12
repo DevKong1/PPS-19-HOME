@@ -1,8 +1,10 @@
 package HOME
 
+import scala.collection.mutable.ListBuffer
+
 sealed trait Coordinator {
 
-  var devices: Set[Device]
+  var devices: ListBuffer[Device]
   var activeProfile: Profile
 
   val subTopic: String
@@ -10,7 +12,7 @@ sealed trait Coordinator {
 
   def addDevice(device: Device): Unit
   def removeDevice(device: Device): Unit
-  def getDevices : Set[Device]
+  def getDevices : List[Device]
 
   def connect(): Boolean
   def subscribe(): Unit
@@ -18,6 +20,27 @@ sealed trait Coordinator {
 
   def onMessageReceived[A](message: A): Unit
 
+}
+
+case class CoordinatorImpl() extends Coordinator {
+  override var devices: ListBuffer[Device] = new ListBuffer[Device]()
+  override var activeProfile: Profile = Profile("default")
+  override val subTopic: String = ""
+  override val generalTopic: String = ""
+
+  override def addDevice(device: Device): Unit = devices += device
+
+  override def removeDevice(device: Device): Unit = devices -= device
+
+  override def getDevices: List[Device] = devices.toList
+
+  override def connect(): Boolean = ???
+
+  override def subscribe(): Unit = ???
+
+  override def publish[A](message: A): Boolean = ???
+
+  override def onMessageReceived[A](message: A): Unit = ???
 }
 
 sealed trait Profile {
