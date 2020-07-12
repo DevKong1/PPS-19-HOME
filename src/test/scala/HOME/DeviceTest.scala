@@ -38,12 +38,7 @@ class DeviceTest extends AnyFunSuite {
   }
 
   //This test needs the MQTT Broker active and running
-  test("The light connects to the MQTT broker correctly") {
-    assert(light.connect)
-  }
-
-  //This test needs the MQTT Broker active and running
-  test("The light connects and disconnects to the MQTT broker correctly") {
+  test("The light connects and disconnects to/from the MQTT broker correctly") {
     assert(light.connect)
     assert(light.connect)
     assert(light.disconnect)
@@ -53,25 +48,23 @@ class DeviceTest extends AnyFunSuite {
   }
 
   //This test needs the MQTT Broker active and running
-  test("The light handles mock received messages correctly") {
+  test("The light handles received mock messages correctly") {
     assert(light.connect)
-    light.onMessageReceived("on")
+    light.onMessageReceived(light.subTopic, "on")
     assert(light.isOn)
-    light.onMessageReceived("on")
+    light.onMessageReceived(light.subTopic,"on")
     assert(light.isOn)
-    light.onMessageReceived("off")
+    light.onMessageReceived(light.subTopic,"off")
     assert(!light.isOn)
-    light.onMessageReceived("on")
+    light.onMessageReceived(light.subTopic,"on")
     assert(light.isOn)
-    light.onMessageReceived("setIntensity_255")
+    light.onMessageReceived(light.subTopic,"setIntensity_255")
     assert(light.getIntensity == 100)
-    light.onMessageReceived("setIntensity_35")
+    light.onMessageReceived(light.subTopic,"setIntensity_35")
     assert(light.getIntensity == 35)
-    assertThrows[IllegalArgumentException](light.onMessageReceived("setIntensity_a22"))
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.pubTopic, "off"))
     assert(light.getIntensity == 35)
     assert(light.disconnect)
   }
-
-  //TODO TEST REAL PUBLISH/SUBSCRIBE MESSAGE EXCHANGE
-  //This test needs the MQTT Broker active and running
 }

@@ -6,27 +6,27 @@ sealed trait Coordinator {
 
   var devices: ListBuffer[Device]
   var activeProfile: Profile
+  var subTopics: ListBuffer[String]
 
-  val subTopic: String
-  val generalTopic: String
+  val name = "Coordinator"
 
   def addDevice(device: Device): Unit
   def removeDevice(device: Device): Unit
   def getDevices : List[Device]
 
-  def connect(): Boolean
+  def connect: Boolean
+  def disconnect: Boolean
   def subscribe(): Unit
-  def publish[A](message: A): Boolean
+  def publish(topic: String, message: String): Boolean
 
-  def onMessageReceived[A](message: A): Unit
+  def onMessageReceived(topic:String, message: String): Unit
 
 }
 
-case class CoordinatorImpl() extends Coordinator {
+case class CoordinatorImpl() extends Coordinator with MQTTUtils {
   override var devices: ListBuffer[Device] = new ListBuffer[Device]()
   override var activeProfile: Profile = Profile("default")
-  override val subTopic: String = ""
-  override val generalTopic: String = ""
+  override var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
   override def addDevice(device: Device): Unit = devices += device
 
@@ -34,13 +34,22 @@ case class CoordinatorImpl() extends Coordinator {
 
   override def getDevices: List[Device] = devices.toList
 
-  override def connect(): Boolean = ???
+  override def connect: Boolean = connect(name, broadcastTopic, onMessageReceived)
 
-  override def subscribe(): Unit = ???
+  override def subscribe(): Unit = subscribe(regTopic)
 
-  override def publish[A](message: A): Boolean = ???
+  override def publish(topic: String, message: String): Boolean = publish(topic, message, !retained)
 
-  override def onMessageReceived[A](message: A): Unit = ???
+  override def onMessageReceived(topic: String, message: String): Unit = topic match {
+    case t if t == regTopic => message match {
+      case m if m startsWith disconnectedMsg => println("Device " + m stripPrefix disconnectedMsg + " removed")
+      //TODO remove device
+      case m if m startsWith regMsg => println("new Device " + m stripPrefix regMsg + " added")
+      //TODO subscribe to device pubTopic and add device to list
+      case _ => throw new IllegalArgumentException("Unexpected message: " + message)
+    }
+    case _ => throw new IllegalArgumentException("Unexpected topic: " + topic)
+  }
 }
 
 sealed trait Profile {

@@ -1,9 +1,5 @@
 package HOME
 
-import org.eclipse.paho.client.mqttv3.{IMqttDeliveryToken, MqttCallback, MqttClient, MqttConnectOptions, MqttMessage}
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-
-import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
 object Rooms {
@@ -20,89 +16,22 @@ sealed trait Device {
   def consumption : Int
 }
 
-sealed trait ConnectionUtils {
-  //Quality of Service
-  val QoS_0: Int = 0
-  val QoS_1: Int = 1
-  val QoS_2: Int = 2
 
-  val retained: Boolean = true
-  val disconnectedTopic: String = "disconnected" //Topic used by the device when the connection is lost
-  val brokerURL: String = "tcp://localhost:1883"
-  val persistence: MemoryPersistence = new MemoryPersistence
-
-  class ConnectionException(message: String) extends Exception(message)
-}
-
-sealed trait AssociableDevice extends Device with ConnectionUtils {
-  var client: MqttClient = _
-
+sealed trait AssociableDevice extends Device with MQTTUtils {
   def pubTopic: String  //Topic used by sensors to send data
   def subTopic: String = getSubTopic  //Topic used by actuators to receive orders
-  def regTopic: String = "registration" //Topic used by the device to register/disconnect to/from the system
-  def broadcastTopic: String = "broadcast" //Topic the device listens to for general orders
 
   def getSubTopic: String = room + "/" + device_type + "/" + name
 
-  def connect: Boolean = client match {
-    case null => Try {
-      client = new MqttClient(brokerURL, name, persistence)
-      val opts = new MqttConnectOptions
-      opts.setCleanSession(true)
-      opts.setWill(regTopic, disconnectedTopic.getBytes, QoS_1, !retained)
+  def connect: Boolean = connect(name, regTopic, onMessageReceived)
 
-      val callback = new MqttCallback {
-        override def deliveryComplete(token: IMqttDeliveryToken): Unit = {
-          //Do nothing
-        }
+  def subscribe: Boolean = subscribe(subTopic); subscribe(broadcastTopic)
 
-        override def connectionLost(cause: Throwable): Unit = {
-          client.connect(opts) //Auto reconnects
-        }
+  def onMessageReceived(topic: String, message: String): Unit
 
-        override def messageArrived(topic: String, message: MqttMessage): Unit = {
-          topic match {
-            case t if t == subTopic => onMessageReceived(new String(message.getPayload))
-            case _ => throw new IllegalArgumentException("Unexpected topic: " + topic)
-          }
-        }
-      }
-      client.setCallback(callback)
-      client.connect(opts)
-    } match {
-      case Failure(exception) =>
-        client = null
-        throw new ConnectionException(s"ERROR : $exception + ${exception.getCause}")
-      case Success(_) => true
-      case _ => throw new ConnectionException("Unexpected connection result")
-    }
-    case c if c isConnected => true
-    case _ => false
-  }
+  def publish(message: String): Boolean = publish(pubTopic, message)
 
-  def subscribe: Boolean = client match {
-    case null => false
-    case _ =>
-      client.subscribe(pubTopic, QoS_1)
-      true
-  }
-
-  def onMessageReceived(message: String): Unit
-
-  def publish(message: String): Boolean = client match {
-    case null => false
-    case _ =>
-      client.getTopic(pubTopic).publish(s"$message".getBytes, QoS_1, retained)
-      true
-  }
-
-  def disconnect: Boolean = client match {
-    case null => true
-    case _ =>
-      client.disconnect()
-      client = null
-      true
-  }
+  def register: Boolean = publish(regTopic, regMsg + name)  //TODO define the format
 }
 
 sealed trait DeviceFactory {
@@ -154,10 +83,17 @@ case class SimulatedLight(override val name: String, override val room: String, 
   }
 
   val intensityMsg: Regex = "(setIntensity_)(\\d+)".r
-  override def onMessageReceived(message: String): Unit = message match {
-    case "on" => turnOn()
-    case "off" => turnOff()
-    case intensityMsg(_,value) => setIntensity(value.toInt)
-    case _ => throw new IllegalArgumentException("Unexpected message: " + message)
+  override def onMessageReceived(topic:String, message: String): Unit = topic match {
+    case t if t == subTopic => message match {
+      case "on" => turnOn()
+      case "off" => turnOff()
+      case intensityMsg(_, value) => setIntensity(value.toInt)
+      case _ => throw new IllegalArgumentException("Unexpected message: " + message)
+    }
+    case t if t == broadcastTopic => message match {
+      case m if m == disconnectedMsg => turnOff()
+      case _ => throw new IllegalArgumentException("Unexpected message: " + message)
+    }
+    case _ => throw new IllegalArgumentException("Unexpected topic: " + topic)
   }
 }
