@@ -51,7 +51,7 @@ trait MQTTUtils {
       case Success(_) => true
       case _ => throw new ConnectionException("Unexpected connection result")
     }
-    case c if c isConnected => true
+    case c if c.isConnected => true
     case _ => false
   }
 
