@@ -3,5 +3,7 @@ scala:
 - 2.12.2
 jdk:
   - openjdk8
+before_install:
+ - chmod +x gradlew
 script:
 - ./gradlew clean build
