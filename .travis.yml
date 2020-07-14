@@ -1,4 +1,9 @@
 language: scala
 scala:
 - 2.12.2
-script:- './gradlew clean build'
+jdk:
+  - openjdk8
+before_install:
+ - chmod +x gradlew
+script:
+- ./gradlew clean build
