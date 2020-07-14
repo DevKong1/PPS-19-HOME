@@ -10,20 +10,18 @@ object Rooms {
 }
 
 sealed trait DeviceType {
-  def dev_type: String
   def subTopicMsg: String
   def defaultConsumption: Int
 }
 
 object DeviceType {
   def apply(dev_type: String): DeviceType = dev_type match {
-    case "Light" => LightType
+    case "LightType" => LightType
     case _ => throw new IllegalArgumentException
   }
 }
 
 case object LightType extends DeviceType {
-  override def dev_type: String = "Light"
   override def subTopicMsg: String = "setIntensity_"
   override def defaultConsumption: Int = 5
 }
