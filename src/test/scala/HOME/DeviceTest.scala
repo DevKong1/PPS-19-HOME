@@ -9,7 +9,7 @@ class DeviceTest extends AnyFunSuite {
   test("The light has been instantiated correctly") {
     assert(light.name == "A")
     assert(light.room == "salotto")
-    assert(light.device_type == "Light")
+    assert(light.device_type == LightType)
     assert(light.consumption == 5)
 
     assert(!light.isOn)
@@ -60,11 +60,13 @@ class DeviceTest extends AnyFunSuite {
     assert(light.isOn)
     light.onMessageReceived(light.subTopic,"setIntensity_255")
     assert(light.getIntensity == 100)
-    light.onMessageReceived(light.subTopic,"setIntensity_35")
+    light.onMessageReceived(light.subTopic,light.device_type.subTopicMsg + 35)
     assert(light.getIntensity == 35)
+    light.onMessageReceived(light.subTopic, LightType.subTopicMsg + 30)
+    assert(light.getIntensity == 30)
     assertThrows[IllegalArgumentException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
     assertThrows[IllegalArgumentException](light.onMessageReceived(light.pubTopic, "off"))
-    assert(light.getIntensity == 35)
+    assert(light.getIntensity == 30)
     assert(light.disconnect)
   }
 }

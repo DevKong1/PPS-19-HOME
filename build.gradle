@@ -32,8 +32,16 @@ dependencies {
     testRuntimeOnly 'org.scala-lang.modules:scala-xml_2.12:1.2.0'
 	
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
+	implementation 'com.typesafe.play:play-json_2.12:2.9.0'
 }
 
 compileScala {
     scalaCompileOptions.additionalParameters = ["-feature"]
+    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:package"]
+    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:object"]
+}
+
+compileTestScala {
+    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:package"]
+    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:object"]
 }

@@ -9,13 +9,38 @@ object Rooms {
   def allRooms: Array[String] = _allRooms
 }
 
+sealed trait DeviceType {
+  def dev_type: String
+  def subTopicMsg: String
+  def defaultConsumption: Int
+}
+
+object DeviceType {
+  def apply(dev_type: String): DeviceType = dev_type match {
+    case "Light" => LightType
+    case _ => throw new IllegalArgumentException
+  }
+}
+
+case object LightType extends DeviceType {
+  override def dev_type: String = "Light"
+  override def subTopicMsg: String = "setIntensity_"
+  override def defaultConsumption: Int = 5
+}
+
 sealed trait Device {
   def name : String
   def room : String
-  def device_type : String
+  def device_type : DeviceType
   def consumption : Int
 }
 
+object Device {
+  def apply(name: String, room: String, device_type: DeviceType, consumption: Int): Device = device_type match {
+    case LightType => Light(name, room, device_type, consumption)
+    case _ => throw new IllegalArgumentException
+  }
+}
 
 sealed trait AssociableDevice extends Device with MQTTUtils {
   def pubTopic: String  //Topic used by sensors to send data
@@ -51,15 +76,15 @@ object IntensityChecker {
 
 object Light {
 
-  def apply(name: String, room: String, device_type: String = "Light", consumption: Int = 5): SimulatedLight = SimulatedLight(name, room, device_type, consumption)
+  def apply(name: String, room: String, device_type: DeviceType = LightType, consumption: Int = LightType.defaultConsumption): SimulatedLight = SimulatedLight(name, room, device_type, consumption)
 }
 
-case class SimulatedLight(override val name: String, override val room: String, override val device_type: String, override val consumption: Int) extends Device with AssociableDevice {
+case class SimulatedLight(override val name: String, override val room: String, override val device_type: DeviceType, override val consumption: Int) extends Device with AssociableDevice {
 
-  require(device_type == "Light")
+  require(device_type == LightType)
   require(Rooms.allRooms contains room, "Incorrect room")
 
-  override def pubTopic: String = null  //the light device has no sensor
+  override val pubTopic: String = null  //the light device has no sensor
 
   private var _on = false
 
@@ -82,7 +107,7 @@ case class SimulatedLight(override val name: String, override val room: String, 
     case _ => false
   }
 
-  val intensityMsg: Regex = "(setIntensity_)(\\d+)".r
+  val intensityMsg: Regex = ("("+Regex.quote(device_type.subTopicMsg)+")(\\d+)").r
   override def onMessageReceived(topic:String, message: String): Unit = topic match {
     case t if t == subTopic => message match {
       case "on" => turnOn()
