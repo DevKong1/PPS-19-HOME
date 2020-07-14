@@ -4,7 +4,7 @@ import scala.collection.mutable.ListBuffer
 
 sealed trait Coordinator {
 
-  var devices: ListBuffer[Device]
+  var devices: Set[Device]
   var activeProfile: Profile
   var subTopics: ListBuffer[String]
 
@@ -12,7 +12,7 @@ sealed trait Coordinator {
 
   def addDevice(device: Device): Unit
   def removeDevice(device: Device): Unit
-  def getDevices : List[Device]
+  def getDevices : Set[Device]
 
   def connect: Boolean
   def disconnect: Boolean
@@ -24,7 +24,7 @@ sealed trait Coordinator {
 }
 
 case class CoordinatorImpl() extends Coordinator with MQTTUtils {
-  override var devices: ListBuffer[Device] = new ListBuffer[Device]()
+  override var devices: Set[Device] = Set()
   override var activeProfile: Profile = Profile("default")
   override var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
@@ -32,7 +32,7 @@ case class CoordinatorImpl() extends Coordinator with MQTTUtils {
 
   override def removeDevice(device: Device): Unit = devices -= device
 
-  override def getDevices: List[Device] = devices.toList
+  override def getDevices: Set[Device] = devices
 
   override def connect: Boolean = connect(name, broadcastTopic, onMessageReceived)
 

@@ -9,7 +9,7 @@ object Rooms {
   def allRooms: Array[String] = _allRooms
 }
 
-sealed trait DeviceType {
+trait DeviceType {
   def subTopicMsg: String
   def defaultConsumption: Int
 }
@@ -21,13 +21,8 @@ object DeviceType {
   }
 }
 
-case object LightType extends DeviceType {
-  override def subTopicMsg: String = "setIntensity_"
-  override def defaultConsumption: Int = 5
-}
-
-sealed trait Device {
-  def name : String
+trait Device {
+  def id : String
   def room : String
   def device_type : DeviceType
   def consumption : Int
@@ -40,13 +35,22 @@ object Device {
   }
 }
 
-sealed trait AssociableDevice extends Device with MQTTUtils {
+trait BasicDevice extends Device {
+  private var _on = false
+
+  def isOn: Boolean = _on
+
+  def turnOn(): Unit = _on = true
+  def turnOff(): Unit = _on = false
+}
+
+trait AssociableDevice extends Device with MQTTUtils {
   def pubTopic: String  //Topic used by sensors to send data
   def subTopic: String = getSubTopic  //Topic used by actuators to receive orders
 
-  def getSubTopic: String = room + "/" + device_type + "/" + name
+  def getSubTopic: String = room + "/" + device_type + "/" + id
 
-  def connect: Boolean = connect(name, regTopic, onMessageReceived)
+  def connect: Boolean = connect(id, regTopic, onMessageReceived)
 
   def subscribe: Boolean = subscribe(subTopic); subscribe(broadcastTopic)
 
@@ -54,58 +58,41 @@ sealed trait AssociableDevice extends Device with MQTTUtils {
 
   def publish(message: String): Boolean = publish(pubTopic, message)
 
-  def register: Boolean = publish(regTopic, regMsg + name)  //TODO define the format
+  def register: Boolean = publish(regTopic, regMsg + id)  //TODO define the format
 }
 
-sealed trait DeviceFactory {
-
-  def Light(): Device
-
-}
-
-//helper object used by various devices to set the output strength
-object IntensityChecker {
-  def apply(min: Int, max: Int)(value: Int): Int = value match {
-    case x if x > max => max
-    case x if x < min => min
-    case _ => value
-  }
+case object LightType extends DeviceType {
+  override def subTopicMsg: String = "setIntensity_"
+  override def defaultConsumption: Int = 5
 }
 
 object Light {
-
   def apply(name: String, room: String, device_type: DeviceType = LightType, consumption: Int = LightType.defaultConsumption): SimulatedLight = SimulatedLight(name, room, device_type, consumption)
 }
 
-case class SimulatedLight(override val name: String, override val room: String, override val device_type: DeviceType, override val consumption: Int) extends Device with AssociableDevice {
-
+case class SimulatedLight(override val id: String, override val room: String, override val device_type: DeviceType, override val consumption: Int) extends Device with BasicDevice with AssociableDevice {
   require(device_type == LightType)
   require(Rooms.allRooms contains room, "Incorrect room")
 
   override val pubTopic: String = null  //the light device has no sensor
 
-  private var _on = false
-
   //min, max value for the intensity
-  val minIntensity = 1
-  val maxIntensity = 100
-  private var intensity = 50
+  val _minIntensity = 1
+  val _maxIntensity = 100
+  private var _intensity = 50
 
-  def getIntensity: Int = intensity
-  def isOn: Boolean = _on
+  def getIntensity: Int = _intensity
 
-  def turnOn(): Unit = _on = true
-  def turnOff(): Unit = _on = false
-
-  private def _mapIntensity = IntensityChecker(minIntensity,maxIntensity)(_)
-  def setIntensity(value: Int): Unit = intensity = _mapIntensity(value)
+  private def _mapIntensity = ValueChecker(_minIntensity,_maxIntensity)(_)
+  def setIntensity(value: Int): Unit = _intensity = _mapIntensity(value)
 
   override def equals(that: Any): Boolean = that match {
-    case SimulatedLight(name,_,_,_) => this.name == name
+    case SimulatedLight(id,_,_,_) => this.id == id
     case _ => false
   }
 
   val intensityMsg: Regex = ("("+Regex.quote(device_type.subTopicMsg)+")(\\d+)").r
+
   override def onMessageReceived(topic:String, message: String): Unit = topic match {
     case t if t == subTopic => message match {
       case "on" => turnOn()

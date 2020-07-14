@@ -9,7 +9,7 @@ trait JSONUtils {
   )
 
   implicit val deviceWrites: Writes[Device] = (device: Device) => Json.obj(
-    "name" -> device.name,
+    "id" -> device.id,
     "room" -> device.room,
     "device_type" -> device.device_type,
     "consumption" -> device.consumption
@@ -18,7 +18,7 @@ trait JSONUtils {
   implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ "dev_type").read[String].map{DeviceType.apply}
 
   implicit val deviceReads: Reads[Device] = (
-    (JsPath \ "name").read[String] and
+    (JsPath \ "id").read[String] and
       (JsPath \ "room").read[String] and
       (JsPath \ "device_type").read[DeviceType] and
       (JsPath \ "consumption").read[Int]

@@ -7,7 +7,7 @@ class DeviceTest extends AnyFunSuite {
   val light: SimulatedLight = Light("A","salotto")
 
   test("The light has been instantiated correctly") {
-    assert(light.name == "A")
+    assert(light.id == "A")
     assert(light.room == "salotto")
     assert(light.device_type == LightType)
     assert(light.consumption == 5)
@@ -34,7 +34,7 @@ class DeviceTest extends AnyFunSuite {
   }
 
   test("The subscription topic is created correctly") {
-    assert(light.getSubTopic == light.room + "/" + light.device_type + "/" + light.name)
+    assert(light.getSubTopic == light.room + "/" + light.device_type + "/" + light.id)
   }
 
   //This test needs the MQTT Broker active and running
