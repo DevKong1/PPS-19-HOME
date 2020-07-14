@@ -12,10 +12,10 @@ trait MQTTUtils {
   val QoS_2: Int = 2
 
   val retained: Boolean = true
-  val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
-  val regMsg: String = "register_" //Message used by the devices to register to the system
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
-  val disconnectedMsg: String = "disconnected_" //Message used when the connection is lost
+  val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
+  val regMsg: String = "register" //Message used by the devices to register to the system
+  val disconnectedMsg: String = "disconnected" //Message used when the connection is lost
   val brokerURL: String = "tcp://localhost:1883"
   val persistence: MemoryPersistence = new MemoryPersistence
 
@@ -58,12 +58,20 @@ trait MQTTUtils {
   def subscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
-      client.subscribe(topic, QoS_1)
+      if (topic != null) client.subscribe(topic, QoS_1)
+      true
+  }
+
+  def unsubscribe(topic: String): Boolean = client match {
+    case null => false
+    case _ =>
+      if (topic != null) client.unsubscribe(topic)
       true
   }
 
   def publish(pubTopic:String, message: String, retained: Boolean = retained): Boolean = client match {
-    case null => false
+    case null =>
+      false
     case _ =>
       client.getTopic(pubTopic).publish(s"$message".getBytes, QoS_1, retained)
       true

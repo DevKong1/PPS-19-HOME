@@ -40,12 +40,8 @@ class CoordinatorTest extends AnyFunSuite {
   }
 
   //This test needs the MQTT Broker active and running
-  test("The coordinator handles received mock messages correctly") {
+  test("The coordinator throws exceptions on received mock messages correctly") {
     assert(coordinator.connect)
-    coordinator.onMessageReceived("registration", "register_Light1")
-    coordinator.onMessageReceived("registration", "register_Light2")
-    coordinator.onMessageReceived("registration", "disconnected_Light1")
-    coordinator.onMessageReceived("registration", "disconnected_Light2")
     assertThrows[IllegalArgumentException](coordinator.onMessageReceived("registration", "off"))
     assertThrows[IllegalArgumentException](coordinator.onMessageReceived("asd", "off"))
     assert(coordinator.disconnect)

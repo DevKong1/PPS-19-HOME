@@ -28,9 +28,9 @@ trait Device {
   def consumption : Int
 }
 
-object Device {
-  def apply(name: String, room: String, device_type: DeviceType, consumption: Int): Device = device_type match {
-    case LightType => Light(name, room, device_type, consumption)
+object AssociableDevice {
+  def apply(name: String, room: String, device_type: DeviceType, consumption: Int, pubTopic: String): AssociableDevice = device_type match {
+    case LightType => Light(name, room, device_type, consumption, null)
     case _ => throw new IllegalArgumentException
   }
 }
@@ -43,8 +43,7 @@ trait BasicDevice extends Device {
   def turnOn(): Unit = _on = true
   def turnOff(): Unit = _on = false
 }
-
-trait AssociableDevice extends Device with MQTTUtils {
+sealed trait AssociableDevice extends Device with MQTTUtils with JSONUtils {
   def pubTopic: String  //Topic used by sensors to send data
   def subTopic: String = getSubTopic  //Topic used by actuators to receive orders
 
@@ -52,13 +51,13 @@ trait AssociableDevice extends Device with MQTTUtils {
 
   def connect: Boolean = connect(id, regTopic, onMessageReceived)
 
-  def subscribe: Boolean = subscribe(subTopic); subscribe(broadcastTopic)
+  def subscribe: Boolean = subscribe(subTopic) && subscribe(broadcastTopic)
 
   def onMessageReceived(topic: String, message: String): Unit
 
   def publish(message: String): Boolean = publish(pubTopic, message)
 
-  def register: Boolean = publish(regTopic, regMsg + id)  //TODO define the format
+  def register: Boolean = publish(regTopic, getRegistrationMsg(this).toString(), !retained)
 }
 
 case object LightType extends DeviceType {
@@ -67,14 +66,15 @@ case object LightType extends DeviceType {
 }
 
 object Light {
-  def apply(name: String, room: String, device_type: DeviceType = LightType, consumption: Int = LightType.defaultConsumption): SimulatedLight = SimulatedLight(name, room, device_type, consumption)
+  def apply(name: String, room: String, device_type: DeviceType = LightType, consumption: Int = LightType.defaultConsumption,
+            pubTopic: String = null): SimulatedLight = SimulatedLight(name, room, device_type, consumption, pubTopic)
 }
 
-case class SimulatedLight(override val id: String, override val room: String, override val device_type: DeviceType, override val consumption: Int) extends Device with BasicDevice with AssociableDevice {
+case class SimulatedLight(override val id: String, override val room: String, override val device_type: DeviceType,
+                          override val consumption: Int, override val pubTopic: String) extends Device with BasicDevice  with AssociableDevice {
+
   require(device_type == LightType)
   require(Rooms.allRooms contains room, "Incorrect room")
-
-  override val pubTopic: String = null  //the light device has no sensor
 
   //min, max value for the intensity
   val _minIntensity = 1
@@ -87,7 +87,7 @@ case class SimulatedLight(override val id: String, override val room: String, ov
   def setIntensity(value: Int): Unit = _intensity = _mapIntensity(value)
 
   override def equals(that: Any): Boolean = that match {
-    case SimulatedLight(id,_,_,_) => this.id == id
+    case SimulatedLight(id,_,_,_,_) => this.id == id
     case _ => false
   }
 

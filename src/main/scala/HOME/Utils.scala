@@ -1,6 +1,10 @@
 package HOME
 
-case  class  MyClass(_class: Any) {
+object Constants {
+  val testSleepTime :Int = 50 //millis, time the matcher waits to evaluate eventually expression
+}
+
+case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 }
 
