@@ -8,25 +8,33 @@ import scala.swing._
 import scala.swing.event.{MouseClicked, SelectionChanged}
 
 //TODO: RECONSIDER HOW TO MODEL GUIROOM
-class GUIRoom extends Panel with Room{
-  override def devices: ListBuffer[Device] = ???
+class GUIRoom(Room : String) extends Panel with Room {
+  var a : Device = new SimulatedLight("Lamp1", "HOME", LightType, 1)
+  var b : Device = new SimulatedLight("Lamp2", "HOME", LightType, 1)
+  var devices = new ListBuffer[Device]()
+  devices += a
+  devices += b
+
+  for( c <- devices) {
+    _contents += new Button("" + c.name)
+    _contents += Swing.HStrut(20)
+  }
 }
 
-sealed trait Room{
+sealed trait Room {
   def devices : ListBuffer[Device]
 }
 
 object SimpleGUI extends SimpleSwingApplication {
 
-
   def top = new MainFrame {
     title = "Home!"
     val tp = new TabbedPane {
-      pages += new TabbedPane.Page("HOME", new GUIRoom())
-      pages += new TabbedPane.Page("+", new GUIRoom())
-      reactions += {
+      pages += new TabbedPane.Page("HOME", new GUIRoom("HOME"))
+      pages += new TabbedPane.Page("+", new GUIRoom("+"))
+      /*reactions += {
         ???
-      }
+      }*/
     }
     listenTo(tp.selection)
     //used to set items in the main window inside a vertical BoxPanel
