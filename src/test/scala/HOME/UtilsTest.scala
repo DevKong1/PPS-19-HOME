@@ -7,6 +7,6 @@ class UtilsTest extends AnyFunSuite {
     val aaa: SimulatedLight = Light("AAA","salotto")
 
     test("The implicit comversion works as intended") {
-        assert(aaa.device_type.getSimpleClassName == "LightType")
+        assert(aaa.deviceType.getSimpleClassName == "LightType")
     }
 }

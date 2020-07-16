@@ -5,29 +5,36 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import scala.util.{Failure, Success, Try}
 
-trait MQTTUtils {
+trait MQTTUtils extends JSONUtils {
   //Quality of Service
   val QoS_0: Int = 0
   val QoS_1: Int = 1
   val QoS_2: Int = 2
 
+  var sender: JSONSender = _
+  var client: MqttClient = _
+
   val retained: Boolean = true
+  val topicSeparator: String = "/"
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
   val regMsg: String = "register" //Message used by the devices to register to the system
+  val regSuccessMsg: String = "registered" //Message used by the devices to register to the system
   val disconnectedMsg: String = "disconnected" //Message used when the connection is lost
+  val onMsg: String = "on"
+  val offMsg: String = "off"
   val brokerURL: String = "tcp://localhost:1883"
   val persistence: MemoryPersistence = new MemoryPersistence
 
   class ConnectionException(message: String) extends Exception(message)
 
-  var client: MqttClient = _
-  def connect(name: String, lastWillTopic: String, onMessageReceived: (String,String) => Unit): Boolean = client match {
+  def connect(_sender: JSONSender, onMessageReceived: (String,String) => Unit): Boolean = client match {
     case null => Try {
-      client = new MqttClient(brokerURL, name, persistence)
+      sender = _sender
+      client = new MqttClient(brokerURL, sender.name, persistence)
       val opts = new MqttConnectOptions
       opts.setCleanSession(true)
-      opts.setWill(lastWillTopic, (disconnectedMsg + name).getBytes, QoS_1, !retained)
+      opts.setWill(sender.lastWillTopic, getMsg(sender.lastWillMessage, sender).getBytes, QoS_1, !retained)
 
       val callback = new MqttCallback {
         override def deliveryComplete(token: IMqttDeliveryToken): Unit = {
@@ -69,17 +76,18 @@ trait MQTTUtils {
       true
   }
 
-  def publish(pubTopic:String, message: String, retained: Boolean = retained): Boolean = client match {
+  def publish(pubTopic:String, message: String, sender: JSONSender, retained: Boolean = !retained): Boolean = client match {
     case null =>
       false
     case _ =>
-      client.getTopic(pubTopic).publish(s"$message".getBytes, QoS_1, retained)
+      client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
       true
   }
 
   def disconnect: Boolean = client match {
     case null => true
     case _ =>
+      publish(sender.lastWillTopic, sender.lastWillMessage, sender)
       client.disconnect()
       client = null
       true

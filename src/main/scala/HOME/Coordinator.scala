@@ -1,17 +1,18 @@
 package HOME
 
-import play.api.libs.json.{JsValue, Json}
-
+import HOME.MyClass._
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success, Try}
 
-sealed trait Coordinator {
+sealed trait Coordinator extends JSONSender with MQTTUtils {
+
+  override var senderType: SenderType = SenderTypeCoordinator
+  override var name: String = "Coordinator"
+  override var lastWillTopic: String = broadcastTopic
+  override var lastWillMessage: String = disconnectedMsg
 
   var devices: Set[Device]
   var activeProfile: Profile
   var subTopics: ListBuffer[String]
-
-  val name = "Coordinator"
 
   def addDevice(device: Device): Unit
   def removeDevice(device: Device): Unit
@@ -25,9 +26,14 @@ sealed trait Coordinator {
   def onMessageReceived(topic:String, message: String): Unit
 }
 
-case class CoordinatorImpl() extends Coordinator with MQTTUtils with JSONUtils {
+object Coordinator {
+  def apply(name: String): Coordinator = CoordinatorImpl()
+}
+
+case class CoordinatorImpl() extends Coordinator {
+
   override var devices: Set[Device] = Set()
-  override var activeProfile: Profile = Profile("default")
+  override var activeProfile: Profile = Profile(ProfileNameDefault)
   override var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
   override def addDevice(device: Device): Unit = devices += device
@@ -36,64 +42,62 @@ case class CoordinatorImpl() extends Coordinator with MQTTUtils with JSONUtils {
 
   override def getDevices: Set[Device] = devices
 
-  override def connect: Boolean = connect(name, broadcastTopic, onMessageReceived)
+  override def connect: Boolean = connect(this, onMessageReceived)
 
   override def subscribe: Boolean = subscribe(regTopic)
 
-  override def publish(topic: String, message: String): Boolean = publish(topic, message, !retained)
+  override def publish(topic: String, message: String): Boolean = publish(topic, message,this)
 
   override def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case _ => throw new IllegalArgumentException("Unexpected topic: " + topic)
+    //TODO topic+message managed by the active profile
+    case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
 
-  def handleRegMsg(message: String): Unit = {
-    Try {
-      val jsValue: JsValue = Json.parse(message)
-      val device: AssociableDevice = getDeviceFromRegistrationMsg(jsValue)
-      if (device == null) throw new IllegalArgumentException
+  def handleRegMsg(msg: String): Unit = {
+    val device: AssociableDevice = getSenderFromMsg(msg).asInstanceOf[AssociableDevice]
+    if (device == null) this.errUnexpected(UnexpectedDevice, null)
 
-      getMsgField(jsValue) match {
-        case m if m == regMsg =>
-          addDevice(device)
-          subscribe(device.pubTopic)
-        case m if m == disconnectedMsg =>
-          val device: AssociableDevice = getDeviceFromRegistrationMsg(jsValue)
-          removeDevice(getDeviceFromRegistrationMsg(jsValue))
-          unsubscribe(device.pubTopic)
-        case _ => throw new IllegalArgumentException
-      }
-    } match {
-      case Failure(exception) =>
-        client = null
-        throw new IllegalArgumentException(s"ERROR : $exception + ${exception.getCause}")
-      case Success(_) => true
-      case _ => throw new IllegalArgumentException("Unexpected result")
+    getMessageFromMsg(msg) match {
+      case m if m == regMsg =>
+        addDevice(device)
+        subscribe(device.pubTopic)
+        publish(device.subTopic, regSuccessMsg)
+      case m if m == disconnectedMsg =>
+        removeDevice(device)
+        unsubscribe(device.pubTopic)
+      case _ => throw new IllegalArgumentException
     }
-
   }
 }
 
 sealed trait Profile {
-  val name: String
+  val name: ProfileName
   val description: String
 
   def applyRoutine(): Unit
   def onMessageReceived(): Unit
 }
 
-object Profile {
+sealed trait ProfileName {
+  def name: String
+}
 
-  private class DEFAULT_PROFILE extends Profile {
-    override val name: String = "DEFAULT"
+case object ProfileNameDefault extends ProfileName {
+  override def name: String = "DEFAULT"
+}
+
+object Profile {
+  private class DEFAULT_PROFILE extends Profile  {
+    override val name: ProfileName = ProfileNameDefault
     override val description: String = "Default Profile"
 
     override def applyRoutine(): Unit = {}
     override def onMessageReceived(): Unit = {}
   }
 
-  def apply(name: String): Profile = name.toUpperCase match {
+  def apply(name: ProfileName): Profile = name match {
+    case ProfileNameDefault => new DEFAULT_PROFILE
     case _ => new DEFAULT_PROFILE
   }
-
 }

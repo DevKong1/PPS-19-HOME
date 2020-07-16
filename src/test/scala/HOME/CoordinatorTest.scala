@@ -1,5 +1,7 @@
 package HOME
 
+import java.lang.reflect.MalformedParametersException
+
 import org.scalatest.funsuite.AnyFunSuite
 
 class CoordinatorTest extends AnyFunSuite {
@@ -8,9 +10,10 @@ class CoordinatorTest extends AnyFunSuite {
 
   test("Basic coordinator with no devices"){
     assert(coordinator.getDevices.isEmpty)
+    assert(coordinator.activeProfile.name == ProfileNameDefault)
   }
 
-  test("Adding and removing devices"){
+  test("Adding and removing devices") {
     coordinator.addDevice(Light("Light1","salotto"))
     assert(coordinator.getDevices.size == 1)
     coordinator.addDevice(Light("Light2","salotto"))
@@ -42,7 +45,7 @@ class CoordinatorTest extends AnyFunSuite {
   //This test needs the MQTT Broker active and running
   test("The coordinator throws exceptions on received mock messages correctly") {
     assert(coordinator.connect)
-    assertThrows[IllegalArgumentException](coordinator.onMessageReceived("registration", "off"))
+    assertThrows[MalformedParametersException](coordinator.onMessageReceived("registration", "off"))
     assertThrows[IllegalArgumentException](coordinator.onMessageReceived("asd", "off"))
     assert(coordinator.disconnect)
   }

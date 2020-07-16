@@ -37,11 +37,4 @@ dependencies {
 
 compileScala {
     scalaCompileOptions.additionalParameters = ["-feature"]
-    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:package"]
-    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:object"]
-}
-
-compileTestScala {
-    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:package"]
-    scalaCompileOptions.additionalParameters = ["-Yresolve-term-conflict:object"]
 }
