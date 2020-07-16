@@ -17,6 +17,15 @@ trait DeviceType {
 object DeviceType {
   def apply(dev_type: String): DeviceType = dev_type match {
     case "LightType" => LightType
+    case "AirConditionerType" => AirConditionerType
+    case "DehumidifierType" => DehumidifierType
+    case "ShutterType" => ShutterType
+    case "BoilerType" => BoilerType
+    case "TvType" => TvType
+    case "WashingMachineType" => WashingMachineType
+    case "DishWasherType" => DishWasherType
+    case "OvenType" => OvenType
+    case "StereoSystemType" => StereoSystemType
     case _ => throw new IllegalArgumentException
   }
 }
@@ -43,6 +52,7 @@ trait BasicDevice extends Device {
   def turnOn(): Unit = _on = true
   def turnOff(): Unit = _on = false
 }
+
 sealed trait AssociableDevice extends Device with MQTTUtils with JSONUtils {
   def pubTopic: String  //Topic used by sensors to send data
   def subTopic: String = getSubTopic  //Topic used by actuators to receive orders
@@ -63,6 +73,51 @@ sealed trait AssociableDevice extends Device with MQTTUtils with JSONUtils {
 case object LightType extends DeviceType {
   override def subTopicMsg: String = "setIntensity_"
   override def defaultConsumption: Int = 5
+}
+
+case object AirConditionerType extends DeviceType {
+  override def subTopicMsg: String = "setTemperature_"
+  override def defaultConsumption: Int = 0
+}
+
+case object DehumidifierType extends DeviceType {
+  override def subTopicMsg: String = "setHumidity_"
+  override def defaultConsumption: Int = 0
+}
+
+case object ShutterType extends DeviceType {
+  override def subTopicMsg: String = "setShutterState_"
+  override def defaultConsumption: Int = 0
+}
+
+case object BoilerType extends DeviceType {
+  override def subTopicMsg: String = "setHomeTemperature_"
+  override def defaultConsumption: Int = 10
+}
+
+case object TvType extends DeviceType {
+  override def subTopicMsg: String = "setTvState_"
+  override def defaultConsumption: Int = 0
+}
+
+case object WashingMachineType extends DeviceType {
+  override def subTopicMsg: String = "setWashingPlan_"
+  override def defaultConsumption: Int = 0
+}
+
+case object DishWasherType extends DeviceType {
+  override def subTopicMsg: String = "setDishWasherPlan_"
+  override def defaultConsumption: Int = 0
+}
+
+case object OvenType extends DeviceType {
+  override def subTopicMsg: String = "setOvenTemperature_"
+  override def defaultConsumption: Int = 0
+}
+
+case object StereoSystemType extends DeviceType {
+  override def subTopicMsg: String = "setVolume_"
+  override def defaultConsumption: Int = 0
 }
 
 object Light {
