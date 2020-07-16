@@ -95,7 +95,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
         case m if m == regSuccessMsg => registered = true
         case m if m == onMsg => turnOn()
         case m if m == offMsg => turnOff()
-      case _ => deviceSpecificMessage(message)
+        case _ => deviceSpecificMessage(message)
       }
       case t if t == broadcastTopic => message match {
         case m if m == disconnectedMsg =>
@@ -109,13 +109,13 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   def deviceSpecificMessage(message: String): Unit
 }
 
-sealed trait changeableValue extends Device {
+sealed trait ChangeableValue extends Device {
   //min, max value for the intensity
   def minValue : Int
   def maxValue : Int
   var value : Int
 
-  private def _mapValue = ValueChecker(minValue,maxValue)(_)
+  private def _mapValue: Int => Int = ValueChecker(minValue,maxValue)(_)
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
 
   val intensityMsg: Regex = ("("+Regex.quote(deviceType.subTopicMsg)+")(\\d+)").r
@@ -178,12 +178,12 @@ object Light {
 
 case class SimulatedLight(override val id: String, override val room: String, override val deviceType: DeviceType,
                           override val consumption: Int, override val pubTopic: String,
-                          override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with changeableValue {
+                          override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == LightType)
 
   override def deviceSpecificMessage(message: String): Unit = message match {
       case intensityMsg(_, value) => setValue(value.toInt)
-      case _ => throw new IllegalArgumentException("Unexpected message: " + message)
+      case _ => this.errUnexpected(UnexpectedMessage, message)
   }
 }
 
