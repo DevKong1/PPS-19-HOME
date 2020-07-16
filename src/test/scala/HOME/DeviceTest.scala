@@ -1,5 +1,7 @@
 package HOME
 
+import java.lang.reflect.MalformedParametersException
+
 import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
@@ -73,13 +75,13 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(!light.isOn)
     light.onMessageReceived(light.subTopic, getMsg("on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.subTopic,"setIntensity_255")
+    light.onMessageReceived(light.subTopic, getMsg("setIntensity_255", light))
     assert(light.value == 100)
-    light.onMessageReceived(light.subTopic,light.deviceType.subTopicMsg + 35)
+    light.onMessageReceived(light.subTopic, getMsg(light.deviceType.subTopicMsg + 35, light))
     assert(light.value == 35)
-    light.onMessageReceived(light.subTopic, LightType.subTopicMsg + 30)
+    light.onMessageReceived(light.subTopic, getMsg(LightType.subTopicMsg + 30, light))
     assert(light.value == 30)
-    assertThrows[IllegalArgumentException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
+    assertThrows[MalformedParametersException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
     assertThrows[IllegalArgumentException](light.onMessageReceived(light.pubTopic, "off"))
     assert(light.value == 30)
     assert(light.disconnect)
