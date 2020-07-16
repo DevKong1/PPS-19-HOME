@@ -40,6 +40,20 @@ sealed trait Device extends JSONSender {
   def room : String
   def deviceType : DeviceType
   def consumption : Int
+
+  private var _on: Boolean = false
+
+  def isOn: Boolean = _on
+
+  def turnOn(): Unit = _on = true
+  def turnOff(): Unit = _on = false
+
+  override def equals(o: Any): Boolean = o match{
+    case device: Device => device.id == this.id
+    case _ => false
+  }
+
+  require(Rooms.allRooms contains room, "Incorrect room")
 }
 
 object AssociableDevice {
@@ -47,15 +61,6 @@ object AssociableDevice {
     case LightType => Light(name, room, deviceType, consumption, null)
     case _ => this.errUnexpected(UnexpectedDeviceType, deviceType.getSimpleClassName)
   }
-}
-
-sealed trait BasicDevice extends Device {
-  private var _on = false
-
-  def isOn: Boolean = _on
-
-  def turnOn(): Unit = _on = true
-  def turnOff(): Unit = _on = false
 }
 
 sealed trait AssociableDevice extends Device with BasicDevice with JSONSender with MQTTUtils {
@@ -90,7 +95,7 @@ sealed trait AssociableDevice extends Device with BasicDevice with JSONSender wi
         case m if m == regSuccessMsg => registered = true
         case m if m == onMsg => turnOn()
         case m if m == offMsg => turnOff()
-        case _ => if (!subTopicOnMessageReceived(message)) this.errUnexpected(UnexpectedMessage, message)
+      case _ => deviceSpecificMessage(message)
       }
       case t if t == broadcastTopic => message match {
         case m if m == disconnectedMsg =>
@@ -101,8 +106,19 @@ sealed trait AssociableDevice extends Device with BasicDevice with JSONSender wi
       case _ => this.errUnexpected(UnexpectedTopic, topic)
     }
   }
+  def deviceSpecificMessage(message: String): Unit
+}
 
-  def subTopicOnMessageReceived(msg: String): Boolean
+sealed trait changeableValue extends Device {
+  //min, max value for the intensity
+  def minValue : Int
+  def maxValue : Int
+  var value : Int
+
+  private def _mapValue = ValueChecker(minValue,maxValue)(_)
+  def setValue(newValue: Int): Unit = value = _mapValue(newValue)
+
+  val intensityMsg: Regex = ("("+Regex.quote(device_type.subTopicMsg)+")(\\d+)").r
 }
 
 case object LightType extends DeviceType {
@@ -160,31 +176,27 @@ object Light {
             pubTopic: String = null): SimulatedLight = SimulatedLight(name, room, deviceType, consumption, pubTopic)
 }
 
-case class SimulatedLight(override val id: String, override val room: String, override val deviceType: DeviceType,
-                          override val consumption: Int, override val pubTopic: String) extends Device with BasicDevice with AssociableDevice {
+case class SimulatedLight(override val id: String, override val room: String, override val device_type: DeviceType,
+                          override val consumption: Int, override val pubTopic: String,
+                          override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with changeableValue {
+  require(device_type == LightType)
 
-  require(deviceType == LightType)
-  require(Rooms.allRooms contains room, this.errUnexpected(UnexpectedRoom, room))
-
-  //min, max value for the intensity
-  private val _minIntensity = 1
-  private val _maxIntensity = 100
-  private var _intensity = 50
-
-  def getIntensity: Int = _intensity
-
-  private def _mapIntensity: Int => Int = ValueChecker(_minIntensity,_maxIntensity)(_)
-  def setIntensity(value: Int): Unit = _intensity = _mapIntensity(value)
-
-  override def equals(that: Any): Boolean = that match {
-    case SimulatedLight(id,_,_,_,_) => this.id == id
-    case _ => false
+  override def deviceSpecificMessage(message: String): Unit = message match {
+      case intensityMsg(_, value) => setValue(value.toInt)
+      case _ => throw new IllegalArgumentException("Unexpected message: " + message)
   }
+}
 
-  override def subTopicOnMessageReceived(message: String): Boolean = message match {
-    case deviceType.specificMsg(_, value) =>
-      setIntensity(value.toInt)
-      true
-    case _ => false
-  }
+object AirConditioner {
+  def apply(name: String, room: String, device_type: DeviceType = AirConditionerType, consumption: Int = AirConditionerType.defaultConsumption,
+            pubTopic: String = null): SimulatedAirConditioner = SimulatedAirConditioner(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedAirConditioner(override val id: String, override val room: String, override val device_type: DeviceType,
+                          override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice {
+  require(device_type == AirConditionerType)
+
+  override def onMessageReceived(topic: String, message: String): Unit = ???
+
+  override def deviceSpecificMessage(message: String): Unit = ???
 }

@@ -15,6 +15,10 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(!light.isOn)
   }
 
+  test("The room is always inserted correctly") {
+    assertThrows[IllegalArgumentException](Light("A","zzz"))
+  }
+
   test("The light switches on and off correctly") {
     assert(!light.isOn)
     light.turnOn()
@@ -24,13 +28,13 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("The light changes intensity correctly") {
-    assert(light.getIntensity == 50)
-    light.setIntensity(41)
-    assert(light.getIntensity == 41)
-    light.setIntensity(-100)
-    assert(light.getIntensity == 1)
-    light.setIntensity(200)
-    assert(light.getIntensity == 100)
+    assert(light.value == 50)
+    light.setValue(41)
+    assert(light.value == 41)
+    light.setValue(-100)
+    assert(light.value == 1)
+    light.setValue(200)
+    assert(light.value == 100)
   }
 
   test("Adding and removing rooms") {
@@ -69,15 +73,15 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(!light.isOn)
     light.onMessageReceived(light.subTopic, getMsg("on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.subTopic, getMsg("setIntensity_255", light))
-    assert(light.getIntensity == 100)
-    light.onMessageReceived(light.subTopic, getMsg(light.deviceType.subTopicMsg + 35, light))
-    assert(light.getIntensity == 35)
-    light.onMessageReceived(light.subTopic, getMsg(LightType.subTopicMsg + 30, light))
-    assert(light.getIntensity == 30)
-    assertThrows[IllegalArgumentException](light.onMessageReceived(light.subTopic, getMsg("setIntensity_a22", light)))
+    light.onMessageReceived(light.subTopic,"setIntensity_255")
+    assert(light.value == 100)
+    light.onMessageReceived(light.subTopic,light.device_type.subTopicMsg + 35)
+    assert(light.value == 35)
+    light.onMessageReceived(light.subTopic, LightType.subTopicMsg + 30)
+    assert(light.value == 30)
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
     assertThrows[IllegalArgumentException](light.onMessageReceived(light.pubTopic, "off"))
-    assert(light.getIntensity == 30)
+    assert(light.value == 30)
     assert(light.disconnect)
   }
 }

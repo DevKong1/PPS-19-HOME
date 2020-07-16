@@ -21,13 +21,13 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     assert(coordinator.publish(light.getSubTopic, "off"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
-    assert(light.getIntensity == 50)
+    assert(light.value == 50)
     assert(coordinator.publish(light.getSubTopic, "setIntensity_15"))
-    eventually { Thread.sleep(testSleepTime); light.getIntensity should be (15) }
-    assert(coordinator.publish(light.getSubTopic, light.deviceType.subTopicMsg + 12))
-    eventually { Thread.sleep(testSleepTime); light.getIntensity should be (12) }
+    eventually { Thread.sleep(testSleepTime); light.value should be (15) }
+    assert(coordinator.publish(light.getSubTopic, light.device_type.subTopicMsg + 12))
+    eventually { Thread.sleep(testSleepTime); light.value should be (12) }
     assert(coordinator.publish(light.getSubTopic, LightType.subTopicMsg + 13))
-    eventually { Thread.sleep(testSleepTime); light.getIntensity shouldNot be (12) }
+    eventually { Thread.sleep(testSleepTime); light.value shouldNot be (12) }
     assert(coordinator.disconnect)
     assert(light.disconnect)
   }
