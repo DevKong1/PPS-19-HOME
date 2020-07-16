@@ -44,3 +44,33 @@ case object UnexpectedDevice extends Unexpected {
 case object UnexpectedDeviceType extends Unexpected {
   override var item: String = "deviceType"
 }
+
+trait WashingType
+case object MIX extends WashingType
+case object WOOL extends WashingType
+case object RAPID extends WashingType
+
+trait RPM
+case object SLOW extends RPM
+case object MEDIUM extends RPM
+case object FAST extends RPM
+
+trait Extra
+case object SuperDry extends Extra
+case object SuperDirty extends Extra
+case object SpecialColors extends Extra
+
+trait WashingMachineMsg {
+  def value[A] : A
+
+  def apply(message: String): WashingMachineMsg = ???
+
+}
+trait WashingMachineMsgWashingType extends WashingMachineMsg {
+}
+trait WashingMachineMsgRPM extends WashingMachineMsg {
+}
+trait WashingMachineMsgExtra extends WashingMachineMsg {
+}
+
+

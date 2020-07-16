@@ -106,6 +106,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       case _ => this.errUnexpected(UnexpectedTopic, topic)
     }
   }
+
   def deviceSpecificMessage(message: String): Unit
 }
 
@@ -118,7 +119,7 @@ sealed trait ChangeableValue extends Device {
   private def _mapValue: Int => Int = ValueChecker(minValue,maxValue)(_)
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
 
-  val intensityMsg: Regex = ("("+Regex.quote(deviceType.subTopicMsg)+")(\\d+)").r
+  val valueMsg: Regex = ("("+Regex.quote(deviceType.subTopicMsg)+")(\\d+)").r
 }
 
 case object LightType extends DeviceType {
@@ -152,7 +153,7 @@ case object TvType extends DeviceType {
 }
 
 case object WashingMachineType extends DeviceType {
-  override def subTopicMsg: String = "setWashingPlan_"
+  override def subTopicMsg: String = "setWashingMachine_"
   override def defaultConsumption: Int = 0
 }
 
@@ -171,6 +172,10 @@ case object StereoSystemType extends DeviceType {
   override def defaultConsumption: Int = 0
 }
 
+/////////////
+/// LIGHT ///
+/////////////
+
 object Light {
   def apply(name: String, room: String, deviceType: DeviceType = LightType, consumption: Int = LightType.defaultConsumption,
             pubTopic: String = null): SimulatedLight = SimulatedLight(name, room, deviceType, consumption, pubTopic)
@@ -182,10 +187,14 @@ case class SimulatedLight(override val id: String, override val room: String, ov
   require(deviceType == LightType)
 
   override def deviceSpecificMessage(message: String): Unit = message match {
-      case intensityMsg(_, value) => setValue(value.toInt)
+      case valueMsg(_, value) => setValue(value.toInt)
       case _ => this.errUnexpected(UnexpectedMessage, message)
   }
 }
+
+///////////////////////
+/// AIR CONDITIONER ///
+///////////////////////
 
 object AirConditioner {
   def apply(name: String, room: String, device_type: DeviceType = AirConditionerType, consumption: Int = AirConditionerType.defaultConsumption,
@@ -193,10 +202,134 @@ object AirConditioner {
 }
 
 case class SimulatedAirConditioner(override val id: String, override val room: String, override val deviceType: DeviceType,
-                          override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice {
+                          override val consumption: Int, override val pubTopic: String,
+                          override val minValue : Int = 10, override val maxValue: Int = 35, override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == AirConditionerType)
 
-  override def onMessageReceived(topic: String, message: String): Unit = ???
+  override def deviceSpecificMessage(message: String): Unit = message match {
+    case valueMsg(_, value) => setValue(value.toInt)
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  }
+}
 
+////////////////////
+/// DEHUMIDIFIER ///
+////////////////////
+
+object Dehumidifier {
+  def apply(name: String, room: String, device_type: DeviceType = DehumidifierType, consumption: Int = DehumidifierType.defaultConsumption,
+            pubTopic: String = null): SimulatedDehumidifier = SimulatedDehumidifier(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedDehumidifier(override val id: String, override val room: String, override val deviceType: DeviceType,
+                                   override val consumption: Int, override val pubTopic: String,
+                                   override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 10) extends Device with AssociableDevice with ChangeableValue {
+  require(deviceType == DehumidifierType)
+
+  override def deviceSpecificMessage(message: String): Unit = message match {
+    case valueMsg(_, value) => setValue(value.toInt)
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  }
+}
+
+///////////////
+/// SHUTTER ///
+///////////////
+
+object Shutter {
+  def apply(name: String, room: String, device_type: DeviceType = ShutterType, consumption: Int = ShutterType.defaultConsumption,
+            pubTopic: String = null): SimulatedShutter = SimulatedShutter(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedShutter(override val id: String, override val room: String, override val deviceType: DeviceType,
+                                 override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice {
+  require(deviceType == ShutterType)
+
+  var _open = false
+
+  def isOpen: Boolean = _open
+
+  def open(): Unit = _open = true
+  def close(): Unit = _open = false
+
+  override def deviceSpecificMessage(message: String): Unit = message match {
+   // case deviceType.specificMsg + "Open" => open()
+   // case deviceType.specificMsg + "Close" => close()
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  }
+}
+
+//////////////
+/// Boiler ///
+//////////////
+
+object Boiler {
+  def apply(name: String, room: String, device_type: DeviceType = BoilerType, consumption: Int = BoilerType.defaultConsumption,
+            pubTopic: String = null): SimulatedBoiler = SimulatedBoiler(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedBoiler(override val id: String, override val room: String, override val deviceType: DeviceType,
+                                 override val consumption: Int, override val pubTopic: String,
+                                 override val minValue : Int = 10, override val maxValue: Int = 35, override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
+  require(deviceType == BoilerType)
+
+  override def deviceSpecificMessage(message: String): Unit = message match {
+    case valueMsg(_, value) => setValue(value.toInt)
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  }
+}
+
+///////////
+/// TV ///
+//////////
+
+object TV {
+  def apply(name: String, room: String, device_type: DeviceType = TvType, consumption: Int = TvType.defaultConsumption,
+            pubTopic: String = null): SimulatedTV = SimulatedTV(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedTV(override val id: String, override val room: String, override val deviceType: DeviceType,
+                           override val consumption: Int, override val pubTopic: String,
+                           override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+  require(deviceType == TvType)
+
+  override def deviceSpecificMessage(message: String): Unit = message match {
+    case valueMsg(_, value) => setValue(value.toInt)
+    //case deviceType.specificMsg + "Mute" => setValue(minValue)
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  }
+}
+
+///////////////////////
+/// WASHING MACHINE ///
+//////////////////////
+
+object WashingMachine {
+  def apply(name: String, room: String, device_type: DeviceType = WashingMachineType, consumption: Int = WashingMachineType.defaultConsumption,
+            pubTopic: String = null): SimulatedWashingMachine = SimulatedWashingMachine(name, room, device_type, consumption, pubTopic)
+}
+
+case class SimulatedWashingMachine(override val id: String, override val room: String, override val deviceType: DeviceType,
+                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice{
+  require(deviceType == WashingMachineType)
+
+
+  var activeWashing: WashingType = MIX
+  var activeRPM: RPM = MEDIUM
+  var acriveExtras: Set[Extra] = Set()
+
+  def setWashingType(newWashing: WashingType): Unit = activeWashing = newWashing
+  def setRPM(newRPM: RPM): Unit = activeRPM = newRPM
+  def addExtra(newExtra: Extra): Unit = acriveExtras += newExtra
+  def removeExtra(toRemove: Extra): Unit = acriveExtras -= toRemove
+
+  /*
+  override def deviceSpecificMessage(message: String): Unit = WashingMachineMsg(message) match {
+    case WashingMachineMsgWashingType => setWashingType(value)
+    case deviceType.specificMsg + "RPM" => setRPM(value)
+    case deviceType.specificMsg + "AddExtra" => addExtra(value)
+    case deviceType.specificMsg + "RemoveExtra" => removeExtra(value)
+    case _ => this.errUnexpected(UnexpectedMessage, message)
+  } */
   override def deviceSpecificMessage(message: String): Unit = ???
 }
