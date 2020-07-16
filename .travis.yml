@@ -3,9 +3,11 @@ scala:
 - 2.12.2
 jdk:
   - openjdk8
+services:
+  - docker
 before_install:
- - sudo apt-add-repository ppa:mosquitto-dev/mosquitto-ppa
- - chmod +x mosquitto
+ - docker pull eclipse-mosquitto
+ - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
  - chmod +x gradlew
 script:
 - ./mosquitto -v
