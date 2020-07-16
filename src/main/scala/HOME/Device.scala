@@ -63,7 +63,7 @@ object AssociableDevice {
   }
 }
 
-sealed trait AssociableDevice extends Device with BasicDevice with JSONSender with MQTTUtils {
+sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override var senderType: SenderType = SenderTypeDevice
   override var name: String = id
   override var lastWillTopic: String = regTopic
@@ -118,7 +118,7 @@ sealed trait changeableValue extends Device {
   private def _mapValue = ValueChecker(minValue,maxValue)(_)
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
 
-  val intensityMsg: Regex = ("("+Regex.quote(device_type.subTopicMsg)+")(\\d+)").r
+  val intensityMsg: Regex = ("("+Regex.quote(deviceType.subTopicMsg)+")(\\d+)").r
 }
 
 case object LightType extends DeviceType {
@@ -176,10 +176,10 @@ object Light {
             pubTopic: String = null): SimulatedLight = SimulatedLight(name, room, deviceType, consumption, pubTopic)
 }
 
-case class SimulatedLight(override val id: String, override val room: String, override val device_type: DeviceType,
+case class SimulatedLight(override val id: String, override val room: String, override val deviceType: DeviceType,
                           override val consumption: Int, override val pubTopic: String,
                           override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with changeableValue {
-  require(device_type == LightType)
+  require(deviceType == LightType)
 
   override def deviceSpecificMessage(message: String): Unit = message match {
       case intensityMsg(_, value) => setValue(value.toInt)
@@ -192,9 +192,9 @@ object AirConditioner {
             pubTopic: String = null): SimulatedAirConditioner = SimulatedAirConditioner(name, room, device_type, consumption, pubTopic)
 }
 
-case class SimulatedAirConditioner(override val id: String, override val room: String, override val device_type: DeviceType,
+case class SimulatedAirConditioner(override val id: String, override val room: String, override val deviceType: DeviceType,
                           override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice {
-  require(device_type == AirConditionerType)
+  require(deviceType == AirConditionerType)
 
   override def onMessageReceived(topic: String, message: String): Unit = ???
 

@@ -75,7 +75,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(light.isOn)
     light.onMessageReceived(light.subTopic,"setIntensity_255")
     assert(light.value == 100)
-    light.onMessageReceived(light.subTopic,light.device_type.subTopicMsg + 35)
+    light.onMessageReceived(light.subTopic,light.deviceType.subTopicMsg + 35)
     assert(light.value == 35)
     light.onMessageReceived(light.subTopic, LightType.subTopicMsg + 30)
     assert(light.value == 30)
