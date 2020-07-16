@@ -4,6 +4,9 @@ scala:
 jdk:
   - openjdk8
 before_install:
+ - git clone https://github.com/eclipse/mosquitto.git
+ - chmod +x mosquitto
  - chmod +x gradlew
 script:
+- ./mosquitto -v
 - ./gradlew clean build test
