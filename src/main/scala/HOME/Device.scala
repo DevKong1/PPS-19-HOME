@@ -4,7 +4,7 @@ import scala.util.matching.Regex
 
 object Rooms {
   //TODO THIS LIST SHOULD BE MADE IN THE INTERFACE
-  private val _allRooms = Array("Salotto", "HOME", "Kitchen", "Garage", "Bedroom", "Bagno", "Corridoio")
+  private val _allRooms = Array("Salotto", "Home", "Kitchen", "Garage", "Bedroom", "Bagno", "Corridoio")
 
   def allRooms: Array[String] = _allRooms
 }

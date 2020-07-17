@@ -2,8 +2,10 @@ package HOME
 
 
 import java.awt.{Dimension, GraphicsEnvironment}
+
+import scala.collection.mutable.ListBuffer
 import scala.swing._
-import scala.swing.event.SelectionChanged
+import scala.swing.event.{ButtonClicked, Event, SelectionChanged}
 
 sealed trait Room {
   def devices : Set[Device]
@@ -19,35 +21,71 @@ object newDevice {
 //TODO: RECONSIDER HOW TO MODEL GUIROOM
  class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) with Room {
   override def devices: Set[Device] = ???
-  private val x : Dimension = WindowSize()
+  //private val x : Dimension = WindowSize()
 
-  val button1 = new Button("Add device"){
-    addDevice()
+  val buttonDimension = new Dimension(300,70)
+  var tryListDevice = new ListBuffer[Device]()
+  if(name != "+") {
+    var a: Device = new SimulatedLight("Lamp1", name, LightType, 1)
+    var b: Device = new SimulatedLight("Lamp2", name, LightType, 1)
+    tryListDevice += a
+    tryListDevice += b
   }
-  contents+=  new BorderPanel {
-    add(button1, BorderPanel.Position.South)
+
+  /*val button1 = new Button("Add device") {
+    addDevice()
+  }*/
+
+  _contents += new BoxPanel(Orientation.Vertical) {
+    for( c <- tryListDevice) {
+      contents += addButton(c.name)
+    }
+    contents += new BorderPanel {
+      add(addButton("Add device"), BorderPanel.Position.South)
+    }
   }
 
   def addDevice(): Unit = {
-
+    import Dialog._
+    val name = showInput(null,
+      "Room name:",
+      "Add room",
+      Message.Plain,
+      Swing.EmptyIcon,
+      Nil, "")
   }
-  /* var a : Device = new SimulatedLight("Lamp1", name, LightType, 1)
-  var b : Device = new SimulatedLight("Lamp2", name, LightType, 1)
-  devices += a
-  devices += b*/
 
   override def equals(that: Any): Boolean = that match{
     case that: GUIRoom=> this.name equals that.name
     case _ => false
   }
- /* for( c <- devices) {
-    _contents += Button("" + c.name+""+c.room)(println("Clicked device: " + c.name))
-    _contents += Swing.HStrut(20)
-  }*/
-   def apply(roomName: String): GUIRoom =  new GUIRoom(roomName)
+
+  def apply(roomName: String): GUIRoom =  new GUIRoom(roomName)
     object deviceAddForm {
 
     }
+
+  def addButton(buttonName : String) : Button = buttonName match {
+    case buttonName => new Button(buttonName) {
+      minimumSize = buttonDimension
+      maximumSize = buttonDimension
+      preferredSize = buttonDimension
+      name = buttonName
+
+      reactions += {
+        if(name == "Add device") {
+          case ButtonClicked(b) =>
+            addDevice()
+            println("Click me: " + b.name)
+        } else {
+          case ButtonClicked(b) =>
+            println("Ciao")
+        }
+      }
+
+    }
+    case _ => null
+  }
 }
 
 object GUI extends SimpleSwingApplication {
