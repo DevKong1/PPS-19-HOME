@@ -55,7 +55,7 @@ case class CoordinatorImpl() extends Coordinator {
   }
 
   def handleRegMsg(msg: String): Unit = {
-    val device: AssociableDevice = getSenderFromMsg(msg).asInstanceOf[AssociableDevice]
+    val device: AssociableDevice = getSenderFromMsg[AssociableDevice](msg)
     if (device == null) this.errUnexpected(UnexpectedDevice, null)
 
     getMessageFromMsg(msg) match {
@@ -66,7 +66,7 @@ case class CoordinatorImpl() extends Coordinator {
       case m if m == disconnectedMsg =>
         removeDevice(device)
         unsubscribe(device.pubTopic)
-      case _ => throw new IllegalArgumentException
+      case m => this.errUnexpected(UnexpectedMessage, m)
     }
   }
 }

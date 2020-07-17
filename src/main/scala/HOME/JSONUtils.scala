@@ -77,6 +77,7 @@ trait JSONUtils {
   }
 
   def getMsg(message: String, sender: JSONSender): String = {
+    if (message == null || sender == null) return null
     JsObject(
       Seq(
         msgField -> JsString(message),
@@ -85,31 +86,25 @@ trait JSONUtils {
     ).toString()
   }
 
-  def getMessageFromMsg(msg: String): String = {
-    toJsValue(msg) match {
-        case null => null
-        case v => (v \ msgField).validate[String].get
-      }
-  }
-
-  def getSenderFromMsg(msg: String): JSONSender = {
-    toJsValue(msg) match {
-      case null => null
-      case v => (v \ senderField).validate[JSONSender].get
+  def getMessageFromMsg(msg: String): String = toJsValue(msg) match {
+      case v if v == null => null
+      case v => (v \ msgField).validate[String].get
     }
+
+  def getSenderFromMsg[A >: Null <: JSONSender](msg: String): A = toJsValue(msg) match {
+      case v if v == null => null
+      case v => (v \ senderField).validate[JSONSender].get.asInstanceOf[A]
   }
 
-  private def toJsValue(msg: String): JsValue =
+  private def toJsValue(msg: String): JsValue = {
+    if (msg == null) return null
     Try {
-      val jsValue: JsValue = Json.parse(msg)
-      jsValue match {
-        case null => null
-        case v => v
-      }
+      Json.parse(msg)
     } match {
       case Failure(exception) =>
         throw new MalformedParametersException(s"ERROR : $exception + ${exception.getCause}")
       case Success(value) => value
-      case _ => throw new IllegalArgumentException("Unexpected result")
+      case result => this.errUnexpected(UnexpectedResult, result.get.toString())
     }
+  }
 }

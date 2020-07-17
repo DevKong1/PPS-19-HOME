@@ -13,7 +13,7 @@ class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matc
   test("The message + device/coordinator is encoded/decoded via JSON correctly") {
     val msgD: String = getMsg("testMsgD", light)
     val retrievedMessageD: String = getMessageFromMsg(msgD)
-    val retrievedDevice: AssociableDevice = getSenderFromMsg(msgD).asInstanceOf[AssociableDevice]
+    val retrievedDevice: AssociableDevice = getSenderFromMsg[AssociableDevice](msgD)
     assert("testMsgD" == retrievedMessageD)
     assert(light.id == retrievedDevice.id)
     assert(light.room == retrievedDevice.room)
@@ -23,9 +23,17 @@ class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matc
 
     val msgC: String = getMsg("testMsgC", coordinator)
     val retrievedMessageC: String = getMessageFromMsg(msgC)
-    val retrievedCoordinator: Coordinator = getSenderFromMsg(msgC).asInstanceOf[Coordinator]
+    val retrievedCoordinator: Coordinator = getSenderFromMsg[Coordinator](msgC)
     assert("testMsgC" == retrievedMessageC)
     assert(coordinator.name == retrievedCoordinator.name)
+
+    val msgN: String = getMsg(null, null)
+    val retrievedMessageN: String = getMessageFromMsg(msgN)
+    val retrievedC: Coordinator = getSenderFromMsg[Coordinator](msgN)
+    val retrievedD: AssociableDevice = getSenderFromMsg[AssociableDevice](msgN)
+    assert(retrievedMessageN == null)
+    assert(retrievedC == null)
+    assert(retrievedD == null)
   }
 
   //This test needs the MQTT Broker active and running

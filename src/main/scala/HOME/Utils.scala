@@ -44,6 +44,9 @@ case object UnexpectedDevice extends Unexpected {
 case object UnexpectedDeviceType extends Unexpected {
   override var item: String = "deviceType"
 }
+case object UnexpectedResult extends Unexpected {
+  override var item: String = "result"
+}
 
 trait WashingType
 case object MIX extends WashingType
