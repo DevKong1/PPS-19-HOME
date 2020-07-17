@@ -41,7 +41,7 @@ sealed trait Room {
 object SimpleGUI extends SimpleSwingApplication {
   private val ADD = "+"
 
-  private var rooms: Set[GUIRoom] = Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"),new GUIRoom(ADD))
+  private var rooms: Set[GUIRoom] = Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"), new GUIRoom(ADD))
 
   val tp: TabbedPane = new TabbedPane {
     for(i <- rooms) yield {pages += new TabbedPane.Page(i.name,i)}
@@ -57,7 +57,7 @@ object SimpleGUI extends SimpleSwingApplication {
           } yield {
             tp.pages.remove(tp.pages.length-1)
             tp.pages+=new TabbedPane.Page(name, new GUIRoom(name))
-            tp.pages+=new TabbedPane.Page(ADD,new GUIRoom(ADD))
+            tp.pages+=new TabbedPane.Page(ADD, new GUIRoom(ADD))
           }
         }
       }
@@ -90,7 +90,7 @@ object SimpleGUI extends SimpleSwingApplication {
           Swing.EmptyIcon,
           Nil, "")
         println(name.isDefined)
-        if (name.isDefined && !name.get.equals(ADD) && !rooms.contains(new GUIRoom(name.get))) name else {
+        if (name.isDefined && !name.get.equals(ADD) && !tp.pages.contains(new TabbedPane.Page(name.get, new GUIRoom(name.get)))) name else {
           showMessage(tp, "Room already existing or incorrect room name", Message.Error toString)
           None
         }
