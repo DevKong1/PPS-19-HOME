@@ -64,10 +64,10 @@ object AssociableDevice {
 }
 
 sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
-  override var senderType: SenderType = SenderTypeDevice
-  override var name: String = id
-  override var lastWillTopic: String = regTopic
-  override var lastWillMessage: String = disconnectedMsg
+  override def senderType: SenderType = SenderTypeDevice
+  override def name: String = id
+  override def lastWillTopic: String = regTopic
+  override def lastWillMessage: String = disconnectedMsg
 
   var connected: Boolean = false
   var registered: Boolean = false
@@ -316,12 +316,12 @@ case class SimulatedWashingMachine(override val id: String, override val room: S
 
   var activeWashing: WashingType = MIX
   var activeRPM: RPM = MEDIUM
-  var acriveExtras: Set[Extra] = Set()
+  var activeExtras: Set[Extra] = Set()
 
   def setWashingType(newWashing: WashingType): Unit = activeWashing = newWashing
   def setRPM(newRPM: RPM): Unit = activeRPM = newRPM
-  def addExtra(newExtra: Extra): Unit = acriveExtras += newExtra
-  def removeExtra(toRemove: Extra): Unit = acriveExtras -= toRemove
+  def addExtra(newExtra: Extra): Unit = activeExtras += newExtra
+  def removeExtra(toRemove: Extra): Unit = activeExtras -= toRemove
 
   /*
   override def deviceSpecificMessage(message: String): Unit = WashingMachineMsg(message) match {

@@ -4,11 +4,10 @@ import HOME.MyClass._
 import scala.collection.mutable.ListBuffer
 
 sealed trait Coordinator extends JSONSender with MQTTUtils {
-
-  override var senderType: SenderType = SenderTypeCoordinator
-  override var name: String = "Coordinator"
-  override var lastWillTopic: String = broadcastTopic
-  override var lastWillMessage: String = disconnectedMsg
+  override def senderType: SenderType = SenderTypeCoordinator
+  override def name: String = "Coordinator"
+  override def lastWillTopic: String = broadcastTopic
+  override def lastWillMessage: String = disconnectedMsg
 
   var devices: Set[Device]
   var activeProfile: Profile

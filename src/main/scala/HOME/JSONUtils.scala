@@ -21,10 +21,10 @@ case object SenderTypeCoordinator extends SenderType {
 }
 
 trait JSONSender {
-  var senderType: SenderType
-  var name: String
-  var lastWillTopic: String
-  var lastWillMessage: String
+  def senderType: SenderType
+  def name: String
+  def lastWillTopic: String
+  def lastWillMessage: String
 }
 
 trait JSONUtils {
