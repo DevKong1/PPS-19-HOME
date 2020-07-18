@@ -48,32 +48,91 @@ case object UnexpectedResult extends Unexpected {
   override var item: String = "result"
 }
 
+////////////////////////////////
+/// Specific Device Messages ///
+////////////////////////////////
+
+import HOME.MyClass._
+
+trait SpecificDeviceMsg {
+  def deviceType: DeviceType
+  def command: String
+  def value: String
+}
+
+object SpecificDeviceMsg {
+
+  class SpecificDeviceMsgWithValue(override val deviceType: DeviceType,override val command: String,override val value: String) extends SpecificDeviceMsg
+  class SpecificDeviceMsgWithoutValue(override val deviceType: DeviceType,override val command: String,override val value: String = "") extends SpecificDeviceMsg
+
+  def apply(msg: String): SpecificDeviceMsg = msg.split('_').length match {
+    case 2 => new SpecificDeviceMsgWithoutValue(DeviceType(msg.split('_')(0)), msg.split('_')(1))
+    case 3 => new SpecificDeviceMsgWithValue(DeviceType(msg.split('_')(0)), msg.split('_')(1), msg.split('_')(2))
+    case _ => this.errUnexpected(UnexpectedMessage, msg)
+  }
+}
+
 trait WashingType
-case object MIX extends WashingType
-case object WOOL extends WashingType
-case object RAPID extends WashingType
+object WashingType {
+
+  case object MIX extends WashingType
+  case object WOOL extends WashingType
+  case object RAPID extends WashingType
+
+  def apply(washingType: String): WashingType = washingType match{
+    case "MIX" => MIX
+    case "WOOL" => WOOL
+    case "RAPID" => RAPID
+    case _ => this.errUnexpected(UnexpectedMessage, washingType)
+  }
+}
 
 trait RPM
-case object SLOW extends RPM
-case object MEDIUM extends RPM
-case object FAST extends RPM
+
+
+object RPM {
+
+  case object SLOW extends RPM
+  case object MEDIUM extends RPM
+  case object FAST extends RPM
+
+  def apply(rpm: String): RPM = rpm match{
+    case "SLOW" => SLOW
+    case "MEDIUM" => MEDIUM
+    case "FAST" => FAST
+    case _ => this.errUnexpected(UnexpectedMessage, rpm)
+  }
+}
+
 
 trait Extra
-case object SuperDry extends Extra
-case object SuperDirty extends Extra
-case object SpecialColors extends Extra
 
-trait WashingMachineMsg {
-  def value[A] : A
+object Extra {
+  case object SuperDry extends Extra
+  case object SuperDirty extends Extra
+  case object SpecialColors extends Extra
 
-  def apply(message: String): WashingMachineMsg = ???
-
-}
-trait WashingMachineMsgWashingType extends WashingMachineMsg {
-}
-trait WashingMachineMsgRPM extends WashingMachineMsg {
-}
-trait WashingMachineMsgExtra extends WashingMachineMsg {
+  def apply(extra: String): Extra = extra match{
+    case "SuperDry" => SuperDry
+    case "SuperDirty" => SuperDirty
+    case "SpecialColors" => SpecialColors
+    case _ => this.errUnexpected(UnexpectedMessage, extra)
+  }
 }
 
+trait DishWasherProgram
 
+object DishWasherProgram {
+
+  case object FAST extends DishWasherProgram
+  case object DIRTY extends DishWasherProgram
+  case object FRAGILE extends DishWasherProgram
+
+  def apply(dishWasherProgram: String): DishWasherProgram = dishWasherProgram match{
+    case "FAST" => FAST
+    case "DIRTY" => DIRTY
+    case "FRAGILE" => FRAGILE
+    case _ => this.errUnexpected(UnexpectedMessage, dishWasherProgram)
+  }
+}
+//TODO add a checkAndRemove pimping the Iterable
