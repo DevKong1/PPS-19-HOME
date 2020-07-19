@@ -55,19 +55,17 @@ case object UnexpectedResult extends Unexpected {
 import HOME.MyClass._
 
 trait SpecificDeviceMsg {
-  def deviceType: DeviceType
   def command: String
   def value: String
 }
 
 object SpecificDeviceMsg {
-
-  class SpecificDeviceMsgWithValue(override val deviceType: DeviceType,override val command: String,override val value: String) extends SpecificDeviceMsg
-  class SpecificDeviceMsgWithoutValue(override val deviceType: DeviceType,override val command: String,override val value: String = "") extends SpecificDeviceMsg
+  class SpecificDeviceMsgWithValue(override val command: String,override val value: String) extends SpecificDeviceMsg
+  class SpecificDeviceMsgWithoutValue(override val command: String,override val value: String = "") extends SpecificDeviceMsg
 
   def apply(msg: String): SpecificDeviceMsg = msg.split('_').length match {
-    case 2 => new SpecificDeviceMsgWithoutValue(DeviceType(msg.split('_')(0)), msg.split('_')(1))
-    case 3 => new SpecificDeviceMsgWithValue(DeviceType(msg.split('_')(0)), msg.split('_')(1), msg.split('_')(2))
+    case 1 => new SpecificDeviceMsgWithoutValue(msg.split('_')(0))
+    case 2 => new SpecificDeviceMsgWithValue(msg.split('_')(0), msg.split('_')(1))
     case _ => this.errUnexpected(UnexpectedMessage, msg)
   }
 }

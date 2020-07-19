@@ -65,14 +65,14 @@ trait MQTTUtils extends JSONUtils {
   def subscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
-      if (topic != null) client.subscribe(topic, QoS_1)
+      if (topic != null && topic != "") client.subscribe(topic, QoS_1)
       true
   }
 
   def unsubscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
-      if (topic != null) client.unsubscribe(topic)
+      if (topic != null && topic != "") client.unsubscribe(topic)
       true
   }
 

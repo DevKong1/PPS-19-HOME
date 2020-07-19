@@ -2,8 +2,6 @@ package HOME
 
 import HOME.MyClass._
 
-import scala.util.matching.Regex
-
 object Rooms {
   //TODO THIS LIST SHOULD BE MADE IN THE INTERFACE
   private var _allRooms: Set[String] = Set("salotto")
@@ -14,7 +12,6 @@ object Rooms {
 }
 
 sealed trait DeviceType {
-  def subTopicMsg: String
   def defaultConsumption: Int
 }
 
@@ -45,13 +42,18 @@ sealed trait Device extends JSONSender {
     case _ => false
   }
 
-  require(Rooms.allRooms contains room, "Incorrect room")
+  require(Rooms.allRooms contains room, this.errUnexpected(UnexpectedRoom, room))
 }
 
 object AssociableDevice {
-  def apply(name: String, room: String, deviceType: DeviceType, consumption: Int, pubTopic: String): AssociableDevice = deviceType match {
-    case LightType => Light(name, room, deviceType, consumption, null)
-    case _ => this.errUnexpected(UnexpectedDeviceType, deviceType.getSimpleClassName)
+  //Used during the registration to simulate the subscriber device
+  class AssociableDeviceImpl(override val id: String, override val room: String, override val deviceType: DeviceType,
+                             override val consumption: Int, override val pubTopic: String) extends AssociableDevice {
+    override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = { /*Do nothing*/}
+  }
+
+  def apply(id: String, room: String, deviceType: DeviceType, consumption: Int, pubTopic: String): AssociableDevice = {
+    new AssociableDeviceImpl(id, room, deviceType, consumption, pubTopic)
   }
 }
 
@@ -87,7 +89,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
         case m if m == regSuccessMsg => registered = true
         case m if m == onMsg => turnOn()
         case m if m == offMsg => turnOff()
-        case _ => checkMessageType(SpecificDeviceMsg(message)); handleDeviceSpecificMessage(SpecificDeviceMsg(message))
+        case _ => handleDeviceSpecificMessage(SpecificDeviceMsg(message))
       }
       case t if t == broadcastTopic => message match {
         case m if m == disconnectedMsg =>
@@ -97,11 +99,6 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       }
       case _ => this.errUnexpected(UnexpectedTopic, topic)
     }
-  }
-
-  def checkMessageType(msg: SpecificDeviceMsg) : Unit = msg.deviceType match {
-    case _type if _type == this.deviceType =>
-    case _ => this.errUnexpected(UnexpectedDeviceType, msg.deviceType.getSimpleClassName)
   }
 
   def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit
@@ -115,57 +112,45 @@ sealed trait ChangeableValue extends Device {
 
   private def _mapValue: Int => Int = ValueChecker(minValue,maxValue)(_)
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
-
-  val valueMsg: Regex = ("("+Regex.quote(deviceType.subTopicMsg)+")(\\d+)").r
 }
 
 case object LightType extends DeviceType {
-  override def subTopicMsg: String = "LightType_"
   override def defaultConsumption: Int = 5
 }
 
 case object AirConditionerType extends DeviceType {
-  override def subTopicMsg: String = "AirConditionerType_"
   override def defaultConsumption: Int = 0
 }
 
 case object DehumidifierType extends DeviceType {
-  override def subTopicMsg: String = "DehumidifierType_"
   override def defaultConsumption: Int = 0
 }
 
 case object ShutterType extends DeviceType {
-  override def subTopicMsg: String = "ShutterType_"
   override def defaultConsumption: Int = 0
 }
 
 case object BoilerType extends DeviceType {
-  override def subTopicMsg: String = "BoilerType_"
   override def defaultConsumption: Int = 10
 }
 
 case object TvType extends DeviceType {
-  override def subTopicMsg: String = "TvType_"
   override def defaultConsumption: Int = 0
 }
 
 case object WashingMachineType extends DeviceType {
-  override def subTopicMsg: String = "WashingMachine_"
   override def defaultConsumption: Int = 0
 }
 
 case object DishWasherType extends DeviceType {
-  override def subTopicMsg: String = "DishWasher_"
   override def defaultConsumption: Int = 0
 }
 
 case object OvenType extends DeviceType {
-  override def subTopicMsg: String = "Oven_"
   override def defaultConsumption: Int = 0
 }
 
 case object StereoSystemType extends DeviceType {
-  override def subTopicMsg: String = "StereoSystem_"
   override def defaultConsumption: Int = 0
 }
 
