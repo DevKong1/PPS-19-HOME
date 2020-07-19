@@ -114,6 +114,13 @@ sealed trait ChangeableValue extends Device {
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
 }
 
+sealed trait MutableExtras extends Device {
+  var activeExtras: Set[GenericExtra] = Set()
+
+  def addExtra(newExtra: GenericExtra): Unit = activeExtras += newExtra
+  def removeExtra(toRemove: GenericExtra): Unit = activeExtras -= toRemove
+}
+
 case object LightType extends DeviceType {
   override def defaultConsumption: Int = 5
 }
@@ -292,25 +299,21 @@ object WashingMachine {
 }
 
 case class SimulatedWashingMachine(override val id: String, override val room: String, override val deviceType: DeviceType,
-                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice{
+                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice with MutableExtras{
   require(deviceType == WashingMachineType)
 
 
   var activeWashing: WashingType = WashingType.MIX
   var activeRPM: RPM = RPM.MEDIUM
-  var activeExtras: Set[Extra] = Set()
 
   def setWashingType(newWashing: WashingType): Unit = activeWashing = newWashing
   def setRPM(newRPM: RPM): Unit = activeRPM = newRPM
-  def addExtra(newExtra: Extra): Unit = activeExtras += newExtra
-  def removeExtra(toRemove: Extra): Unit = activeExtras -= toRemove
-
 
   override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
     case "WashingType" => setWashingType(WashingType(message.value))
     case "RPM" => setRPM(RPM(message.value))
-    case "AddExtra" => addExtra(Extra(message.value))
-    case "RemoveExtra" => removeExtra(Extra(message.value))
+    case "addExtra" => addExtra(WashingMachineExtra(message.value))
+    case "removeExtra" => removeExtra(WashingMachineExtra(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -326,8 +329,7 @@ object DishWasher {
 
 
 case class SimulatedDishWasher(override val id: String, override val room: String, override val deviceType: DeviceType,
-                       override val consumption: Int, override val pubTopic: String,
-                       override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice with MutableExtras {
   require(deviceType == DishWasherType)
 
   var activeWashing: DishWasherProgram = DishWasherProgram.FAST
@@ -336,6 +338,8 @@ case class SimulatedDishWasher(override val id: String, override val room: Strin
 
   override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
     case "setProgram" => setWashingProgram(DishWasherProgram(message.value))
+    case "addExtra" => addExtra(DishWasherExtra(message.value))
+    case "removeExtra" => removeExtra(DishWasherExtra(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -343,20 +347,24 @@ case class SimulatedDishWasher(override val id: String, override val room: Strin
 ////////////
 /// Oven ///
 ////////////
-//TODO
+
 object Oven {
-  def apply(name: String, room: String, device_type: DeviceType = TvType, consumption: Int = TvType.defaultConsumption,
-            pubTopic: String = null): SimulatedTV = SimulatedTV(name, room, device_type, consumption, pubTopic)
+  def apply(name: String, room: String, device_type: DeviceType = OvenType, consumption: Int = OvenType.defaultConsumption,
+            pubTopic: String = null): SimulatedOven = SimulatedOven(name, room, device_type, consumption, pubTopic)
 }
 
 case class SimulatedOven(override val id: String, override val room: String, override val deviceType: DeviceType,
                                override val consumption: Int, override val pubTopic: String,
-                               override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
-  require(deviceType == DishWasherType)
+                               override val minValue : Int = 0, override val maxValue: Int = 250, override var value: Int = 0) extends Device with AssociableDevice with ChangeableValue {
+  require(deviceType == OvenType)
+
+  var activeMode: OvenMode = OvenMode.CONVENTIONAL
+
+  def setOvenMode(newMode: OvenMode): Unit = activeMode = newMode
 
   override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setVolume" => setValue(message.value.toInt)
-    case "mute" => setValue(minValue)
+    case "setTemperature" => setValue(message.value.toInt)
+    case "setMode" => setOvenMode(OvenMode(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -364,17 +372,16 @@ case class SimulatedOven(override val id: String, override val room: String, ove
 /////////////////////
 /// Stereo System ///
 /////////////////////
-//TODO
 
 object StereoSystem {
-  def apply(name: String, room: String, device_type: DeviceType = TvType, consumption: Int = TvType.defaultConsumption,
-            pubTopic: String = null): SimulatedTV = SimulatedTV(name, room, device_type, consumption, pubTopic)
+  def apply(name: String, room: String, device_type: DeviceType = StereoSystemType, consumption: Int = StereoSystemType.defaultConsumption,
+            pubTopic: String = null): SimulatedStereoSystem = SimulatedStereoSystem(name, room, device_type, consumption, pubTopic)
 }
 
 case class SimulatedStereoSystem(override val id: String, override val room: String, override val deviceType: DeviceType,
                                override val consumption: Int, override val pubTopic: String,
                                override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
-  require(deviceType == DishWasherType)
+  require(deviceType == StereoSystemType)
 
   override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
     case "setVolume" => setValue(message.value.toInt)

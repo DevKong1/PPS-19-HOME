@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 
 object Constants {
   val testSleepTime :Int = 50 //millis, time the matcher waits to evaluate 'eventually' expression in tests
+  val messageSeparator: Char = '_' //character used to separate data in specific device messages
 }
 
 case class MyClass(_class: Any) {
@@ -63,12 +64,16 @@ object SpecificDeviceMsg {
   class SpecificDeviceMsgWithValue(override val command: String,override val value: String) extends SpecificDeviceMsg
   class SpecificDeviceMsgWithoutValue(override val command: String,override val value: String = "") extends SpecificDeviceMsg
 
-  def apply(msg: String): SpecificDeviceMsg = msg.split('_').length match {
-    case 1 => new SpecificDeviceMsgWithoutValue(msg.split('_')(0))
-    case 2 => new SpecificDeviceMsgWithValue(msg.split('_')(0), msg.split('_')(1))
+  class SpecificDeviceMsgWithValue(override val command: String, override val value: String) extends SpecificDeviceMsg
+  class SpecificDeviceMsgWithoutValue(override val command: String, override val value: String = "") extends SpecificDeviceMsg
+
+  def apply(msg: String): SpecificDeviceMsg = msg.split(Constants.messageSeparator).length match {
+    case 1 => new SpecificDeviceMsgWithoutValue(msg)
+    case 2 => new SpecificDeviceMsgWithValue(msg.split(Constants.messageSeparator)(0), msg.split(Constants.messageSeparator)(1))
     case _ => this.errUnexpected(UnexpectedMessage, msg)
   }
 }
+
 
 trait WashingType
 object WashingType {
@@ -86,8 +91,6 @@ object WashingType {
 }
 
 trait RPM
-
-
 object RPM {
 
   case object SLOW extends RPM
@@ -102,15 +105,15 @@ object RPM {
   }
 }
 
+trait GenericExtra
 
-trait Extra
+trait WashingMachineExtra extends GenericExtra
+object WashingMachineExtra {
+  case object SuperDry extends WashingMachineExtra
+  case object SuperDirty extends WashingMachineExtra
+  case object SpecialColors extends WashingMachineExtra
 
-object Extra {
-  case object SuperDry extends Extra
-  case object SuperDirty extends Extra
-  case object SpecialColors extends Extra
-
-  def apply(extra: String): Extra = extra match{
+  def apply(extra: String): WashingMachineExtra = extra match{
     case "SuperDry" => SuperDry
     case "SuperDirty" => SuperDirty
     case "SpecialColors" => SpecialColors
@@ -119,7 +122,6 @@ object Extra {
 }
 
 trait DishWasherProgram
-
 object DishWasherProgram {
 
   case object FAST extends DishWasherProgram
@@ -131,6 +133,42 @@ object DishWasherProgram {
     case "DIRTY" => DIRTY
     case "FRAGILE" => FRAGILE
     case _ => this.errUnexpected(UnexpectedMessage, dishWasherProgram)
+  }
+}
+
+trait DishWasherExtra extends GenericExtra
+object DishWasherExtra {
+
+  case object SuperSteam extends DishWasherExtra
+  case object SuperDirty extends DishWasherExtra
+  case object SuperHygiene extends DishWasherExtra
+
+  def apply(dishWasherExtra: String): DishWasherExtra = dishWasherExtra match{
+    case "SuperSteam" => SuperSteam
+    case "SuperDirty" => SuperDirty
+    case "SuperHygiene" => SuperHygiene
+    case _ => this.errUnexpected(UnexpectedMessage, dishWasherExtra)
+  }
+}
+
+trait OvenMode
+object OvenMode {
+
+  case object CONVENTIONAL extends OvenMode
+  case object UPPER extends OvenMode
+  case object LOWER extends OvenMode
+  case object VENTILATED extends OvenMode
+  case object GRILL extends OvenMode
+  case object DEFROSTING extends OvenMode
+
+  def apply(ovenMode: String): OvenMode = ovenMode match{
+    case "CONVENTIONAL" => CONVENTIONAL
+    case "UPPER" => UPPER
+    case "LOWER" => LOWER
+    case "VENTILATED" => VENTILATED
+    case "GRILL" => GRILL
+    case "DEFROSTING" => DEFROSTING
+    case _ => this.errUnexpected(UnexpectedMessage, ovenMode)
   }
 }
 //TODO add a checkAndRemove pimping the Iterable
