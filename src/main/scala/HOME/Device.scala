@@ -302,7 +302,6 @@ case class SimulatedWashingMachine(override val id: String, override val room: S
                        override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice with MutableExtras{
   require(deviceType == WashingMachineType)
 
-
   var activeWashing: WashingType = WashingType.MIX
   var activeRPM: RPM = RPM.MEDIUM
 

@@ -64,9 +64,6 @@ object SpecificDeviceMsg {
   class SpecificDeviceMsgWithValue(override val command: String,override val value: String) extends SpecificDeviceMsg
   class SpecificDeviceMsgWithoutValue(override val command: String,override val value: String = "") extends SpecificDeviceMsg
 
-  class SpecificDeviceMsgWithValue(override val command: String, override val value: String) extends SpecificDeviceMsg
-  class SpecificDeviceMsgWithoutValue(override val command: String, override val value: String = "") extends SpecificDeviceMsg
-
   def apply(msg: String): SpecificDeviceMsg = msg.split(Constants.messageSeparator).length match {
     case 1 => new SpecificDeviceMsgWithoutValue(msg)
     case 2 => new SpecificDeviceMsgWithValue(msg.split(Constants.messageSeparator)(0), msg.split(Constants.messageSeparator)(1))
