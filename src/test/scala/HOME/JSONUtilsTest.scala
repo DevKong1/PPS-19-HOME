@@ -8,7 +8,7 @@ import HOME.Constants._
 class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matchers {
 
   val coordinator: Coordinator = CoordinatorImpl()
-  val light: SimulatedLight = Light("A","salotto")
+  val light: SimulatedLight = Light("A","Salotto")
 
   test("The message + device/coordinator is encoded/decoded via JSON correctly") {
     val msgD: String = getMsg("testMsgD", light)

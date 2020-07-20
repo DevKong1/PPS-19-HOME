@@ -1,11 +1,11 @@
 package HOME
 
-
+import scala.language.postfixOps
 import java.awt.{Dimension, GraphicsEnvironment}
 
 import scala.collection.mutable.ListBuffer
 import scala.swing._
-import scala.swing.event.{ButtonClicked, Event, SelectionChanged}
+import scala.swing.event.{ButtonClicked, SelectionChanged}
 
 sealed trait Room {
   def devices : Set[Device]
@@ -83,9 +83,7 @@ object newDevice {
             println("Ciao")
         }
       }
-
     }
-    case _ => null
   }
 }
 

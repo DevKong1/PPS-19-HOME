@@ -6,20 +6,20 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
 
-  val light: SimulatedLight = Light("A","salotto")
-  val AC: SimulatedAirConditioner = AirConditioner("B","salotto")
-  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C","salotto")
-  val shutter: SimulatedShutter = Shutter("D","salotto")
-  val boiler: SimulatedBoiler = Boiler("E","salotto")
-  val tv: SimulatedTV = TV("F","salotto")
-  val washingMachine: SimulatedWashingMachine = WashingMachine("G","salotto")
-  val dishWasher: SimulatedDishWasher = DishWasher("H","salotto")
-  val oven: SimulatedOven = Oven("I","salotto")
-  val stereoSystem: SimulatedStereoSystem = StereoSystem("L","salotto")
+  val light: SimulatedLight = Light("A","Salotto")
+  val AC: SimulatedAirConditioner = AirConditioner("B","Salotto")
+  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C","Salotto")
+  val shutter: SimulatedShutter = Shutter("D","Salotto")
+  val boiler: SimulatedBoiler = Boiler("E","Salotto")
+  val tv: SimulatedTV = TV("F","Salotto")
+  val washingMachine: SimulatedWashingMachine = WashingMachine("G","Salotto")
+  val dishWasher: SimulatedDishWasher = DishWasher("H","Salotto")
+  val oven: SimulatedOven = Oven("I","Salotto")
+  val stereoSystem: SimulatedStereoSystem = StereoSystem("L","Salotto")
 
   test("The light has been instantiated correctly") {
     assert(light.id == "A")
-    assert(light.room == "salotto")
+    assert(light.room == "Salotto")
     assert(light.deviceType == LightType)
     assert(light.consumption == 5)
 
@@ -165,7 +165,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("Adding and removing rooms") {
-    assert(Rooms.allRooms contains "salotto")
+    assert(Rooms.allRooms contains "Salotto")
     assert(!(Rooms.allRooms contains "salottino"))
     assertThrows[IllegalArgumentException](Light("A", "salottino"))
     Rooms.addRoom("salottino")

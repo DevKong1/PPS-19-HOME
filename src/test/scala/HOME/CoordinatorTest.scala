@@ -14,13 +14,13 @@ class CoordinatorTest extends AnyFunSuite {
   }
 
   test("Adding and removing devices") {
-    coordinator.addDevice(Light("Light1","salotto"))
+    coordinator.addDevice(Light("Light1","Salotto"))
     assert(coordinator.getDevices.size == 1)
-    coordinator.addDevice(Light("Light2","salotto"))
+    coordinator.addDevice(Light("Light2","Salotto"))
     assert(coordinator.getDevices.size == 2)
-    coordinator.removeDevice(Light("Light2","salotto"))
+    coordinator.removeDevice(Light("Light2","Salotto"))
     assert(coordinator.getDevices.size == 1)
-    coordinator.removeDevice(Light("Light1","salotto"))
+    coordinator.removeDevice(Light("Light1","Salotto"))
     assert(coordinator.getDevices.isEmpty)
   }
 
