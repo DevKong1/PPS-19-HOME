@@ -45,7 +45,7 @@ trait JSONUtils {
     typeField -> device.senderType._type,
     "id" -> device.id,
     "room" -> device.room,
-    "device_type" -> device.deviceType,
+    "deviceType" -> device.deviceType,
     "consumption" -> device.consumption,
     "pubTopic" -> (if (device.pubTopic == null) "" else device.pubTopic)
   )
@@ -67,7 +67,7 @@ trait JSONUtils {
   private implicit val deviceReads: Reads[AssociableDevice] = (
     (JsPath \ "id").read[String] and
       (JsPath \ "room").read[String] and
-      (JsPath \ "device_type").read[DeviceType] and
+      (JsPath \ "deviceType").read[DeviceType] and
       (JsPath \ "consumption").read[Int] and
       (JsPath \ "pubTopic").read[String]
     ) (AssociableDevice.apply _)
