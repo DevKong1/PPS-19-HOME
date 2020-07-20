@@ -1,10 +1,11 @@
 package HOME
 
+import HOME.MyClass._
+
 import scala.language.implicitConversions
 
 object Constants {
   val testSleepTime :Int = 50 //millis, time the matcher waits to evaluate 'eventually' expression in tests
-  val messageSeparator: Char = '_' //character used to separate data in specific device messages
 }
 
 case class MyClass(_class: Any) {
@@ -48,29 +49,6 @@ case object UnexpectedDeviceType extends Unexpected {
 case object UnexpectedResult extends Unexpected {
   override var item: String = "result"
 }
-
-////////////////////////////////
-/// Specific Device Messages ///
-////////////////////////////////
-
-import HOME.MyClass._
-
-trait SpecificDeviceMsg {
-  def command: String
-  def value: String
-}
-
-object SpecificDeviceMsg {
-  class SpecificDeviceMsgWithValue(override val command: String,override val value: String) extends SpecificDeviceMsg
-  class SpecificDeviceMsgWithoutValue(override val command: String,override val value: String = "") extends SpecificDeviceMsg
-
-  def apply(msg: String): SpecificDeviceMsg = msg.split(Constants.messageSeparator).length match {
-    case 1 => new SpecificDeviceMsgWithoutValue(msg)
-    case 2 => new SpecificDeviceMsgWithValue(msg.split(Constants.messageSeparator)(0), msg.split(Constants.messageSeparator)(1))
-    case _ => this.errUnexpected(UnexpectedMessage, msg)
-  }
-}
-
 
 trait WashingType
 object WashingType {

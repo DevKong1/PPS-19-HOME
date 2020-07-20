@@ -49,7 +49,7 @@ object AssociableDevice {
   //Used during the registration to simulate the subscriber device
   class AssociableDeviceImpl(override val id: String, override val room: String, override val deviceType: DeviceType,
                              override val consumption: Int, override val pubTopic: String) extends AssociableDevice {
-    override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = { /*Do nothing*/}
+    override def handleDeviceSpecificMessage(message: CommandMsg): Unit = { /*Do nothing*/}
   }
 
   def apply(id: String, room: String, deviceType: DeviceType, consumption: Int, pubTopic: String): AssociableDevice = {
@@ -61,7 +61,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeDevice
   override def name: String = id
   override def lastWillTopic: String = regTopic
-  override def lastWillMessage: String = disconnectedMsg
+  override def lastWillMessage: String = Msg.disconnected
 
   var connected: Boolean = false
   var registered: Boolean = false
@@ -76,23 +76,30 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     connected
   }
 
+  override def disconnect: Boolean = {
+    connected = !super.disconnect
+    if (registered && !connected) registered = false
+    !connected
+  }
+
   def subscribe: Boolean = subscribe(subTopic) && subscribe(broadcastTopic)
 
+  def publish(message: CommandMsg): Boolean = publish(pubTopic, message, this, retained)
   def publish(message: String): Boolean = publish(pubTopic, message, this, retained)
 
-  def register: Boolean = publish(regTopic, regMsg, this)
+  def register: Boolean = publish(regTopic, Msg.register, this)
 
   def onMessageReceived(topic: String, msg: String): Unit = {
     def message: String = getMessageFromMsg(msg)
     topic match {
       case t if t == subTopic => message match {
-        case m if m == regSuccessMsg => registered = true
-        case m if m == onMsg => turnOn()
-        case m if m == offMsg => turnOff()
-        case _ => handleDeviceSpecificMessage(SpecificDeviceMsg(message))
+        case m if m == Msg.regSuccess => registered = true
+        case m if m == Msg.on => turnOn()
+        case m if m == Msg.off => turnOff()
+        case _ => handleDeviceSpecificMessage(CommandMsg(message))
       }
       case t if t == broadcastTopic => message match {
-        case m if m == disconnectedMsg =>
+        case m if m == Msg.disconnected =>
           turnOff()
           registered = false
         case _ => this.errUnexpected(UnexpectedMessage, message)
@@ -101,7 +108,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     }
   }
 
-  def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit
+  def handleDeviceSpecificMessage(message: CommandMsg): Unit
 }
 
 sealed trait ChangeableValue extends Device {
@@ -175,8 +182,8 @@ case class SimulatedLight(override val id: String, override val room: String, ov
                           override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == LightType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-      case "setIntensity" => setValue(message.value.toInt)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+      case Msg.setIntensity => setValue(message.value.toInt)
       case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -195,8 +202,8 @@ case class SimulatedAirConditioner(override val id: String, override val room: S
                           override val minValue : Int = 10, override val maxValue: Int = 35, override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == AirConditionerType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setTemperature" => setValue(message.value.toInt)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setTemperature => setValue(message.value.toInt)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -215,8 +222,8 @@ case class SimulatedDehumidifier(override val id: String, override val room: Str
                                    override val minValue : Int = 1, override val maxValue: Int = 100, override var value: Int = 10) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == DehumidifierType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setHumidity" => setValue(message.value.toInt)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setHumidity => setValue(message.value.toInt)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -241,9 +248,9 @@ case class SimulatedShutter(override val id: String, override val room: String, 
   def open(): Unit = _open = true
   def close(): Unit = _open = false
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "open" => open()
-    case "close" => close()
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.open => open()
+    case Msg.close => close()
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -262,8 +269,8 @@ case class SimulatedBoiler(override val id: String, override val room: String, o
                                  override val minValue : Int = 10, override val maxValue: Int = 35, override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == BoilerType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setTemperature" => setValue(message.value.toInt)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setTemperature => setValue(message.value.toInt)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -282,9 +289,9 @@ case class SimulatedTV(override val id: String, override val room: String, overr
                            override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == TvType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setVolume" => setValue(message.value.toInt)
-    case "mute" => setValue(minValue)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setVolume => setValue(message.value.toInt)
+    case Msg.mute => setValue(minValue)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -308,11 +315,11 @@ case class SimulatedWashingMachine(override val id: String, override val room: S
   def setWashingType(newWashing: WashingType): Unit = activeWashing = newWashing
   def setRPM(newRPM: RPM): Unit = activeRPM = newRPM
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "WashingType" => setWashingType(WashingType(message.value))
-    case "RPM" => setRPM(RPM(message.value))
-    case "addExtra" => addExtra(WashingMachineExtra(message.value))
-    case "removeExtra" => removeExtra(WashingMachineExtra(message.value))
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.washingType => setWashingType(WashingType(message.value))
+    case Msg.RPM => setRPM(RPM(message.value))
+    case Msg.addExtra => addExtra(WashingMachineExtra(message.value))
+    case Msg.removeExtra => removeExtra(WashingMachineExtra(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -335,10 +342,10 @@ case class SimulatedDishWasher(override val id: String, override val room: Strin
 
   def setWashingProgram(newWashing: DishWasherProgram): Unit = activeWashing = newWashing
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setProgram" => setWashingProgram(DishWasherProgram(message.value))
-    case "addExtra" => addExtra(DishWasherExtra(message.value))
-    case "removeExtra" => removeExtra(DishWasherExtra(message.value))
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setProgram => setWashingProgram(DishWasherProgram(message.value))
+    case Msg.addExtra => addExtra(DishWasherExtra(message.value))
+    case Msg.removeExtra => removeExtra(DishWasherExtra(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -361,9 +368,9 @@ case class SimulatedOven(override val id: String, override val room: String, ove
 
   def setOvenMode(newMode: OvenMode): Unit = activeMode = newMode
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setTemperature" => setValue(message.value.toInt)
-    case "setMode" => setOvenMode(OvenMode(message.value))
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setTemperature => setValue(message.value.toInt)
+    case Msg.setMode => setOvenMode(OvenMode(message.value))
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -382,9 +389,9 @@ case class SimulatedStereoSystem(override val id: String, override val room: Str
                                override val minValue : Int = 0, override val maxValue: Int = 100, override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == StereoSystemType)
 
-  override def handleDeviceSpecificMessage(message: SpecificDeviceMsg): Unit = message.command match {
-    case "setVolume" => setValue(message.value.toInt)
-    case "mute" => setValue(minValue)
+  override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
+    case Msg.setVolume => setValue(message.value.toInt)
+    case Msg.mute => setValue(minValue)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }

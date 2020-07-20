@@ -7,7 +7,7 @@ sealed trait Coordinator extends JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeCoordinator
   override def name: String = "Coordinator"
   override def lastWillTopic: String = broadcastTopic
-  override def lastWillMessage: String = disconnectedMsg
+  override def lastWillMessage: String = Msg.disconnected
 
   var devices: Set[Device]
   var activeProfile: Profile
@@ -20,6 +20,7 @@ sealed trait Coordinator extends JSONSender with MQTTUtils {
   def connect: Boolean
   def disconnect: Boolean
   def subscribe: Boolean
+  def publish(topic: String, message: CommandMsg): Boolean
   def publish(topic: String, message: String): Boolean
 
   def onMessageReceived(topic:String, message: String): Unit
@@ -45,7 +46,8 @@ case class CoordinatorImpl() extends Coordinator {
 
   override def subscribe: Boolean = subscribe(regTopic)
 
-  override def publish(topic: String, message: String): Boolean = publish(topic, message,this)
+  override def publish(topic: String, message: CommandMsg): Boolean = publish(topic, message, this, !retained)
+  override def publish(topic: String, message: String): Boolean = publish(topic, message, this)
 
   override def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
@@ -58,11 +60,11 @@ case class CoordinatorImpl() extends Coordinator {
     if (device == null) this.errUnexpected(UnexpectedDevice, null)
 
     getMessageFromMsg(msg) match {
-      case m if m == regMsg =>
+      case m if m == Msg.register =>
         addDevice(device)
         subscribe(device.pubTopic)
-        publish(device.subTopic, regSuccessMsg)
-      case m if m == disconnectedMsg =>
+        publish(device.subTopic, Msg.regSuccess)
+      case m if m == Msg.disconnected =>
         removeDevice(device)
         unsubscribe(device.pubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)

@@ -105,7 +105,8 @@ object GUI extends SimpleSwingApplication {
       }
       //used to set items in the main window inside a vertical BoxPanel
       contents = new BoxPanel(Orientation.Vertical) {
-        contents ++= Seq(tp)
+        //contents ++= Seq(tp)
+        contents += tp
 
       }
       listenTo(tp.selection)
@@ -162,7 +163,7 @@ object DeviceDialog {
 }
 
 class CustomDeviceDialog extends Dialog {
-  private val dimension = new Dimension(400, 130);
+  private val dimension = new Dimension(400, 130)
 
   title = "Add device"
   minimumSize = dimension

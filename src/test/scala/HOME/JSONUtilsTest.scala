@@ -5,7 +5,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import HOME.Constants._
 
-class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matchers {
+class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
 
   val coordinator: Coordinator = CoordinatorImpl()
   val light: SimulatedLight = Light("A","Salotto")
@@ -27,7 +27,7 @@ class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matc
     assert("testMsgC" == retrievedMessageC)
     assert(coordinator.name == retrievedCoordinator.name)
 
-    val msgN: String = getMsg(null, null)
+    val msgN: String = getMsg(null.asInstanceOf[String], null)
     val retrievedMessageN: String = getMessageFromMsg(msgN)
     val retrievedC: Coordinator = getSenderFromMsg[Coordinator](msgN)
     val retrievedD: AssociableDevice = getSenderFromMsg[AssociableDevice](msgN)
@@ -42,6 +42,7 @@ class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matc
     eventually { Thread.sleep(testSleepTime); light.subscribe should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.connect should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.subscribe should be (true) }
+    assert(light.connected)
     assert(!light.registered)
     eventually { Thread.sleep(testSleepTime); light.register should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.devices.size should be (1) }
@@ -55,6 +56,8 @@ class JSONUtilsTest extends AnyFunSuite with JSONUtils with Eventually with Matc
     assert(light.deviceType == registeredDevice.deviceType)
     assert(light.consumption == registeredDevice.consumption)
     assert(light.disconnect)
+    assert(!light.connected)
+    assert(!light.registered)
     eventually { Thread.sleep(testSleepTime); coordinator.devices.size should be (0)}
     assert(coordinator.disconnect)
   }

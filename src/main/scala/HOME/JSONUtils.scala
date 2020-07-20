@@ -31,6 +31,12 @@ trait JSONUtils {
   private val msgField: String = "msg"
   private val senderField: String = "sender"
   private val typeField: String = "type"
+  private val nameField: String = "name"
+  private val idField: String = "id"
+  private val roomField: String = "room"
+  private val deviceTypeField: String = "deviceType"
+  private val consumptionField: String = "consumption"
+  private val pubTopicField: String = "pubTopic"
 
   private implicit val jsonSenderWrites: Writes[JSONSender] = {
     case sender@s if s.isInstanceOf[AssociableDevice] => deviceWrites.writes(sender.asInstanceOf[AssociableDevice])
@@ -38,21 +44,21 @@ trait JSONUtils {
   }
 
   private implicit val deviceTypeWrites: Writes[DeviceType] = (deviceType: DeviceType) => Json.obj(
-    "name" -> deviceType.getSimpleClassName
+    nameField -> deviceType.getSimpleClassName
   )
 
   private implicit val deviceWrites: Writes[AssociableDevice] = (device: AssociableDevice) => Json.obj(
     typeField -> device.senderType._type,
-    "id" -> device.id,
-    "room" -> device.room,
-    "deviceType" -> device.deviceType,
-    "consumption" -> device.consumption,
-    "pubTopic" -> (if (device.pubTopic == null) "" else device.pubTopic)
+    idField -> device.id,
+    roomField -> device.room,
+    deviceTypeField -> device.deviceType,
+    consumptionField -> device.consumption,
+    pubTopicField -> (if (device.pubTopic == null) "" else device.pubTopic)
   )
 
   private implicit val coordinatorWrites: Writes[Coordinator] = (coordinator: Coordinator) => Json.obj(
     typeField -> coordinator.senderType._type,
-    "name" -> coordinator.name
+    nameField -> coordinator.name
   )
 
   private implicit val jsonSenderReads: Reads[JSONSender] = {
@@ -60,21 +66,23 @@ trait JSONUtils {
     case sender@s if (s \ typeField).validate[String].get == SenderTypeCoordinator._type => coordinatorReads.reads(sender.asInstanceOf[JsObject])
   }
 
-  private implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ "name").read[String].map {
+  private implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ nameField).read[String].map {
     DeviceType.apply
   }
 
   private implicit val deviceReads: Reads[AssociableDevice] = (
-    (JsPath \ "id").read[String] and
-      (JsPath \ "room").read[String] and
-      (JsPath \ "deviceType").read[DeviceType] and
-      (JsPath \ "consumption").read[Int] and
-      (JsPath \ "pubTopic").read[String]
+    (JsPath \ idField).read[String] and
+      (JsPath \ roomField).read[String] and
+      (JsPath \ deviceTypeField).read[DeviceType] and
+      (JsPath \ consumptionField).read[Int] and
+      (JsPath \ pubTopicField).read[String]
     ) (AssociableDevice.apply _)
 
-  private implicit val coordinatorReads: Reads[Coordinator] = (JsPath \ "name").read[String].map {
+  private implicit val coordinatorReads: Reads[Coordinator] = (JsPath \ nameField).read[String].map {
     Coordinator.apply
   }
+
+  def getMsg(command: CommandMsg, sender: JSONSender): String = getMsg(command.toString, sender)
 
   def getMsg(message: String, sender: JSONSender): String = {
     if (message == null || sender == null) return null
