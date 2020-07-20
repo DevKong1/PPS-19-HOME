@@ -2,7 +2,6 @@ package HOME
 
 import scala.language.postfixOps
 import java.awt.{Dimension, GraphicsEnvironment}
-
 import scala.collection.mutable.ListBuffer
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
@@ -20,18 +19,18 @@ object newDevice {
 }
 
 //TODO: RECONSIDER HOW TO MODEL GUIROOM
- class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) with Room {
+class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) with Room {
   override def devices: Set[Device] = ???
   //private val x : Dimension = WindowSize()
 
   val buttonDimension = new Dimension(300,70)
   var tryListDevice = new ListBuffer[Device]()
-  if(name != "+") {
+  /*if(name != "+") {
     var a: Device = Light("Lamp1", name)
     var b: Device = Light("Lamp2", name)
     tryListDevice += a
     tryListDevice += b
-  }
+  }*/
 
   /*val button1 = new Button("Add device") {
     addDevice()
@@ -47,13 +46,7 @@ object newDevice {
   }
 
   def addDevice(): Unit = {
-    import Dialog._
-    val name = showInput(null,
-      "Room name:",
-      "Add room",
-      Message.Plain,
-      Swing.EmptyIcon,
-      Nil, "")
+    DeviceDialog()
   }
 
   override def equals(that: Any): Boolean = that match{
@@ -135,29 +128,67 @@ object GUI extends SimpleSwingApplication {
           Message.Plain,
           Swing.EmptyIcon,
           Nil, "")
-        println(name.isDefined)
+        //println(name.isDefined)
         //TODO: THINK OF A MORE FUNCTIONAL WAY TO IMPLEMENT INPUT CHECK
-        if (name.isDefined && name.get.trim.length>0 && !name.get.equals(ADD) && !tp.pages.contains(new TabbedPane.Page(name.get, new GUIRoom(name.get)))) name else {
+        if (name.isDefined && name.get.trim.length>0 && !name.get.equals(ADD) && !tp.pages.contains(new TabbedPane.Page(name.get, new GUIRoom(name.get)))) {
+          Rooms.addRoom(name.get)
+          name
+        } else {
           if(name.isDefined) {
             showMessage(tp, "Room already existing or incorrect room name", Message.Error toString)
           }
           None
         }
-
       }
     }
   }
-  object WindowSize {
-    private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
-    private val FRAME_PROP = 0.55
 
-    val height: Int = SCREEN.height * FRAME_PROP toInt
-    val width: Int = SCREEN.width * FRAME_PROP toInt
+object WindowSize {
+  private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
+  private val FRAME_PROP = 0.55
 
-    def apply(): Dimension = {
-      new Dimension(width, height)
-    }
+  val height: Int = SCREEN.height * FRAME_PROP toInt
+  val width: Int = SCREEN.width * FRAME_PROP toInt
 
+  def apply(): Dimension = {
+    new Dimension(width, height)
   }
+}
+
+object DeviceDialog {
+  def apply(): CustomDeviceDialog = {
+    new CustomDeviceDialog()
+  }
+}
+
+class CustomDeviceDialog extends Dialog {
+  private val dimension = new Dimension(400, 130);
+
+  title = "Add device"
+  minimumSize = dimension
+  maximumSize = dimension
+  preferredSize = dimension
+  contents = new BoxPanel(Orientation.Vertical) {
+    contents += new BoxPanel(Orientation.Horizontal) {
+      preferredSize = new Dimension(100,45)
+      contents += new Label("Device name: ")
+      contents += new TextField()
+      contents += new Label("Device type: ")
+      contents += new ComboBox[Device](new ListBuffer[Device])
+    }
+    contents += new BoxPanel(Orientation.Horizontal) {
+      preferredSize = new Dimension(100,45)
+      contents += new Button("Cancel") {
+        reactions += {
+          case ButtonClicked(b) =>
+            close()
+        }
+      }
+      contents += new Button("Create")
+    }
+  }
+  open()
+}
+
 
 
