@@ -21,6 +21,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def getDevices: Set[Device] = devices
 
   def getActiveProfile: Profile = activeProfile
+  def setProfile(newProfile: Profile): Unit = activeProfile = newProfile
 
   def connect: Boolean = connect(this, onMessageReceived)
 
@@ -65,28 +66,26 @@ sealed trait Profile {
   val name: String
   val description: String
 
-  var initialRoutine: Set[Device => Unit]
-  var thermometerNotificationCommands: Set[Device => Unit]
-  var hygrometerNotificationCommands: Set[Device => Unit]
-  var photometerNotificationCommands: Set[Device => Unit]
-  var motionSensorNotificationCommands: Set[Device => Unit]
+  var initialRoutine: Device => Unit
+  var thermometerNotificationCommands: Device => Unit
+  var hygrometerNotificationCommands: Device => Unit
+  var photometerNotificationCommands: Device => Unit
+  var motionSensorNotificationCommands: Device => Unit
 
-  var programmedRoutineCommands: Set[Device => Unit]
+  var programmedRoutineCommands: Device => Unit
 
-  def applyCommands(commands: Set[Device => Unit]): Unit = {
+  def applyCommand(command: Device => Unit): Unit = {
     for (device <- Coordinator.getDevices) {
-      for (command <- commands) {
-        command(device)
-      }
+      command(device)
     }
   }
 
-  def onActvation(): Unit = applyCommands(initialRoutine)
+  def onActvation(): Unit = applyCommand(initialRoutine)
 
-  def onThermometerNotification(): Unit = applyCommands(thermometerNotificationCommands)
-  def onHygrometerNotification(): Unit = applyCommands(hygrometerNotificationCommands)
-  def onPhotometerNotification(): Unit = applyCommands(photometerNotificationCommands)
-  def onMotionSensorNotification(): Unit = applyCommands(motionSensorNotificationCommands)
+  def onThermometerNotification(): Unit = applyCommand(thermometerNotificationCommands)
+  def onHygrometerNotification(): Unit = applyCommand(hygrometerNotificationCommands)
+  def onPhotometerNotification(): Unit = applyCommand(photometerNotificationCommands)
+  def onMotionSensorNotification(): Unit = applyCommand(motionSensorNotificationCommands)
 
   def doProgrammedRoutine(): Unit
 
@@ -99,28 +98,32 @@ object Profile {
     override val name: String = Constants.default_profile_name
     override val description: String = "Default Profile"
 
-    override var initialRoutine: Set[Device => Unit] = Set()
-    override var thermometerNotificationCommands: Set[Device => Unit] = Set()
-    override var hygrometerNotificationCommands: Set[Device => Unit] = Set()
-    override var photometerNotificationCommands: Set[Device => Unit] = Set()
-    override var motionSensorNotificationCommands: Set[Device => Unit] = Set()
-    override var programmedRoutineCommands: Set[Device => Unit] = Set()
+    override var initialRoutine: Device => Unit = _
+    override var thermometerNotificationCommands: Device => Unit = _
+    override var hygrometerNotificationCommands: Device => Unit = _
+    override var photometerNotificationCommands: Device => Unit = _
+    override var motionSensorNotificationCommands: Device => Unit = _
+    override var programmedRoutineCommands: Device => Unit = _
 
     override def doProgrammedRoutine(): Unit = {}
+
   }
 
   private case object NIGHT extends Profile  {
     override val name: String = "NIGHT"
     override val description: String = "Default Profile"
 
-    override var initialRoutine: Set[Device => Unit] = Set(
-      {_.deviceType match { case LightType => ???}}
-    )
-    override var thermometerNotificationCommands: Set[Device => Unit] = Set()
-    override var hygrometerNotificationCommands: Set[Device => Unit] = Set()
-    override var photometerNotificationCommands: Set[Device => Unit] = Set()
-    override var motionSensorNotificationCommands: Set[Device => Unit] = Set()
-    override var programmedRoutineCommands: Set[Device => Unit] = Set()
+    override var initialRoutine: Device => Unit = {
+      case device: Device if device.deviceType == LightType => device.turnOff()
+      case device: SimulatedShutter => device.close()
+      //case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device.getPubTopic)
+    }
+
+    override var thermometerNotificationCommands: Device => Unit = _
+    override var hygrometerNotificationCommands: Device => Unit = _
+    override var photometerNotificationCommands: Device => Unit = _
+    override var motionSensorNotificationCommands: Device => Unit = _
+    override var programmedRoutineCommands: Device => Unit = _
 
     override def doProgrammedRoutine(): Unit = {}
   }

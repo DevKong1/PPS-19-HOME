@@ -50,4 +50,23 @@ class CoordinatorTest extends AnyFunSuite {
     assertThrows[IllegalArgumentException](Coordinator.onMessageReceived("asd", "off"))
     assert(Coordinator.disconnect)
   }
+
+  test("The coordinator correctly applies the NIGHT profile)") {
+    val light = Light("Light1","Salotto")
+    light.turnOn()
+    val shutter = Shutter("Shutter1","Salotto")
+    shutter.turnOn() //TODO FIX DEVICES TO CHECK IF ON
+    shutter.open()
+    assert(light.isOn)
+    assert(shutter.isOpen)
+
+    Coordinator.addDevice(light)
+    Coordinator.addDevice(shutter)
+    Coordinator.setProfile(Profile("NIGHT"))
+    assert(Coordinator.activeProfile.name == "NIGHT")
+    Coordinator.activeProfile.onActvation()
+
+    assert(!light.isOn)
+    assert(!shutter.isOpen)
+  }
 }
