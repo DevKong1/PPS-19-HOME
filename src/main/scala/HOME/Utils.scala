@@ -4,7 +4,7 @@ import HOME.MyClass._
 
 import scala.language.implicitConversions
 
-object constants {
+object Constants {
   def default_profile_name: String = "DEFAULT"
 }
 

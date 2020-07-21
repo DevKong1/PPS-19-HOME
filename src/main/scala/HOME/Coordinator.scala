@@ -1,6 +1,7 @@
 package HOME
 
 import HOME.MyClass._
+
 import scala.collection.mutable.ListBuffer
 
 object Coordinator extends JSONSender with MQTTUtils {
@@ -25,7 +26,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def subscribe: Boolean = subscribe(regTopic)
 
-  def publish(topic: String, message: CommandMsg): Boolean = publish(topic, message, this, !retained)
+  def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, this, !retained)
   def publish(topic: String, message: String): Boolean = publish(topic, message, this)
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
@@ -95,7 +96,7 @@ object Profile {
   def getProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT)
 
   private case object DEFAULT_PROFILE extends Profile  {
-    override val name: String = constants.default_profile_name
+    override val name: String = Constants.default_profile_name
     override val description: String = "Default Profile"
 
     override var initialRoutine: Set[Device => Unit] = Set()

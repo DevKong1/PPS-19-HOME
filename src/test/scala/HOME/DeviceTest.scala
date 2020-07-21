@@ -224,8 +224,8 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("The publish/subscription topics are created correctly") {
-    assert(light.getPubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Pub")
-    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Sub")
+    assert(light.getPubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "From")
+    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "To")
   }
 
   test("The light connects and disconnects to/from the MQTT broker correctly", BrokerRequired) {

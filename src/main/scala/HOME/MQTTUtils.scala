@@ -13,8 +13,8 @@ import scala.util.{Failure, Success, Try}
 trait MQTTUtils extends JSONUtils {
   val retained: Boolean = true
   val topicSeparator: Char = '/'
-  val pubTopicPostFix: String = "Pub"
-  val subTopicPostFix: String = "Sub"
+  val pubTopicPostFix: String = "From"
+  val subTopicPostFix: String = "To"
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
 

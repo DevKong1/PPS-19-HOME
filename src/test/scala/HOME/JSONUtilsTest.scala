@@ -3,7 +3,7 @@ package HOME
 import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import HOME.Constants._
+import HOME.ConstantsTest._
 
 class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
 
@@ -21,16 +21,16 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
 
     val msgC: String = getMsg("testMsgC", Coordinator)
     val retrievedMessageC: String = getMessageFromMsg(msgC)
-    //val retrievedCoordinator: Coordinator = getSenderFromMsg[Coordinator](msgC)
+    val retrievedCoordinator: Coordinator.type = getSenderFromMsg[Coordinator.type](msgC)
     assert("testMsgC" == retrievedMessageC)
-   // assert(Coordinator.name == retrievedCoordinator.name)
+    assert(Coordinator.name == retrievedCoordinator.name)
 
     val msgN: String = getMsg(null.asInstanceOf[String], null)
     val retrievedMessageN: String = getMessageFromMsg(msgN)
-    //val retrievedC: Coordinator = getSenderFromMsg[Coordinator](msgN)
+    val retrievedC: Coordinator.type = getSenderFromMsg[Coordinator.type](msgN)
     val retrievedD: AssociableDevice = getSenderFromMsg[AssociableDevice](msgN)
     assert(retrievedMessageN == null)
-    //assert(retrievedC == null)
+    assert(retrievedC == null)
     assert(retrievedD == null)
   }
 

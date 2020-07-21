@@ -8,7 +8,7 @@ class CoordinatorTest extends AnyFunSuite {
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)
-    assert(Coordinator.activeProfile.name == constants.default_profile_name)
+    assert(Coordinator.activeProfile.name == Constants.default_profile_name)
   }
 
   test("Adding and removing devices which are identified by ID") {
