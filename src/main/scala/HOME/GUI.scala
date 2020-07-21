@@ -24,6 +24,7 @@ class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) w
 
   override def devices: Set[Device] = Set(light, AC, dehumidifier)
 
+  //Try to add Panels with a template
   if(name equals("Home")) {
     contents += HomePage()
   } else {
