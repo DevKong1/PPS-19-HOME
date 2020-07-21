@@ -9,8 +9,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
   val coordinator: Coordinator = CoordinatorImpl()
   val light: SimulatedLight = Light("A","Salotto")
 
-  //This test needs the MQTT Broker active and running
-  test("Coordinator sends commands to the light"){
+  test("Coordinator sends commands to the light", BrokerRequired){
     assert(coordinator.connect)
     assert(light.connect)
     assert(light.subscribe)

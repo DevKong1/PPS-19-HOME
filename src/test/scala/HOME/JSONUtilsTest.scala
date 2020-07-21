@@ -35,8 +35,7 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     assert(retrievedD == null)
   }
 
-  //This test needs the MQTT Broker active and running
-  test( "Device registers correctly") {
+  test( "Device registers correctly", BrokerRequired) {
     eventually { Thread.sleep(testSleepTime); light.connect should be (true) }
     eventually { Thread.sleep(testSleepTime); light.subscribe should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.connect should be (true) }

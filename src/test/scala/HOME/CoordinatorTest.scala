@@ -30,8 +30,7 @@ class CoordinatorTest extends AnyFunSuite {
     assert(coordinator.getDevices.isEmpty)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The coordinator connects and disconnects to/from the MQTT broker correctly") {
+  test("The coordinator connects and disconnects to/from the MQTT broker correctly", BrokerRequired) {
     assert(coordinator.connect)
     assert(coordinator.connect)
     assert(coordinator.disconnect)
@@ -40,16 +39,14 @@ class CoordinatorTest extends AnyFunSuite {
     assert(coordinator.disconnect)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The coordinator publishes mock messages correctly") {
+  test("The coordinator publishes mock messages correctly", BrokerRequired) {
     assert(coordinator.connect)
     assert(coordinator.publish("pubTopic", "abc"))
     assert(coordinator.disconnect)
     assert(!coordinator.publish("pubTopic", "abc"))
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The coordinator throws exceptions on received mock messages correctly") {
+  test("The coordinator throws exceptions on received mock messages correctly", BrokerRequired) {
     assert(coordinator.connect)
     assertThrows[MalformedParametersException](coordinator.onMessageReceived("registration", "off"))
     assertThrows[IllegalArgumentException](coordinator.onMessageReceived("asd", "off"))

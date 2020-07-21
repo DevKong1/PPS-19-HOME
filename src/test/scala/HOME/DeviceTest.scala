@@ -172,8 +172,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(stereoSystem.value == 100)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The thermometer is instantiated correctly") {
+  test("The thermometer is instantiated correctly", BrokerRequired) {
     assert(thermometer.id == "K")
     assert(thermometer.deviceType == ThermometerType)
     assert(thermometer.connect)
@@ -183,8 +182,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(thermometer.disconnect)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The hygrometer is instantiated correctly") {
+  test("The hygrometer is instantiated correctly", BrokerRequired) {
     assert(hygrometer.id == "L")
     assert(hygrometer.deviceType == HygrometerType)
     assert(hygrometer.connect)
@@ -194,8 +192,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(hygrometer.disconnect)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The photometer is instantiated correctly") {
+  test("The photometer is instantiated correctly", BrokerRequired) {
     assert(photometer.id == "M")
     assert(photometer.deviceType == PhotometerType)
     assert(photometer.connect)
@@ -205,8 +202,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(photometer.disconnect)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The motionSensor is instantiated correctly") {
+  test("The motionSensor is instantiated correctly", BrokerRequired) {
     assert(motionSensor.id == "N")
     assert(motionSensor.deviceType == MotionSensorType)
     assert(motionSensor.connect)
@@ -232,8 +228,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Sub")
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The light connects and disconnects to/from the MQTT broker correctly") {
+  test("The light connects and disconnects to/from the MQTT broker correctly", BrokerRequired) {
     assert(light.connect)
     assert(light.connect)
     assert(light.disconnect)
@@ -242,8 +237,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(light.disconnect)
   }
 
-  //This test needs the MQTT Broker active and running
-  test("The light handles received mock messages correctly") {
+  test("The light handles received mock messages correctly", BrokerRequired) {
     assert(light.connect)
     light.onMessageReceived(light.getSubTopic, getMsg("on", light))
     assert(light.isOn)
