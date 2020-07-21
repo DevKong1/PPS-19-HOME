@@ -2,14 +2,6 @@ package HOME
 
 import HOME.MyClass._
 
-object Rooms {
-  //TODO THIS LIST SHOULD BE MADE IN THE INTERFACE
-  private var _allRooms = Set("Salotto", "Home", "Kitchen", "Garage", "Bedroom", "Bagno", "Corridoio")
-
-  def addRoom(room: String): Unit = _allRooms += room
-  def removeRoom(room: String): Unit = _allRooms -= room  //TODO remove all devices in the room
-  def allRooms: Set[String] = _allRooms
-}
 
 sealed trait DeviceType {
   def defaultConsumption: Int

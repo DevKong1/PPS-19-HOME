@@ -72,6 +72,14 @@ case class CoordinatorImpl() extends Coordinator {
   }
 }
 
+object Rooms {
+  private var _allRooms = Set("Salotto", "Home", "Kitchen", "Garage", "Bedroom", "Bagno", "Corridoio")
+
+  def addRoom(room: String): Unit = _allRooms += room
+  def removeRoom(room: String): Unit = _allRooms -= room  //TODO remove all devices in the room
+  def allRooms: Set[String] = _allRooms
+}
+
 sealed trait Profile {
   val name: ProfileName
   val description: String
@@ -96,6 +104,8 @@ object Profile {
     override def applyRoutine(): Unit = {}
     override def onMessageReceived(): Unit = {}
   }
+
+
 
   def apply(name: ProfileName): Profile = name match {
     case ProfileNameDefault => new DEFAULT_PROFILE
