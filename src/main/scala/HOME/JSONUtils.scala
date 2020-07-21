@@ -39,7 +39,7 @@ trait JSONUtils {
 
   private implicit val jsonSenderWrites: Writes[JSONSender] = {
     case sender@s if s.isInstanceOf[AssociableDevice] => deviceWrites.writes(sender.asInstanceOf[AssociableDevice])
-    case sender@s if s.isInstanceOf[Coordinator] => coordinatorWrites.writes(sender.asInstanceOf[Coordinator])
+    //case sender@s if s.isInstanceOf[Coordinator] => coordinatorWrites.writes(sender.asInstanceOf[Coordinator])
   }
 
   private implicit val deviceTypeWrites: Writes[DeviceType] = (deviceType: DeviceType) => Json.obj(
@@ -53,15 +53,15 @@ trait JSONUtils {
     deviceTypeField -> device.deviceType,
     consumptionField -> device.consumption,
   )
-
+/*
   private implicit val coordinatorWrites: Writes[Coordinator] = (coordinator: Coordinator) => Json.obj(
     typeField -> coordinator.senderType._type,
     nameField -> coordinator.name
   )
-
+*/
   private implicit val jsonSenderReads: Reads[JSONSender] = {
     case sender@s if (s \ typeField).validate[String].get == SenderTypeDevice._type => deviceReads.reads(sender.asInstanceOf[JsObject])
-    case sender@s if (s \ typeField).validate[String].get == SenderTypeCoordinator._type => coordinatorReads.reads(sender.asInstanceOf[JsObject])
+    //case sender@s if (s \ typeField).validate[String].get == SenderTypeCoordinator._type => coordinatorReads.reads(sender.asInstanceOf[JsObject])
   }
 
   private implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ nameField).read[String].map {
@@ -74,11 +74,11 @@ trait JSONUtils {
       (JsPath \ deviceTypeField).read[DeviceType] and
       (JsPath \ consumptionField).read[Int]
     ) (AssociableDevice.apply _)
-
+/*
   private implicit val coordinatorReads: Reads[Coordinator] = (JsPath \ nameField).read[String].map {
     Coordinator.apply
   }
-
+*/
   def getMsg(command: CommandMsg, sender: JSONSender): String = getMsg(command.toString, sender)
 
   def getMsg(message: String, sender: JSONSender): String = {

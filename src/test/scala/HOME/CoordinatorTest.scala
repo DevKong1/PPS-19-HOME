@@ -6,50 +6,48 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class CoordinatorTest extends AnyFunSuite {
 
-  val coordinator: Coordinator = CoordinatorImpl()
-
   test("Basic coordinator with no devices"){
-    assert(coordinator.getDevices.isEmpty)
-    assert(coordinator.activeProfile.name == ProfileNameDefault)
+    assert(Coordinator.getDevices.isEmpty)
+    assert(Coordinator.activeProfile.name == constants.default_profile_name)
   }
 
   test("Adding and removing devices which are identified by ID") {
-    coordinator.addDevice(Light("Light1","Salotto"))
-    assert(coordinator.getDevices.size == 1)
-    coordinator.addDevice(Light("Light2","Salotto"))
-    assert(coordinator.getDevices.size == 2)
-    coordinator.addDevice(Light("Light2","Salotto"))
-    assert(coordinator.getDevices.size == 2)
+    Coordinator.addDevice(Light("Light1","Salotto"))
+    assert(Coordinator.getDevices.size == 1)
+    Coordinator.addDevice(Light("Light2","Salotto"))
+    assert(Coordinator.getDevices.size == 2)
+    Coordinator.addDevice(Light("Light2","Salotto"))
+    assert(Coordinator.getDevices.size == 2)
     Rooms.addRoom("Salottino")
-    coordinator.addDevice(Light("Light2","Salottino"))
-    assert(coordinator.getDevices.size == 2)
+    Coordinator.addDevice(Light("Light2","Salottino"))
+    assert(Coordinator.getDevices.size == 2)
     Rooms.removeRoom("Salottino")
-    coordinator.removeDevice(Light("Light2","Salotto"))
-    assert(coordinator.getDevices.size == 1)
-    coordinator.removeDevice(Light("Light1","Salotto"))
-    assert(coordinator.getDevices.isEmpty)
+    Coordinator.removeDevice(Light("Light2","Salotto"))
+    assert(Coordinator.getDevices.size == 1)
+    Coordinator.removeDevice(Light("Light1","Salotto"))
+    assert(Coordinator.getDevices.isEmpty)
   }
 
   test("The coordinator connects and disconnects to/from the MQTT broker correctly", BrokerRequired) {
-    assert(coordinator.connect)
-    assert(coordinator.connect)
-    assert(coordinator.disconnect)
-    assert(coordinator.disconnect)
-    assert(coordinator.connect)
-    assert(coordinator.disconnect)
+    assert(Coordinator.connect)
+    assert(Coordinator.connect)
+    assert(Coordinator.disconnect)
+    assert(Coordinator.disconnect)
+    assert(Coordinator.connect)
+    assert(Coordinator.disconnect)
   }
 
   test("The coordinator publishes mock messages correctly", BrokerRequired) {
-    assert(coordinator.connect)
-    assert(coordinator.publish("pubTopic", "abc"))
-    assert(coordinator.disconnect)
-    assert(!coordinator.publish("pubTopic", "abc"))
+    assert(Coordinator.connect)
+    assert(Coordinator.publish("pubTopic", "abc"))
+    assert(Coordinator.disconnect)
+    assert(!Coordinator.publish("pubTopic", "abc"))
   }
 
   test("The coordinator throws exceptions on received mock messages correctly", BrokerRequired) {
-    assert(coordinator.connect)
-    assertThrows[MalformedParametersException](coordinator.onMessageReceived("registration", "off"))
-    assertThrows[IllegalArgumentException](coordinator.onMessageReceived("asd", "off"))
-    assert(coordinator.disconnect)
+    assert(Coordinator.connect)
+    assertThrows[MalformedParametersException](Coordinator.onMessageReceived("registration", "off"))
+    assertThrows[IllegalArgumentException](Coordinator.onMessageReceived("asd", "off"))
+    assert(Coordinator.disconnect)
   }
 }

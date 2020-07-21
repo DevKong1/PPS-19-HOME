@@ -3,53 +3,32 @@ package HOME
 import HOME.MyClass._
 import scala.collection.mutable.ListBuffer
 
-sealed trait Coordinator extends JSONSender with MQTTUtils {
+object Coordinator extends JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeCoordinator
   override def name: String = "Coordinator"
   override def lastWillTopic: String = broadcastTopic
   override def lastWillMessage: String = Msg.disconnected
 
-  var devices: Set[Device]
-  var activeProfile: Profile
-  var subTopics: ListBuffer[String]
+  var devices: Set[Device] = Set()
+  var activeProfile: Profile = Profile("DEFAULT")
+  var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
-  def addDevice(device: Device): Unit
-  def removeDevice(device: Device): Unit
-  def getDevices : Set[Device]
+  def addDevice(device: Device): Unit = devices += device
 
-  def connect: Boolean
-  def disconnect: Boolean
-  def subscribe: Boolean
-  def publish(topic: String, message: CommandMsg): Boolean
-  def publish(topic: String, message: String): Boolean
+  def removeDevice(device: Device): Unit = devices -= device
 
-  def onMessageReceived(topic:String, message: String): Unit
-}
+  def getDevices: Set[Device] = devices
 
-object Coordinator {
-  def apply(name: String): Coordinator = CoordinatorImpl()
-}
+  def getActiveProfile: Profile = activeProfile
 
-case class CoordinatorImpl() extends Coordinator {
+  def connect: Boolean = connect(this, onMessageReceived)
 
-  override var devices: Set[Device] = Set()
-  override var activeProfile: Profile = Profile(ProfileNameDefault)
-  override var subTopics: ListBuffer[String] = new ListBuffer[String]()
+  def subscribe: Boolean = subscribe(regTopic)
 
-  override def addDevice(device: Device): Unit = devices += device
+  def publish(topic: String, message: CommandMsg): Boolean = publish(topic, message, this, !retained)
+  def publish(topic: String, message: String): Boolean = publish(topic, message, this)
 
-  override def removeDevice(device: Device): Unit = devices -= device
-
-  override def getDevices: Set[Device] = devices
-
-  override def connect: Boolean = connect(this, onMessageReceived)
-
-  override def subscribe: Boolean = subscribe(regTopic)
-
-  override def publish(topic: String, message: CommandMsg): Boolean = publish(topic, message, this, !retained)
-  override def publish(topic: String, message: String): Boolean = publish(topic, message, this)
-
-  override def onMessageReceived(topic: String, message: String): Unit = topic match {
+  def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
     //TODO topic+message managed by the active profile
     case _ => this.errUnexpected(UnexpectedTopic, topic)
@@ -81,34 +60,75 @@ object Rooms {
 }
 
 sealed trait Profile {
-  val name: ProfileName
+
+  val name: String
   val description: String
 
-  def applyRoutine(): Unit
-  def onMessageReceived(): Unit
-}
+  var initialRoutine: Set[Device => Unit]
+  var thermometerNotificationCommands: Set[Device => Unit]
+  var hygrometerNotificationCommands: Set[Device => Unit]
+  var photometerNotificationCommands: Set[Device => Unit]
+  var motionSensorNotificationCommands: Set[Device => Unit]
 
-sealed trait ProfileName {
-  def name: String
-}
+  var programmedRoutineCommands: Set[Device => Unit]
 
-case object ProfileNameDefault extends ProfileName {
-  override def name: String = "DEFAULT"
+  def applyCommands(commands: Set[Device => Unit]): Unit = {
+    for (device <- Coordinator.getDevices) {
+      for (command <- commands) {
+        command(device)
+      }
+    }
+  }
+
+  def onActvation(): Unit = applyCommands(initialRoutine)
+
+  def onThermometerNotification(): Unit = applyCommands(thermometerNotificationCommands)
+  def onHygrometerNotification(): Unit = applyCommands(hygrometerNotificationCommands)
+  def onPhotometerNotification(): Unit = applyCommands(photometerNotificationCommands)
+  def onMotionSensorNotification(): Unit = applyCommands(motionSensorNotificationCommands)
+
+  def doProgrammedRoutine(): Unit
+
 }
 
 object Profile {
-  private class DEFAULT_PROFILE extends Profile  {
-    override val name: ProfileName = ProfileNameDefault
+  def getProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT)
+
+  private case object DEFAULT_PROFILE extends Profile  {
+    override val name: String = constants.default_profile_name
     override val description: String = "Default Profile"
 
-    override def applyRoutine(): Unit = {}
-    override def onMessageReceived(): Unit = {}
+    override var initialRoutine: Set[Device => Unit] = Set()
+    override var thermometerNotificationCommands: Set[Device => Unit] = Set()
+    override var hygrometerNotificationCommands: Set[Device => Unit] = Set()
+    override var photometerNotificationCommands: Set[Device => Unit] = Set()
+    override var motionSensorNotificationCommands: Set[Device => Unit] = Set()
+    override var programmedRoutineCommands: Set[Device => Unit] = Set()
+
+    override def doProgrammedRoutine(): Unit = {}
+  }
+
+  private case object NIGHT extends Profile  {
+    override val name: String = "NIGHT"
+    override val description: String = "Default Profile"
+
+    override var initialRoutine: Set[Device => Unit] = Set(
+      {_.deviceType match { case LightType => ???}}
+    )
+    override var thermometerNotificationCommands: Set[Device => Unit] = Set()
+    override var hygrometerNotificationCommands: Set[Device => Unit] = Set()
+    override var photometerNotificationCommands: Set[Device => Unit] = Set()
+    override var motionSensorNotificationCommands: Set[Device => Unit] = Set()
+    override var programmedRoutineCommands: Set[Device => Unit] = Set()
+
+    override def doProgrammedRoutine(): Unit = {}
   }
 
 
 
-  def apply(name: ProfileName): Profile = name match {
-    case ProfileNameDefault => new DEFAULT_PROFILE
-    case _ => new DEFAULT_PROFILE
+  def apply(name: String): Profile = getProfiles.find(_.name == name) match {
+    case Some(t) => t
+    case _ => this.errUnexpected(UnexpectedProfile, name)
   }
+
 }

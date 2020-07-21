@@ -4,6 +4,10 @@ import HOME.MyClass._
 
 import scala.language.implicitConversions
 
+object constants {
+  def default_profile_name: String = "DEFAULT"
+}
+
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 
@@ -44,6 +48,9 @@ case object UnexpectedDeviceType extends Unexpected {
 }
 case object UnexpectedResult extends Unexpected {
   override var item: String = "result"
+}
+case object UnexpectedProfile extends Unexpected {
+  override var item: String = "profile"
 }
 
 trait WashingType
