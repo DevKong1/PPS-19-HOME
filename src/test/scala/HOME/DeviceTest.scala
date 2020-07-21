@@ -5,17 +5,18 @@ import java.lang.reflect.MalformedParametersException
 import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
+  val room: String = "Salotto"
 
-  val light: SimulatedLight = Light("A","Salotto")
-  val AC: SimulatedAirConditioner = AirConditioner("B","Salotto")
-  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C","Salotto")
-  val shutter: SimulatedShutter = Shutter("D","Salotto")
-  val boiler: SimulatedBoiler = Boiler("E","Salotto")
-  val tv: SimulatedTV = TV("F","Salotto")
-  val washingMachine: SimulatedWashingMachine = WashingMachine("G","Salotto")
-  val dishWasher: SimulatedDishWasher = DishWasher("H","Salotto")
-  val oven: SimulatedOven = Oven("I","Salotto")
-  val stereoSystem: SimulatedStereoSystem = StereoSystem("L","Salotto")
+  val light: SimulatedLight = Light("A", room)
+  val AC: SimulatedAirConditioner = AirConditioner("B", room)
+  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C", room)
+  val shutter: SimulatedShutter = Shutter("D", room)
+  val boiler: SimulatedBoiler = Boiler("E", room)
+  val tv: SimulatedTV = TV("F", room)
+  val washingMachine: SimulatedWashingMachine = WashingMachine("G", room)
+  val dishWasher: SimulatedDishWasher = DishWasher("H", room)
+  val oven: SimulatedOven = Oven("I", room)
+  val stereoSystem: SimulatedStereoSystem = StereoSystem("L", room)
 
   test("The light has been instantiated correctly") {
     assert(light.id == "A")
@@ -97,44 +98,44 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("The Washing Machine works correctly") {
-    assert(washingMachine.activeWashing == WashingType.MIX)
+    assert(washingMachine.getWashingType == WashingType.MIX)
     washingMachine.setWashingType(WashingType.RAPID)
-    assert(washingMachine.activeWashing == WashingType.RAPID)
+    assert(washingMachine.getWashingType == WashingType.RAPID)
 
-    assert(washingMachine.activeRPM == RPM.MEDIUM)
+    assert(washingMachine.getRPM == RPM.MEDIUM)
     washingMachine.setRPM(RPM.FAST)
-    assert(washingMachine.activeRPM == RPM.FAST)
+    assert(washingMachine.getRPM == RPM.FAST)
 
-    assert(washingMachine.activeExtras.isEmpty)
+    assert(washingMachine.getExtras.isEmpty)
     washingMachine.addExtra(WashingMachineExtra.SpecialColors)
-    assert(washingMachine.activeExtras.contains(WashingMachineExtra.SpecialColors))
+    assert(washingMachine.getExtras.contains(WashingMachineExtra.SpecialColors))
     washingMachine.addExtra(WashingMachineExtra.SuperDirty)
-    assert(washingMachine.activeExtras.size == 2)
-    assert(washingMachine.activeExtras.contains(WashingMachineExtra.SuperDirty))
+    assert(washingMachine.getExtras.size == 2)
+    assert(washingMachine.getExtras.contains(WashingMachineExtra.SuperDirty))
     washingMachine.removeExtra(WashingMachineExtra.SpecialColors)
-    assert(washingMachine.activeExtras.size == 1)
+    assert(washingMachine.getExtras.size == 1)
     washingMachine.removeExtra(WashingMachineExtra.SuperDirty)
-    assert(washingMachine.activeExtras.isEmpty)
+    assert(washingMachine.getExtras.isEmpty)
 
     assert(WashingMachineExtra.SuperDirty == WashingMachineExtra("SuperDirty"))
     assertThrows[IllegalArgumentException](WashingMachineExtra("AAA"))
   }
 
   test("The DishWasher works correctly") {
-    assert(dishWasher.activeWashing == DishWasherProgram.FAST)
+    assert(dishWasher.getWashingProgram == DishWasherProgram.FAST)
     dishWasher.setWashingProgram(DishWasherProgram.FRAGILE)
-    assert(dishWasher.activeWashing == DishWasherProgram.FRAGILE)
+    assert(dishWasher.getWashingProgram == DishWasherProgram.FRAGILE)
 
-    assert(dishWasher.activeExtras.isEmpty)
+    assert(dishWasher.getExtras.isEmpty)
     dishWasher.addExtra(DishWasherExtra.SuperDirty)
-    assert(dishWasher.activeExtras.contains(DishWasherExtra.SuperDirty))
+    assert(dishWasher.getExtras.contains(DishWasherExtra.SuperDirty))
     dishWasher.addExtra(DishWasherExtra.SuperHygiene)
-    assert(dishWasher.activeExtras.size == 2)
-    assert(dishWasher.activeExtras.contains(DishWasherExtra.SuperHygiene))
+    assert(dishWasher.getExtras.size == 2)
+    assert(dishWasher.getExtras.contains(DishWasherExtra.SuperHygiene))
     dishWasher.removeExtra(DishWasherExtra.SuperDirty)
-    assert(dishWasher.activeExtras.size == 1)
+    assert(dishWasher.getExtras.size == 1)
     dishWasher.removeExtra(DishWasherExtra.SuperHygiene)
-    assert(dishWasher.activeExtras.isEmpty)
+    assert(dishWasher.getExtras.isEmpty)
 
     assert(DishWasherExtra.SuperDirty == DishWasherExtra("SuperDirty"))
     assertThrows[IllegalArgumentException](DishWasherExtra("AAA"))
@@ -149,9 +150,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     oven.setValue(300)
     assert(oven.value == 250)
 
-    assert(oven.activeMode == OvenMode.CONVENTIONAL)
+    assert(oven.getOvenMode == OvenMode.CONVENTIONAL)
     oven.setOvenMode(OvenMode.GRILL)
-    assert(oven.activeMode == OvenMode.GRILL)
+    assert(oven.getOvenMode == OvenMode.GRILL)
   }
 
   test("The Stereo System works correctly") {
@@ -166,13 +167,13 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
 
   test("Adding and removing rooms") {
     assert(Rooms.allRooms contains "Salotto")
-    assert(!(Rooms.allRooms contains "salottino"))
-    assertThrows[IllegalArgumentException](Light("A", "salottino"))
-    Rooms.addRoom("salottino")
-    assert(Rooms.allRooms contains "salottino")
-    Light("A", "salottino")
-    Rooms.removeRoom("salottino")
-    assert(!(Rooms.allRooms contains "salottino"))
+    assert(!(Rooms.allRooms contains "Salottino"))
+    assertThrows[IllegalArgumentException](Light("A", "Salottino"))
+    Rooms.addRoom("Salottino")
+    assert(Rooms.allRooms contains "Salottino")
+    Light("A", "Salottino")
+    Rooms.removeRoom("Salottino")
+    assert(!(Rooms.allRooms contains "Salottino"))
   }
 
   test("The subscription topic is created correctly") {

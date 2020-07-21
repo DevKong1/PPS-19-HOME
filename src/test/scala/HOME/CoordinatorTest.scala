@@ -13,11 +13,17 @@ class CoordinatorTest extends AnyFunSuite {
     assert(coordinator.activeProfile.name == ProfileNameDefault)
   }
 
-  test("Adding and removing devices") {
+  test("Adding and removing devices which are identified by ID") {
     coordinator.addDevice(Light("Light1","Salotto"))
     assert(coordinator.getDevices.size == 1)
     coordinator.addDevice(Light("Light2","Salotto"))
     assert(coordinator.getDevices.size == 2)
+    coordinator.addDevice(Light("Light2","Salotto"))
+    assert(coordinator.getDevices.size == 2)
+    Rooms.addRoom("Salottino")
+    coordinator.addDevice(Light("Light2","Salottino"))
+    assert(coordinator.getDevices.size == 2)
+    Rooms.removeRoom("Salottino")
     coordinator.removeDevice(Light("Light2","Salotto"))
     assert(coordinator.getDevices.size == 1)
     coordinator.removeDevice(Light("Light1","Salotto"))

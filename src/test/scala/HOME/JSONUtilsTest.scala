@@ -42,22 +42,22 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     eventually { Thread.sleep(testSleepTime); light.subscribe should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.connect should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.subscribe should be (true) }
-    assert(light.connected)
-    assert(!light.registered)
+    assert(light.isConnected)
+    assert(!light.isRegistered)
     eventually { Thread.sleep(testSleepTime); light.register should be (true) }
     eventually { Thread.sleep(testSleepTime); coordinator.devices.size should be (1) }
-    eventually { Thread.sleep(testSleepTime); light.registered should be (true) }
+    eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
     assert(light.register)
     eventually { Thread.sleep(testSleepTime); coordinator.devices.size should be (1) }
-    assert(light.registered)
+    assert(light.isRegistered)
     val registeredDevice: Device = coordinator.devices.head
     assert(light.id == registeredDevice.id)
     assert(light.room == registeredDevice.room)
     assert(light.deviceType == registeredDevice.deviceType)
     assert(light.consumption == registeredDevice.consumption)
     assert(light.disconnect)
-    assert(!light.connected)
-    assert(!light.registered)
+    assert(!light.isConnected)
+    assert(!light.isRegistered)
     eventually { Thread.sleep(testSleepTime); coordinator.devices.size should be (0)}
     assert(coordinator.disconnect)
   }

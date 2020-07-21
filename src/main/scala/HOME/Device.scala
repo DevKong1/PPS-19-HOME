@@ -37,7 +37,7 @@ sealed trait Device extends JSONSender {
   def turnOn(): Unit = _on = true
   def turnOff(): Unit = _on = false
 
-  override def equals(o: Any): Boolean = o match{
+  override def equals(o: Any): Boolean = o match {
     case device: Device => device.id == this.id
     case _ => false
   }
@@ -63,8 +63,11 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override def lastWillTopic: String = regTopic
   override def lastWillMessage: String = Msg.disconnected
 
-  var connected: Boolean = false
-  var registered: Boolean = false
+  private var _connected: Boolean = false
+  private var _registered: Boolean = false
+
+  def isConnected: Boolean = _connected
+  def isRegistered: Boolean = _registered
 
   def pubTopic: String  //Topic used by sensors to send data
   def subTopic: String = getSubTopic  //Topic used by actuators to receive orders
@@ -72,14 +75,14 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   def getSubTopic: String = room + topicSeparator + deviceType + topicSeparator + id
 
   def connect: Boolean = {
-    connected = connect(this, onMessageReceived)
-    connected
+    _connected = connect(this, onMessageReceived)
+    _connected
   }
 
   override def disconnect: Boolean = {
-    connected = !super.disconnect
-    if (registered && !connected) registered = false
-    !connected
+    _connected = !super.disconnect
+    if (_registered && !_connected) _registered = false
+    !_connected
   }
 
   def subscribe: Boolean = subscribe(subTopic) && subscribe(broadcastTopic)
@@ -93,7 +96,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     def message: String = getMessageFromMsg(msg)
     topic match {
       case t if t == subTopic => message match {
-        case m if m == Msg.regSuccess => registered = true
+        case m if m == Msg.regSuccess => _registered = true
         case m if m == Msg.on => turnOn()
         case m if m == Msg.off => turnOff()
         case _ => handleDeviceSpecificMessage(CommandMsg(message))
@@ -101,7 +104,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       case t if t == broadcastTopic => message match {
         case m if m == Msg.disconnected =>
           turnOff()
-          registered = false
+          _registered = false
         case _ => this.errUnexpected(UnexpectedMessage, message)
       }
       case _ => this.errUnexpected(UnexpectedTopic, topic)
@@ -121,11 +124,12 @@ sealed trait ChangeableValue extends Device {
   def setValue(newValue: Int): Unit = value = _mapValue(newValue)
 }
 
-sealed trait MutableExtras extends Device {
-  var activeExtras: Set[GenericExtra] = Set()
+sealed trait MutableExtras[A <: GenericExtra] extends Device {
+  private var _activeExtras: Set[A] = Set()
 
-  def addExtra(newExtra: GenericExtra): Unit = activeExtras += newExtra
-  def removeExtra(toRemove: GenericExtra): Unit = activeExtras -= toRemove
+  def getExtras: Set[A] = _activeExtras
+  def addExtra(newExtra: A): Unit = _activeExtras += newExtra
+  def removeExtra(toRemove: A): Unit = _activeExtras -= toRemove
 }
 
 case object LightType extends DeviceType {
@@ -241,7 +245,7 @@ case class SimulatedShutter(override val id: String, override val room: String, 
                                  override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice {
   require(deviceType == ShutterType)
 
-  var _open = false
+  private var _open = false
 
   def isOpen: Boolean = _open
 
@@ -306,14 +310,17 @@ object WashingMachine {
 }
 
 case class SimulatedWashingMachine(override val id: String, override val room: String, override val deviceType: DeviceType,
-                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice with MutableExtras{
+                       override val consumption: Int, override val pubTopic: String)
+                       extends Device with AssociableDevice with MutableExtras[WashingMachineExtra] {
   require(deviceType == WashingMachineType)
 
-  var activeWashing: WashingType = WashingType.MIX
-  var activeRPM: RPM = RPM.MEDIUM
+  private var _activeWashing: WashingType = WashingType.MIX
+  private var _activeRPM: RPM = RPM.MEDIUM
 
-  def setWashingType(newWashing: WashingType): Unit = activeWashing = newWashing
-  def setRPM(newRPM: RPM): Unit = activeRPM = newRPM
+  def getWashingType: WashingType = _activeWashing
+  def setWashingType(newWashing: WashingType): Unit = _activeWashing = newWashing
+  def getRPM: RPM = _activeRPM
+  def setRPM(newRPM: RPM): Unit = _activeRPM = newRPM
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
     case Msg.washingType => setWashingType(WashingType(message.value))
@@ -335,12 +342,14 @@ object DishWasher {
 
 
 case class SimulatedDishWasher(override val id: String, override val room: String, override val deviceType: DeviceType,
-                       override val consumption: Int, override val pubTopic: String) extends Device with AssociableDevice with MutableExtras {
+                       override val consumption: Int, override val pubTopic: String)
+                       extends Device with AssociableDevice with MutableExtras[DishWasherExtra] {
   require(deviceType == DishWasherType)
 
-  var activeWashing: DishWasherProgram = DishWasherProgram.FAST
+  private var _activeWashing: DishWasherProgram = DishWasherProgram.FAST
 
-  def setWashingProgram(newWashing: DishWasherProgram): Unit = activeWashing = newWashing
+  def getWashingProgram: DishWasherProgram = _activeWashing
+  def setWashingProgram(newWashing: DishWasherProgram): Unit = _activeWashing = newWashing
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
     case Msg.setProgram => setWashingProgram(DishWasherProgram(message.value))
@@ -364,9 +373,10 @@ case class SimulatedOven(override val id: String, override val room: String, ove
                                override val minValue : Int = 0, override val maxValue: Int = 250, override var value: Int = 0) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == OvenType)
 
-  var activeMode: OvenMode = OvenMode.CONVENTIONAL
+  private var _activeMode: OvenMode = OvenMode.CONVENTIONAL
 
-  def setOvenMode(newMode: OvenMode): Unit = activeMode = newMode
+  def getOvenMode: OvenMode = _activeMode
+  def setOvenMode(newMode: OvenMode): Unit = _activeMode = newMode
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Unit = message.command match {
     case Msg.setTemperature => setValue(message.value.toInt)
