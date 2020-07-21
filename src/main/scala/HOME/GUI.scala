@@ -1,13 +1,14 @@
 package HOME
 
 import scala.language.postfixOps
-import java.awt.{Dimension, GraphicsEnvironment}
+import java.awt.{Color, Dimension, GraphicsEnvironment}
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 import HOME.MyClass._
+import javax.swing.border.LineBorder
 
 sealed trait Room {
   def devices : Set[Device]
@@ -272,8 +273,22 @@ class RoomPageLayout(devices: Set[Device], devicePanel : BoxPanel) extends BoxPa
   }
   contents += devicePanel
   contents += bp
+
+  def printDeviceLayout(device : Device) : Unit = device.deviceType match {
+    case LightType => devicePanel.contents += LightPanel(device.room, device)
+    case _ => devicePanel.contents += new Label() {
+      text = {
+        "Device name: " + device.name + "\t" + " Device Type: " + device.getSimpleClassName + "\n" + " Consumption: " + device.consumption + " Status: " + device.isOn
+      }
+    }
+      repaint()
+  }
+
+  for(i <- devices) {
+    printDeviceLayout(i)
+  }
   //Prints every device in this room, starting from the basic 3
-  for (i <- devices) yield {
+  /*for (i <- devices) yield {
     //TODO: don't respect DRY
     devicePanel.contents += new Label() {
       text = {
@@ -281,12 +296,33 @@ class RoomPageLayout(devices: Set[Device], devicePanel : BoxPanel) extends BoxPa
       }
     }
     repaint()
-  }
+  }*/
+
 }
 
 object RoomPage {
   def apply(devices: Set[Device], devicePanel: BoxPanel): RoomPageLayout = {
     new RoomPageLayout(devices, devicePanel)
+  }
+}
+
+class LightPanelLayout(roomName: String, device: Device) extends BoxPanel(Orientation.Horizontal) {
+  border = new LineBorder(Color.BLACK, 3)
+  contents += new FlowPanel() {
+    contents += new BoxPanel(Orientation.Vertical) {
+      contents += new Label(roomName + " Lamp")
+    }
+    contents += new BoxPanel(Orientation.Vertical) {
+      contents += new Label("Consumption (avg. hour): " + device.consumption)
+      contents += new Label("Intensity: " + device.consumption)
+      contents += new Slider()
+    }
+  }
+}
+
+object LightPanel {
+  def apply(roomName: String, device: Device): LightPanelLayout = {
+    new LightPanelLayout(roomName, device)
   }
 }
 
