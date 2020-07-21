@@ -15,7 +15,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(light.connect)
     assert(light.subscribe)
     assert(!light.isOn)
-    assert(coordinator.publish(light.subTopic, "on"))
+    assert(coordinator.publish(light.getSubTopic, "on"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     assert(coordinator.publish(light.getSubTopic, CommandMsg(Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }

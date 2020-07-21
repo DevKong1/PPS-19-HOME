@@ -1,15 +1,20 @@
 package HOME
 
+import java.util.concurrent.Executors
+
 import HOME.CommandMsg.messageSeparator
 import HOME.MyClass._
 import org.eclipse.paho.client.mqttv3.{IMqttDeliveryToken, MqttCallback, MqttClient, MqttConnectOptions, MqttMessage}
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
 trait MQTTUtils extends JSONUtils {
   val retained: Boolean = true
   val topicSeparator: Char = '/'
+  val pubTopicPostFix: String = "Pub"
+  val subTopicPostFix: String = "Sub"
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
 
@@ -44,7 +49,8 @@ trait MQTTUtils extends JSONUtils {
         }
 
         override def messageArrived(topic: String, message: MqttMessage): Unit = {
-          onMessageReceived(topic, new String(message.getPayload))
+          implicit val context: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+          Future {onMessageReceived(topic, new String(message.getPayload))}
         }
       }
       client.setCallback(callback)
@@ -72,14 +78,14 @@ trait MQTTUtils extends JSONUtils {
   def subscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
-      if (topic != null && topic != "") client.subscribe(topic, QoS_1)
+      if (client.isConnected && topic != null && topic != "") client.subscribe(topic, QoS_1)
       true
   }
 
   def unsubscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
-      if (topic != null && topic != "") client.unsubscribe(topic)
+      if (client.isConnected && topic != null && topic != "") client.unsubscribe(topic)
       true
   }
 
@@ -90,7 +96,7 @@ trait MQTTUtils extends JSONUtils {
     case null =>
       false
     case _ =>
-      client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
+      if (client.isConnected) client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
       true
   }
 }
@@ -139,4 +145,10 @@ object Msg {
   val removeExtra: String = "removeExtra"
   val setProgram: String = "setProgram"
   val setMode: String = "setMode"
+
+  //Sensor values
+  val temperatureRead: String = "temperatureRead"
+  val humidityRead: String = "humidityRead"
+  val intensityRead: String = "intensityRead"
+  val motionDetected: String = "motionDetected"
 }

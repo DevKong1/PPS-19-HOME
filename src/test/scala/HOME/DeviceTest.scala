@@ -7,6 +7,7 @@ import org.scalatest.funsuite.AnyFunSuite
 class DeviceTest extends AnyFunSuite with JSONUtils {
   val room: String = "Salotto"
 
+  //Actuators
   val light: SimulatedLight = Light("A", room)
   val AC: SimulatedAirConditioner = AirConditioner("B", room)
   val dehumidifier: SimulatedDehumidifier = Dehumidifier("C", room)
@@ -16,9 +17,15 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   val washingMachine: SimulatedWashingMachine = WashingMachine("G", room)
   val dishWasher: SimulatedDishWasher = DishWasher("H", room)
   val oven: SimulatedOven = Oven("I", room)
-  val stereoSystem: SimulatedStereoSystem = StereoSystem("L", room)
+  val stereoSystem: SimulatedStereoSystem = StereoSystem("J", room)
 
-  test("The light has been instantiated correctly") {
+  //Sensors
+  val thermometer: SimulatedThermometer = Thermometer("K", room)
+  val hygrometer: SimulatedHygrometer = Hygrometer("L", room)
+  val photometer: SimulatedPhotometer = Photometer("M", room)
+  val motionSensor: SimulatedMotionSensor = MotionSensor("N", room)
+
+  test("The light is instantiated correctly") {
     assert(light.id == "A")
     assert(light.room == "Salotto")
     assert(light.deviceType == LightType)
@@ -165,6 +172,50 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(stereoSystem.value == 100)
   }
 
+  //This test needs the MQTT Broker active and running
+  test("The thermometer is instantiated correctly") {
+    assert(thermometer.id == "K")
+    assert(thermometer.deviceType == ThermometerType)
+    assert(thermometer.connect)
+    assert(thermometer.valueChanged(12))
+    assert(!thermometer.valueChanged(13))
+    assert(thermometer.valueChanged(50.5))
+    assert(thermometer.disconnect)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The hygrometer is instantiated correctly") {
+    assert(hygrometer.id == "L")
+    assert(hygrometer.deviceType == HygrometerType)
+    assert(hygrometer.connect)
+    assert(hygrometer.valueChanged(12))
+    assert(!hygrometer.valueChanged(13))
+    assert(hygrometer.valueChanged(50.5))
+    assert(hygrometer.disconnect)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The photometer is instantiated correctly") {
+    assert(photometer.id == "M")
+    assert(photometer.deviceType == PhotometerType)
+    assert(photometer.connect)
+    assert(photometer.valueChanged(12))
+    assert(!photometer.valueChanged(13))
+    assert(photometer.valueChanged(50.5))
+    assert(photometer.disconnect)
+  }
+
+  //This test needs the MQTT Broker active and running
+  test("The motionSensor is instantiated correctly") {
+    assert(motionSensor.id == "N")
+    assert(motionSensor.deviceType == MotionSensorType)
+    assert(motionSensor.connect)
+    assert(motionSensor.valueChanged(false))
+    assert(!motionSensor.valueChanged(false))
+    assert(motionSensor.valueChanged(true))
+    assert(motionSensor.disconnect)
+  }
+
   test("Adding and removing rooms") {
     assert(Rooms.allRooms contains "Salotto")
     assert(!(Rooms.allRooms contains "Salottino"))
@@ -176,8 +227,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(!(Rooms.allRooms contains "Salottino"))
   }
 
-  test("The subscription topic is created correctly") {
-    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id)
+  test("The publish/subscription topics are created correctly") {
+    assert(light.getPubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Pub")
+    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Sub")
   }
 
   //This test needs the MQTT Broker active and running
@@ -193,22 +245,22 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   //This test needs the MQTT Broker active and running
   test("The light handles received mock messages correctly") {
     assert(light.connect)
-    light.onMessageReceived(light.subTopic, getMsg("on", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.subTopic, getMsg(CommandMsg(Msg.on), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.on), light))
     assert(light.isOn)
-    light.onMessageReceived(light.subTopic, getMsg(CommandMsg(Msg.off), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.off), light))
     assert(!light.isOn)
-    light.onMessageReceived(light.subTopic, getMsg("on", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.subTopic, getMsg("setIntensity_255", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("setIntensity_255", light))
     assert(light.value == 100)
-    light.onMessageReceived(light.subTopic, getMsg(CommandMsg(Msg.setIntensity, 35), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.setIntensity, 35), light))
     assert(light.value == 35)
-    light.onMessageReceived(light.subTopic, getMsg(CommandMsg(Msg.setIntensity, 30), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.setIntensity, 30), light))
     assert(light.value == 30)
-    assertThrows[MalformedParametersException](light.onMessageReceived(light.subTopic,"setIntensity_a22"))
-    assertThrows[IllegalArgumentException](light.onMessageReceived(light.pubTopic, "off"))
+    assertThrows[MalformedParametersException](light.onMessageReceived(light.getSubTopic,"setIntensity_a22"))
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "off"))
     assert(light.value == 30)
     assert(light.disconnect)
   }

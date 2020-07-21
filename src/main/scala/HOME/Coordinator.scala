@@ -62,11 +62,11 @@ case class CoordinatorImpl() extends Coordinator {
     getMessageFromMsg(msg) match {
       case m if m == Msg.register =>
         addDevice(device)
-        subscribe(device.pubTopic)
-        publish(device.subTopic, Msg.regSuccess)
+        subscribe(device.getPubTopic)
+        publish(device.getSubTopic, Msg.regSuccess)
       case m if m == Msg.disconnected =>
         removeDevice(device)
-        unsubscribe(device.pubTopic)
+        unsubscribe(device.getPubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)
     }
   }

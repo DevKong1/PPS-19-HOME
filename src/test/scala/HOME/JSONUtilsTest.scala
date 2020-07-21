@@ -19,7 +19,6 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     assert(light.room == retrievedDevice.room)
     assert(light.deviceType == retrievedDevice.deviceType)
     assert(light.consumption == retrievedDevice.consumption)
-    assert(light.subTopic == retrievedDevice.subTopic)
 
     val msgC: String = getMsg("testMsgC", coordinator)
     val retrievedMessageC: String = getMessageFromMsg(msgC)

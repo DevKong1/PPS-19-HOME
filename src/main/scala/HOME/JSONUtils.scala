@@ -36,7 +36,6 @@ trait JSONUtils {
   private val roomField: String = "room"
   private val deviceTypeField: String = "deviceType"
   private val consumptionField: String = "consumption"
-  private val pubTopicField: String = "pubTopic"
 
   private implicit val jsonSenderWrites: Writes[JSONSender] = {
     case sender@s if s.isInstanceOf[AssociableDevice] => deviceWrites.writes(sender.asInstanceOf[AssociableDevice])
@@ -53,7 +52,6 @@ trait JSONUtils {
     roomField -> device.room,
     deviceTypeField -> device.deviceType,
     consumptionField -> device.consumption,
-    pubTopicField -> (if (device.pubTopic == null) "" else device.pubTopic)
   )
 
   private implicit val coordinatorWrites: Writes[Coordinator] = (coordinator: Coordinator) => Json.obj(
@@ -74,8 +72,7 @@ trait JSONUtils {
     (JsPath \ idField).read[String] and
       (JsPath \ roomField).read[String] and
       (JsPath \ deviceTypeField).read[DeviceType] and
-      (JsPath \ consumptionField).read[Int] and
-      (JsPath \ pubTopicField).read[String]
+      (JsPath \ consumptionField).read[Int]
     ) (AssociableDevice.apply _)
 
   private implicit val coordinatorReads: Reads[Coordinator] = (JsPath \ nameField).read[String].map {
