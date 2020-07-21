@@ -16,7 +16,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def addDevice(device: Device): Unit = devices += device
 
-  def removeDevice(device: Device): Unit = devices -= device
+  def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)
 
   def getDevices: Set[Device] = devices
 
@@ -46,7 +46,7 @@ object Coordinator extends JSONSender with MQTTUtils {
         subscribe(device.getPubTopic)
         publish(device.getSubTopic, Msg.regSuccess)
       case m if m == Msg.disconnected =>
-        removeDevice(device)
+        removeDevice(device.name)
         unsubscribe(device.getPubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)
     }
@@ -114,9 +114,9 @@ object Profile {
     override val description: String = "Default Profile"
 
     override var initialRoutine: Device => Unit = {
-      case device: Device if device.deviceType == LightType => device.turnOff()
-      case device: SimulatedShutter => device.close()
-      //case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device.getPubTopic)
+      case device: AssociableDevice if device.deviceType == LightType => Coordinator.publish(device.getSubTopic, Msg.off)
+      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device.getSubTopic, Msg.close)
+      case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device.getSubTopic, Msg.mute)
     }
 
     override var thermometerNotificationCommands: Device => Unit = _
@@ -127,8 +127,6 @@ object Profile {
 
     override def doProgrammedRoutine(): Unit = {}
   }
-
-
 
   def apply(name: String): Profile = getProfiles.find(_.name == name) match {
     case Some(t) => t

@@ -2,9 +2,12 @@ package HOME
 
 import java.lang.reflect.MalformedParametersException
 
+import HOME.ConstantsTest.testSleepTime
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.concurrent.Eventually
+import org.scalatest.matchers.should.Matchers
 
-class CoordinatorTest extends AnyFunSuite {
+class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)
@@ -22,9 +25,9 @@ class CoordinatorTest extends AnyFunSuite {
     Coordinator.addDevice(Light("Light2","Salottino"))
     assert(Coordinator.getDevices.size == 2)
     Rooms.removeRoom("Salottino")
-    Coordinator.removeDevice(Light("Light2","Salotto"))
+    Coordinator.removeDevice("Light2")
     assert(Coordinator.getDevices.size == 1)
-    Coordinator.removeDevice(Light("Light1","Salotto"))
+    Coordinator.removeDevice("Light1")
     assert(Coordinator.getDevices.isEmpty)
   }
 
@@ -52,21 +55,41 @@ class CoordinatorTest extends AnyFunSuite {
   }
 
   test("The coordinator correctly applies the NIGHT profile)") {
+    val tv = TV("TV1","Salotto")
     val light = Light("Light1","Salotto")
-    light.turnOn()
     val shutter = Shutter("Shutter1","Salotto")
-    shutter.turnOn() //TODO FIX DEVICES TO CHECK IF ON
+    tv.turnOn()
+    light.turnOn()
+    shutter.turnOn()
     shutter.open()
+
+    assert(tv.isOn)
+    assert(tv.value == 50)
     assert(light.isOn)
+    assert(shutter.isOn)
     assert(shutter.isOpen)
 
+    assert(tv.connect)
+    assert(tv.subscribe)
+    assert(light.connect)
+    assert(light.subscribe)
+    assert(shutter.connect)
+    assert(shutter.subscribe)
+
+    assert(Coordinator.connect)
+    Coordinator.addDevice(tv)
     Coordinator.addDevice(light)
     Coordinator.addDevice(shutter)
     Coordinator.setProfile(Profile("NIGHT"))
     assert(Coordinator.activeProfile.name == "NIGHT")
-    Coordinator.activeProfile.onActvation()
 
-    assert(!light.isOn)
-    assert(!shutter.isOpen)
+    Coordinator.activeProfile.onActvation()
+    eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
+    eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
+
+    Coordinator.removeDevice("TV1")
+    Coordinator.removeDevice("Light1")
+    Coordinator.removeDevice("Shutter1")
   }
 }
