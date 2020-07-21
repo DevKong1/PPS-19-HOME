@@ -23,13 +23,26 @@ repositories {
 dependencies {
     // Use Scala 2.12 in our library project
     implementation 'org.scala-lang:scala-library:2.12.10'
-
+    //Scala swing
+    implementation 'org.scala-lang.modules:scala-swing_2.12:2.1.1'
     // Use Scalatest for testing our library
     testImplementation 'junit:junit:4.12'
-    testImplementation 'org.scalatest:scalatest_2.12:3.0.8'
+    testImplementation 'org.scalatest:scalatest_2.12:3.2.0'
 
     // Need scala-xml at test runtime
     testRuntimeOnly 'org.scala-lang.modules:scala-xml_2.12:1.2.0'
 	
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
+	implementation 'com.typesafe.play:play-json_2.12:2.9.0'
 }
+
+compileScala {
+    scalaCompileOptions.additionalParameters = ["-feature"]
+}
+
+task spec(dependsOn: ['testClasses'], type: JavaExec) {
+  main = 'org.scalatest.tools.Runner'
+  args = ['-R', 'build/classes/scala/test', '-o']//, '-l', 'HOME.tags.BrokerRequired']
+  classpath = sourceSets.test.runtimeClasspath
+}
+test.dependsOn spec
