@@ -26,6 +26,8 @@ trait MQTTUtils extends JSONUtils {
   private var sender: JSONSender = _
   private var client: MqttClient = _
 
+  private val mqttUserName: String = "HOME"
+  private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
   private val brokerURL: String = "tcp://localhost:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
 
@@ -38,6 +40,8 @@ trait MQTTUtils extends JSONUtils {
       val opts = new MqttConnectOptions
       opts.setCleanSession(true)
       opts.setWill(sender.lastWillTopic, getMsg(sender.lastWillMessage, sender).getBytes, QoS_1, !retained)
+      opts.setUserName(mqttUserName)
+      opts.setPassword(mqttPwd.toCharArray)
 
       val callback = new MqttCallback {
         override def deliveryComplete(token: IMqttDeliveryToken): Unit = {

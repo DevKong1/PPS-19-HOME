@@ -42,7 +42,13 @@ compileScala {
 
 task spec(dependsOn: ['testClasses'], type: JavaExec) {
   main = 'org.scalatest.tools.Runner'
-  args = ['-R', 'build/classes/scala/test', '-o']//, '-l', 'HOME.tags.BrokerRequired']
+  args = ['-R', 'build/classes/scala/test', '-o']
   classpath = sourceSets.test.runtimeClasspath
 }
 test.dependsOn spec
+
+task testNoBroker(dependsOn: ['testClasses'], type: JavaExec) {
+    main = 'org.scalatest.tools.Runner'
+    args = ['-R', 'build/classes/scala/test', '-o', '-l', 'HOME.tags.BrokerRequired']
+    classpath = sourceSets.test.runtimeClasspath
+}
