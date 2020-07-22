@@ -92,4 +92,10 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.removeDevice("Light1")
     Coordinator.removeDevice("Shutter1")
   }
+
+  test("The custom profile builder builds a Set of instructions correctly)") {
+    val commands: Set[(Device,CommandMsg)] = Set((Light("Light10","Salotto"),CommandMsg(Msg.on)),(TV("TV10","Salotto"),CommandMsg(Msg.on)))
+    println(CustomProfileBuilder.generateCommandSet(commands))
+  }
+
 }
