@@ -15,7 +15,7 @@ sealed trait Room {
   def name : String
 }
 
-class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) with Room {
+class GUIRoom(override val name:String) extends ScrollPane with Room {
   /*always present device in every room*/
   val light: SimulatedLight = Light("A", name)
   val AC: SimulatedAirConditioner = AirConditioner("B", name)
@@ -24,13 +24,19 @@ class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) w
 
   override def devices: Set[Device] = Set(light, AC, dehumidifier)
 
-  //Try to add Panels with a template
-  if(name equals("Home")) {
-    contents += HomePage()
-  } else {
-    /* lets users add devices inside a room*/
-    contents += RoomPage(devices, devicePanel)
+  val adDeviceBtn: Button =
+    new Button("Add device") {
+      reactions += {
+        case ButtonClicked(_) => DeviceDialog()
+      }
+    }
+
+  val bp: BorderPanel = new BorderPanel {
+    add(devicePanel,BorderPanel.Position.North)
+    add(adDeviceBtn, BorderPanel.Position.South)
   }
+  contents = bp
+  for (i <- devices)  printDevice/*Pane*/(i)
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
 
@@ -38,21 +44,18 @@ class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) w
     case that: GUIRoom => this.name equals that.name
     case _ => false
   }
-
-  //First release unpretty print
-  object printDevice {
-    def apply(d: Device): Unit = {
-      devicePanel.contents += new Label() {
-        text = {
-          "Device name: " + d.name + "\t" + " Device Type: " + d.getSimpleClassName + "\n" + " Consumption: " + d.consumption + " Status: " + d.isOn
-        }
+  def printDevice(device : Device) : Unit = device.deviceType match {
+    case LightType => devicePanel.contents += { println(device.deviceType); PrintDevicePane(device)}
+    case _ => devicePanel.contents += new Label() {
+      text = {
+        println("CIAO")
+        "Device name: " + device.name + "\t" + " Device Type: " + device.getSimpleClassName + "\n" + " Consumption: " + device.consumption + " Status: " + device.isOn
       }
-      repaint()
     }
+      repaint()
   }
 
 }
-
 object GUI extends SimpleSwingApplication {
   private val ADD = "+"
   var rooms: Set[GUIRoom] = Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
@@ -189,7 +192,6 @@ class CustomDeviceDialog extends Dialog {
     case _ => None
   }
 }
-
 object DeviceDialog {
   def apply(): CustomDeviceDialog = {
     new CustomDeviceDialog()
@@ -253,78 +255,47 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     currentHour+":"+currentMinute+" " + amOrPm
   }
 }
-
 object HomePage {
   def apply(): HomePageLayout = {
     new HomePageLayout()
   }
 }
 
-class RoomPageLayout(devices: Set[Device], devicePanel : BoxPanel) extends BoxPanel(Orientation.Vertical) {
-
-  val adDeviceBtn: Button =
-    new Button("Add device") {
-      reactions += {
-        case ButtonClicked(_) => DeviceDialog()
-      }
-    }
-
-  val bp: BorderPanel = new BorderPanel {
-    add(adDeviceBtn, BorderPanel.Position.South)
-  }
-  contents += devicePanel
-  contents += bp
-
-  def printDeviceLayout(device : Device) : Unit = device.deviceType match {
-    case LightType => devicePanel.contents += LightPanel(device.room, device)
-    case _ => devicePanel.contents += new Label() {
-      text = {
-        "Device name: " + device.name + "\t" + " Device Type: " + device.getSimpleClassName + "\n" + " Consumption: " + device.consumption + " Status: " + device.isOn
-      }
-    }
-      repaint()
-  }
-
-  for(i <- devices) {
-    printDeviceLayout(i)
-  }
-  //Prints every device in this room, starting from the basic 3
-  /*for (i <- devices) yield {
-    //TODO: don't respect DRY
-    devicePanel.contents += new Label() {
-      text = {
-        "Device name: " + i.name + "\t" + " Device Type: " + i.getSimpleClassName + "\n" + " Consumption: " + i.consumption + " Status: " + i.isOn
-      }
-    }
-    repaint()
-  }*/
-
-}
-
-object RoomPage {
-  def apply(devices: Set[Device], devicePanel: BoxPanel): RoomPageLayout = {
-    new RoomPageLayout(devices, devicePanel)
-  }
-}
-
-class LightPanelLayout(roomName: String, device: Device) extends BoxPanel(Orientation.Horizontal) {
+abstract class GUIDevice(val d : Device) extends BoxPanel(Orientation.Horizontal){
+  /** BASIC TEMPLATE */
   border = new LineBorder(Color.BLACK, 3)
   contents += new FlowPanel() {
     contents += new BoxPanel(Orientation.Vertical) {
-      contents += new Label(roomName + " Lamp")
+      contents += new Label("Room: "+d.room +" Device type: "+ d.deviceType)
     }
     contents += new BoxPanel(Orientation.Vertical) {
-      contents += new Label("Consumption (avg. hour): " + device.consumption)
-      contents += new Label("Intensity: " + device.consumption)
-      contents += new Slider()
+      contents += new Label("Consumption (avg. hour): " + d.consumption)
     }
+
+  }
+  /** define a function that depending on the thing to update chooses what to update
+   * def updateVal(whatToUpdate: String(?), val : Int) = {
+   *  valType match {
+   *  case "sensitivity" => d.setSens(val)
+   * }
+   *
+   *
+   * */
+
+}
+
+object PrintDevicePane {
+  def apply(device: Device) : GUIDevice = device.deviceType  match{
+    case LightType => LightPane(Light(device.name,device.room))
+  }
+}
+case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
+  require(d.deviceType == LightType)
+  contents += new BoxPanel(Orientation.Vertical) {
+    contents += new Label("Intensity: " + d.consumption)
   }
 }
 
-object LightPanel {
-  def apply(roomName: String, device: Device): LightPanelLayout = {
-    new LightPanelLayout(roomName, device)
-  }
-}
+
 
 
