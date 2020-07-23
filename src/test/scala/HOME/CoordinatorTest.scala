@@ -95,9 +95,29 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.disconnect
   }
 
-  test("The custom profile builder builds a Set of instructions correctly)") {
-    val commands: Set[(Device,CommandMsg)] = Set((Light("Light10","Salotto"),CommandMsg(cmd = Msg.on)),(TV("TV10","Salotto"),CommandMsg(cmd = Msg.on)))
-    println(CustomProfileBuilder.generateCommandSet(commands))
+  test("The custom profile builder builds and Saves a Set of instructions correctly)") {
+    val tv = TV("TV1","Salotto")
+    tv.connect
+    tv.subscribe
+
+    assert(!tv.isOn)
+    assert(tv.value == 50)
+
+    Coordinator.connect
+    Coordinator.addDevice(tv)
+
+    val commands: Set[(Device,CommandMsg)] = Set((tv,CommandMsg(cmd = Msg.on)), (tv,CommandMsg(cmd = Msg.mute)))
+    val generatedCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(commands)
+    val dummySet: Set[Device => Unit] = Set({_.id})
+    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, dummySet, dummySet,
+      dummySet, dummySet,dummySet,{})
+
+    Profile.addProfile(builtProfile)
+    assert(Profile.savedProfiles.contains(builtProfile))
+
+    Coordinator.setProfile(builtProfile)
+    eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
+    eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
     tv.disconnect
     Coordinator.removeAllDevices()
@@ -107,5 +127,4 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.disconnect
     Coordinator.setProfile(Profile(Constants.default_profile_name))
   }
-
 }

@@ -38,7 +38,7 @@ class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) w
     case _ => false
   }
 
-  //First release unpretty print
+  //First release ugly print
   object printDevice {
     def apply(d: Device): Unit = {
       devicePanel.contents += new Label() {

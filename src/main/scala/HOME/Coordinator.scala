@@ -22,7 +22,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def getDevices: Set[Device] = devices
 
   def getActiveProfile: Profile = activeProfile
-  def setProfile(newProfile: Profile): Unit = {activeProfile = newProfile; activeProfile.onActvation()}
+  def setProfile(newProfile: Profile): Unit = {activeProfile = newProfile; activeProfile.onActivation()}
 
   def connect: Boolean = connect(this, onMessageReceived)
 
@@ -148,7 +148,7 @@ object Profile {
       case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device, CommandMsg(cmd = Msg.mute))
     }
 
-    //TODO REMPO _.id , SHOULD BE NULL OR SOMETHING
+    //TODO REPLACE _.id , SHOULD BE NULL OR SOMETHING
     override val thermometerNotificationCommands: Device => Unit = _.id
     override val hygrometerNotificationCommands: Device => Unit = _.id
     override val photometerNotificationCommands: Device => Unit = _.id
