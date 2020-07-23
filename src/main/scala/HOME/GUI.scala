@@ -24,7 +24,7 @@ class GUIRoom(override val name:String) extends BoxPanel(Orientation.Vertical) w
 
   override def devices: Set[Device] = Set(light, AC, dehumidifier)
 
-  if(name equals("Home")) {
+  if(name equals "Home") {
     contents += HomePage()
   } else {
     /* lets users add devices inside a room*/
@@ -111,6 +111,11 @@ object GUI extends SimpleSwingApplication {
         None
       }
     }
+  }
+
+  def handleUpdateMsg(msg: CommandMsg): Unit = msg.command match {
+    case Msg.confirmUpdate => println("Success from request " + msg.id) //TODO update GUI
+    case _ => this.errUnexpected(UnexpectedMessage, msg.toString)
   }
 }
 
@@ -203,13 +208,13 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
   }
   contents += new FlowPanel() {
     hGap = 70
-    contents += new Label("Date: " + getDate())
+    contents += new Label("Date: " + getDate)
     contents += new Label("Internal temperature: ")
     contents += new Label("External temperature: ")
   }
   contents += new FlowPanel() {
     hGap = 70
-    contents += new Label("Time: " + getCurrentTime())
+    contents += new Label("Time: " + getCurrentTime)
     contents += new Label("Internal humidity: ")
     contents += new Label("External humidity: ")
   }
@@ -228,7 +233,7 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     contents += new Button("Delete profile")
   }
 
-  def getDate() : String = {
+  def getDate : String = {
     val cal = Calendar.getInstance()
     val date =cal.get(Calendar.DATE )
     val month =cal.get(Calendar.MONTH )
@@ -237,8 +242,8 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     date+"/"+month+"/"+year
   }
 
-  def getCurrentTime() : String = {
-    val today = Calendar.getInstance().getTime()
+  def getCurrentTime : String = {
+    val today = Calendar.getInstance().getTime
 
     // create the date/time formatters
     val minuteFormat = new SimpleDateFormat("mm")

@@ -10,23 +10,24 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
 
   test("Coordinator sends commands to the light", BrokerRequired){
     assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
     assert(light.connect)
     assert(light.subscribe)
     assert(!light.isOn)
-    assert(Coordinator.publish(light.getSubTopic, "on"))
+    assert(Coordinator.publish(light.getSubTopic, "0_on"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
-    assert(Coordinator.publish(light, CommandMsg(Msg.on)))
+    assert(Coordinator.publish(light, CommandMsg(Msg.nullCommandId, Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
-    assert(Coordinator.publish(light.getSubTopic, "off"))
+    assert(Coordinator.publish(light.getSubTopic, "0_off"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
-    assert(Coordinator.publish(light, CommandMsg(Msg.on)))
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     assert(light.value == 50)
-    assert(Coordinator.publish(light.getSubTopic, "setIntensity_15"))
+    assert(Coordinator.publish(light.getSubTopic, "0_setIntensity_15"))
     eventually { Thread.sleep(testSleepTime); light.value should be (15) }
-    assert(Coordinator.publish(light, CommandMsg(Msg.setIntensity, 12)))
+    assert(Coordinator.publish(light, CommandMsg(3, Msg.setIntensity, 12)))
     eventually { Thread.sleep(testSleepTime); light.value should be (12) }
-    assert(Coordinator.publish(light, CommandMsg(Msg.setIntensity, 13)))
+    assert(Coordinator.publish(light, CommandMsg(4, Msg.setIntensity, 13)))
     eventually { Thread.sleep(testSleepTime); light.value shouldNot be (12) }
     assert(Coordinator.disconnect)
     assert(light.disconnect)

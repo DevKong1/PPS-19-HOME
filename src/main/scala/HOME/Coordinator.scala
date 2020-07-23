@@ -3,7 +3,6 @@ package HOME
 import HOME.MyClass._
 
 import scala.collection.mutable.ListBuffer
-import scala.runtime.Nothing$
 
 object Coordinator extends JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeCoordinator
@@ -26,13 +25,14 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def connect: Boolean = connect(this, onMessageReceived)
 
-  def subscribe: Boolean = subscribe(regTopic)
+  def subscribe: Boolean = subscribe(regTopic) && subscribe(updateTopic)
 
   def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, this, !retained)
   def publish(topic: String, message: String): Boolean = publish(topic, message, this)
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
+    case t if t == updateTopic => GUI.handleUpdateMsg(CommandMsg.fromString(getMessageFromMsg(message)))
     //TODO topic+message managed by the active profile
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
@@ -69,7 +69,7 @@ sealed trait Profile {
   val name: String
   val description: String
 
-  def onActvation(): Unit
+  def onActivation(): Unit
 
   def onThermometerNotification(): Unit
   def onHygrometerNotification(): Unit
@@ -103,7 +103,7 @@ trait BasicProfile extends Profile {
     }
   }
 
-  override def onActvation(): Unit = applyCommand(initialRoutine)
+  override def onActivation(): Unit = applyCommand(initialRoutine)
 
   override def onThermometerNotification(): Unit = applyCommand(thermometerNotificationCommands)
   override def onHygrometerNotification(): Unit = applyCommand(hygrometerNotificationCommands)
@@ -136,9 +136,9 @@ object Profile {
     override val description: String = "Default Profile"
 
     override val initialRoutine: Device => Unit = {
-      case device: AssociableDevice if device.deviceType == LightType => Coordinator.publish(device.getSubTopic, Msg.off)
-      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device.getSubTopic, Msg.close)
-      case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device.getSubTopic, Msg.mute)
+      case device: AssociableDevice if device.deviceType == LightType => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.close))
+      case device: AssociableDevice if device.deviceType == TvType => Coordinator.publish(device, CommandMsg(cmd = Msg.mute))
     }
 
     //TODO REMPO _.id , SHOULD BE NULL OR SOMETHING
@@ -183,7 +183,7 @@ case class CustomProfile(override val name: String, override val description: St
     }
   }
 
-  override def onActvation(): Unit = applyCommand(initialRoutine)
+  override def onActivation(): Unit = applyCommand(initialRoutine)
 
   override def onThermometerNotification(): Unit = applyCommand(thermometerNotificationCommands)
   override def onHygrometerNotification(): Unit = applyCommand(hygrometerNotificationCommands)
