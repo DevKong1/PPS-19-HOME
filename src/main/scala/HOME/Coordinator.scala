@@ -11,13 +11,14 @@ object Coordinator extends JSONSender with MQTTUtils {
   override def lastWillTopic: String = broadcastTopic
   override def lastWillMessage: String = Msg.disconnected
 
-  var devices: Set[Device] = Set()
+  var devices: Set[Device] = Set.empty
   var activeProfile: Profile = Profile("DEFAULT")
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
   def addDevice(device: Device): Unit = devices += device
 
   def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)
+  def removeAllDevices(): Unit = devices = Set.empty
 
   def getDevices: Set[Device] = devices
 
@@ -117,6 +118,11 @@ object Profile {
   def getProfiles: Set[Profile] = savedProfiles
   def getProfile(name: String): Option[Profile] = savedProfiles.find(_.name == name)
   def addProfile(profile: Profile): Unit = savedProfiles += profile
+  def removeProfile(name: String): Unit = savedProfiles -= { getProfile(name) match {
+    case Some(value) => value
+    case _ => null
+    }
+  }
 
   private case object DEFAULT_PROFILE extends BasicProfile  {
     override val name: String = Constants.default_profile_name

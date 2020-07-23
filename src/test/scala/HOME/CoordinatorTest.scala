@@ -87,9 +87,12 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
 
-    Coordinator.removeDevice("TV1")
-    Coordinator.removeDevice("Light1")
-    Coordinator.removeDevice("Shutter1")
+    light.disconnect
+    tv.disconnect
+    shutter.disconnect
+    Coordinator.removeAllDevices()
+    Coordinator.setProfile(Profile(Constants.default_profile_name))
+    Coordinator.disconnect
   }
 
   test("The custom profile builder builds and Saves a Set of instructions correctly)") {
@@ -115,6 +118,14 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.setProfile(builtProfile)
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
+
+    tv.disconnect
+    Coordinator.removeAllDevices()
+    Profile.removeProfile("Custom1")
+    assert(!Profile.savedProfiles.contains(builtProfile))
+
+    Coordinator.disconnect
+    Coordinator.setProfile(Profile(Constants.default_profile_name))
   }
 
 }
