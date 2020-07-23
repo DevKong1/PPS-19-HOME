@@ -83,19 +83,29 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.setProfile(Profile("NIGHT"))
     assert(Coordinator.activeProfile.name == "NIGHT")
 
-    Coordinator.activeProfile.onActivation()
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
 
-    Coordinator.removeDevice("TV1")
-    Coordinator.removeDevice("Light1")
-    Coordinator.removeDevice("Shutter1")
+    light.disconnect
+    tv.disconnect
+    shutter.disconnect
+    Coordinator.removeAllDevices()
+    Coordinator.setProfile(Profile(Constants.default_profile_name))
+    Coordinator.disconnect
   }
 
   test("The custom profile builder builds a Set of instructions correctly)") {
     val commands: Set[(Device,CommandMsg)] = Set((Light("Light10","Salotto"),CommandMsg(cmd = Msg.on)),(TV("TV10","Salotto"),CommandMsg(cmd = Msg.on)))
     println(CustomProfileBuilder.generateCommandSet(commands))
+
+    tv.disconnect
+    Coordinator.removeAllDevices()
+    Profile.removeProfile("Custom1")
+    assert(!Profile.savedProfiles.contains(builtProfile))
+
+    Coordinator.disconnect
+    Coordinator.setProfile(Profile(Constants.default_profile_name))
   }
 
 }
