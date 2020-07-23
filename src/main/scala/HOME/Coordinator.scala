@@ -21,7 +21,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def getDevices: Set[Device] = devices
 
   def getActiveProfile: Profile = activeProfile
-  def setProfile(newProfile: Profile): Unit = activeProfile = newProfile
+  def setProfile(newProfile: Profile): Unit = {activeProfile = newProfile; activeProfile.onActvation()}
 
   def connect: Boolean = connect(this, onMessageReceived)
 
@@ -115,6 +115,7 @@ object Profile {
   var savedProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT)
 
   def getProfiles: Set[Profile] = savedProfiles
+  def getProfile(name: String): Option[Profile] = savedProfiles.find(_.name == name)
   def addProfile(profile: Profile): Unit = savedProfiles += profile
 
   private case object DEFAULT_PROFILE extends BasicProfile  {
@@ -176,7 +177,7 @@ case class CustomProfile(override val name: String, override val description: St
   val programmedRoutineCommands: Set[Device => Unit] = programmedRoutineCommandsSet
 
   def applyCommand(commands: Set[Device => Unit]): Unit = {
-    for (device <- Coordinator.getDevices) {
+    for(device <- Coordinator.getDevices) {
       for(command <- commands) {
         command(device)
       }
