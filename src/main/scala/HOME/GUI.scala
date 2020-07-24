@@ -1,14 +1,15 @@
 package HOME
 
 import scala.language.postfixOps
-import java.awt.{Color, Dimension, GraphicsEnvironment}
+import java.awt.Color
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
-import HOME.MyClass._
+import javax.swing.ImageIcon
 import javax.swing.border.LineBorder
+import scala.reflect.io.File
 
 sealed trait Room {
   def devices : Set[Device]
@@ -17,9 +18,10 @@ sealed trait Room {
 
 class GUIRoom(override val name:String) extends ScrollPane with Room {
   /*always present device in every room*/
-  val light: SimulatedLight = Light("A", name)
-  val AC: SimulatedAirConditioner = AirConditioner("B", name)
-  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C", name)
+  private val light: SimulatedLight = Light("Lamp", name)
+  private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", name)
+  private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", name)
+
   val devicePanel = new BoxPanel(Orientation.Vertical)
 
   override def devices: Set[Device] = Set(light, AC, dehumidifier)
@@ -36,25 +38,19 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
     add(adDeviceBtn, BorderPanel.Position.South)
   }
   contents = bp
-  for (i <- devices)  printDevice/*Pane*/(i)
+  name toLowerCase match{
+    case "home" => addDevice(HomePage())
+    case _  => for (i <- devices) addDevice(PrintDevicePane(i))
+  }
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
-
+  def addDevice(dev : Component): Unit ={
+    devicePanel.contents+=dev
+  }
   override def equals(that: Any): Boolean = that match{
     case that: GUIRoom => this.name equals that.name
     case _ => false
   }
-  def printDevice(device : Device) : Unit = device.deviceType match {
-    case LightType => devicePanel.contents += { println(device.deviceType); PrintDevicePane(device)}
-    case _ => devicePanel.contents += new Label() {
-      text = {
-        println("CIAO")
-        "Device name: " + device.name + "\t" + " Device Type: " + device.getSimpleClassName + "\n" + " Consumption: " + device.consumption + " Status: " + device.isOn
-      }
-    }
-      repaint()
-  }
-
 }
 object GUI extends SimpleSwingApplication {
   private val ADD = "+"
@@ -89,11 +85,11 @@ object GUI extends SimpleSwingApplication {
 
     object getLastIndex {
       def apply(): Option[TabbedPane.Page] = {
-        if(tp.selection.page.title equals ADD) {
-          tp.pages.find(page => page.title equals ADD )
-        }else None
+        tp.selection.page.title match {
+          case ADD => tp.pages.find(page => page.title equals ADD)
+          case _ => None
+        }
       }
-
     }
 
     private def getRoomName: Option[String] = {
@@ -116,26 +112,6 @@ object GUI extends SimpleSwingApplication {
       }
     }
   }
-}
-
-object WindowSize {
-  import WindowSizeType._
-  private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
-  private val FRAME_PROP = 0.55
-  private val WIN_PROP_H = 0.2
-  private val WIN_PROP_W = 0.5
-
-  val height: Int = SCREEN.height * FRAME_PROP toInt
-  val width: Int = SCREEN.width * FRAME_PROP toInt
-
-  def apply(windType : WindowSizeType.Value): Dimension = windType match{
-    case MainW => new Dimension(width, height)
-    case Dialog => new Dimension(width*WIN_PROP_W toInt,height*WIN_PROP_H toInt)
-  }
-}
-object WindowSizeType extends Enumeration {
-  type Type = Value
-  val MainW, Dialog = Value
 }
 
 class CustomDeviceDialog extends Dialog {
@@ -161,8 +137,8 @@ class CustomDeviceDialog extends Dialog {
                   i <- GUI.rooms.find(_.name equals currentRoom)
                   c <- stringToDevice(devType,name,currentRoom)
                 }yield{
-                  i.printDevice(c)
-                  //CoordinatorImpl().addDevice(c)
+                  i.addDevice(PrintDevicePane(c))
+                  Coordinator.addDevice(c)
                   close()
                 }
               }
@@ -206,13 +182,13 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
   }
   contents += new FlowPanel() {
     hGap = 70
-    contents += new Label("Date: " + getDate())
+    contents += new Label("Date: " + getDate)
     contents += new Label("Internal temperature: ")
     contents += new Label("External temperature: ")
   }
   contents += new FlowPanel() {
     hGap = 70
-    contents += new Label("Time: " + getCurrentTime())
+    contents += new Label("Time: " + getCurrentTime)
     contents += new Label("Internal humidity: ")
     contents += new Label("External humidity: ")
   }
@@ -231,7 +207,7 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     contents += new Button("Delete profile")
   }
 
-  def getDate() : String = {
+  def getDate : String = {
     val cal = Calendar.getInstance()
     val date =cal.get(Calendar.DATE )
     val month =cal.get(Calendar.MONTH )
@@ -240,17 +216,11 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     date+"/"+month+"/"+year
   }
 
-  def getCurrentTime() : String = {
-    val today = Calendar.getInstance().getTime()
-
-    // create the date/time formatters
-    val minuteFormat = new SimpleDateFormat("mm")
-    val hourFormat = new SimpleDateFormat("hh")
-    val amPmFormat = new SimpleDateFormat("a")
-
-    val currentHour = hourFormat.format(today)
-    val currentMinute = minuteFormat.format(today)
-    val amOrPm = amPmFormat.format(today)
+  def getCurrentTime : String = {
+    val today = Calendar.getInstance().getTime
+    val currentHour = new SimpleDateFormat("hh").format(today)
+    val currentMinute = new SimpleDateFormat("mm").format(today)
+    val amOrPm = new SimpleDateFormat("a").format(today)
 
     currentHour+":"+currentMinute+" " + amOrPm
   }
@@ -261,18 +231,13 @@ object HomePage {
   }
 }
 
-abstract class GUIDevice(val d : Device) extends BoxPanel(Orientation.Horizontal){
+abstract class GUIDevice(val d : Device) extends FlowPanel{
+  //private val FONT_SIZE : Int = 18
   /** BASIC TEMPLATE */
-  border = new LineBorder(Color.BLACK, 3)
-  contents += new FlowPanel() {
-    contents += new BoxPanel(Orientation.Vertical) {
-      contents += new Label("Room: "+d.room +" Device type: "+ d.deviceType)
-    }
-    contents += new BoxPanel(Orientation.Vertical) {
-      contents += new Label("Consumption (avg. hour): " + d.consumption)
-    }
+     border = new LineBorder(Color.BLACK, 2)
+    contents+= new myIcon(d.name,iconPath=d.deviceType.toString)
 
-  }
+
   /** define a function that depending on the thing to update chooses what to update
    * def updateVal(whatToUpdate: String(?), val : Int) = {
    *  valType match {
@@ -280,20 +245,80 @@ abstract class GUIDevice(val d : Device) extends BoxPanel(Orientation.Horizontal
    * }
    *
    *
-   * */
+   **/
+   class myIcon(name:String, iconPath :String) extends Label{
+    private val JPG = ".jpg"
+    text=name
+    border = new LineBorder(Color.black,1)
+    icon = new ImageIcon(getClass.getClassLoader.getResource(iconPath + JPG) getPath)
+    
+    horizontalTextPosition = Alignment.Center
+    verticalTextPosition = Alignment.Bottom
 
+  }
 }
 
 object PrintDevicePane {
   def apply(device: Device) : GUIDevice = device.deviceType  match{
+    case AirConditionerType => AirConditionerPane(AirConditioner(device.name,device.room))
+    case BoilerType => BoilerPane(Boiler(device.name,device.room))
+    case DehumidifierType => DehumidifierPane(Dehumidifier(device.name,device.room))
+    case DishWasherType => DishWasherPane(DishWasher(device.name,device.room))
     case LightType => LightPane(Light(device.name,device.room))
+    case MotionSensorType => MotionSensorPane(MotionSensor(device.name,device.room))
+    case OvenType => OvenPane(Oven(device.name,device.room))
+    case PhotometerType => PhotometerPane(Photometer(device.name,device.room))
+    case ShutterType => ShutterPane(Shutter(device.name,device.room))
+    case StereoSystemType => StereoPane(StereoSystem(device.name,device.room))
+    case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
+    case TvType => TVPane(TV(device.name,device.room))
+    case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
+    case HygrometerType => HygrometerPane(Hygrometer(device.name,device.room))
   }
+}
+
+case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
+  require (d.deviceType == AirConditionerType)
+}
+case class HygrometerPane(override val d: SimulatedHygrometer) extends GUIDevice(d){
+  require (d.deviceType == HygrometerType)
+}
+case class BoilerPane(override val d: SimulatedBoiler) extends GUIDevice(d){
+  require (d.deviceType == BoilerType)
+}
+case class DehumidifierPane(override val d: SimulatedDehumidifier) extends GUIDevice(d){
+  require (d.deviceType == DehumidifierType)
+}
+case class DishWasherPane(override val d: SimulatedDishWasher) extends GUIDevice(d){
+  require (d.deviceType == DishWasherType)
 }
 case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
   require(d.deviceType == LightType)
-  contents += new BoxPanel(Orientation.Vertical) {
-    contents += new Label("Intensity: " + d.consumption)
-  }
+  //contents += new Label("Intensity: " + d.consumption)
+}
+case class MotionSensorPane(override val d: SimulatedMotionSensor) extends GUIDevice(d){
+  require (d.deviceType == MotionSensorType)
+}
+case class OvenPane(override val d: SimulatedOven) extends GUIDevice(d){
+  require (d.deviceType == OvenType)
+}
+case class PhotometerPane(override val d: SimulatedPhotometer) extends GUIDevice(d){
+  require (d.deviceType == PhotometerType)
+}
+case class ShutterPane(override val d: SimulatedShutter) extends GUIDevice(d){
+  require (d.deviceType == ShutterType)
+}
+case class StereoPane(override val d: SimulatedStereoSystem) extends GUIDevice(d){
+  require (d.deviceType == StereoSystemType)
+}
+case class ThermometerPane(override val d: SimulatedThermometer) extends GUIDevice(d){
+  require (d.deviceType == ThermometerType)
+}
+case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
+  require (d.deviceType == TvType)
+}
+case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
+  require (d.deviceType == WashingMachineType)
 }
 
 
