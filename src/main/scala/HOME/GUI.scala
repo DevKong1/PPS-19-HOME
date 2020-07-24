@@ -9,7 +9,6 @@ import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 import javax.swing.ImageIcon
 import javax.swing.border.LineBorder
-import scala.reflect.io.File
 
 sealed trait Room {
   def devices : Set[Device]
@@ -33,14 +32,20 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
       }
     }
 
-  val bp: BorderPanel = new BorderPanel {
-    add(devicePanel,BorderPanel.Position.North)
-    add(adDeviceBtn, BorderPanel.Position.South)
-  }
-  contents = bp
-  name toLowerCase match{
-    case "home" => addDevice(HomePage())
-    case _  => for (i <- devices) addDevice(PrintDevicePane(i))
+
+
+  name toLowerCase match {
+    case "home" => contents=HomePage()
+    case _ => {
+      val bp: BorderPanel = new BorderPanel {
+        add(devicePanel, BorderPanel.Position.North)
+        add(adDeviceBtn, BorderPanel.Position.South)
+      }
+      contents = bp
+      for (i <- devices) {
+        addDevice(PrintDevicePane(i));
+      }
+    }
   }
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
@@ -77,9 +82,7 @@ object GUI extends SimpleSwingApplication {
         }
     }
     //used to set items in the main window inside a vertical BoxPanel
-    contents = new BoxPanel(Orientation.Vertical) {
-      contents += tp
-    }
+    contents = tp
     listenTo(tp.selection)
     size = WindowSize(WindowSizeType.MainW)
 
@@ -233,9 +236,34 @@ object HomePage {
 
 abstract class GUIDevice(val d : Device) extends FlowPanel{
   //private val FONT_SIZE : Int = 18
+  private val ON = "ON"
+  private val OFF = "OFF"
+  private var status = OFF
   /** BASIC TEMPLATE */
+  val switchStatus: (String => Unit) => String = (c : String => Unit) => {
+    c(status)
+    status
+  }
      border = new LineBorder(Color.BLACK, 2)
-    contents+= new myIcon(d.name,iconPath=d.deviceType.toString)
+    contents+= new devIcon(d.name,iconPath=d.deviceType.toString)
+    val deviceInfo =new GridPanel(3,3)
+    deviceInfo.contents++= Seq(
+      new Label("DeviceType: "+d.deviceType),
+      new Label("Consumption: "+d.consumption),
+      new Label("sdf: "+d.deviceType),
+      new Label("sdfsdf: "+d.deviceType),
+      new Label("sdfsfds: "+d.deviceType),
+      new ToggleButton(status){
+          reactions+={
+            case ButtonClicked(_) => {
+              text = switchStatus{ case ON => status = OFF case _ => status = ON }
+            }
+          }
+      }
+    )
+
+  contents+=deviceInfo
+
 
 
   /** define a function that depending on the thing to update chooses what to update
@@ -246,15 +274,25 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
    *
    *
    **/
-   class myIcon(name:String, iconPath :String) extends Label{
+   /*case class deviceFeature[A <: Component](val txt: String, var featureType: A) extends Label{
+    reactions+={
+      case MouseClicked(_,_,_,_,_){
+      }
+    }
+    listenTo(this.mouse.clicks)
+   }
+    object deviceVal{
+      def apply[A <: Component](txt:String, featureType:A) = new deviceFeature(txt,featureType)
+    }*/
+
+   private class devIcon(name:String, iconPath :String) extends Label{
     private val JPG = ".jpg"
     text=name
     border = new LineBorder(Color.black,1)
     icon = new ImageIcon(getClass.getClassLoader.getResource(iconPath + JPG) getPath)
-    
+
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
-
   }
 }
 
