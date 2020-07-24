@@ -178,37 +178,41 @@ object DeviceDialog {
 }
 
 class HomePageLayout extends BoxPanel(Orientation.Vertical) {
-  contents += new FlowPanel() {
+  val welcomePanel = new FlowPanel() {
     contents += new Label("Welcome to your HOME") {
       font = new Font("Arial", 0, 36)
     }
   }
-  contents += new FlowPanel() {
+  val temperaturePanel = new FlowPanel() {
     hGap = 70
     contents += new Label("Date: " + getDate)
     contents += new Label("Internal temperature: ")
     contents += new Label("External temperature: ")
   }
-  contents += new FlowPanel() {
+  val humidityPanel = new FlowPanel() {
     hGap = 70
     contents += new Label("Time: " + getCurrentTime)
     contents += new Label("Internal humidity: ")
     contents += new Label("External humidity: ")
   }
-  contents += new FlowPanel() {
+  val alarmPanel = new FlowPanel() {
     hGap = 70
     contents += new Label("Alarm status")
-    contents += new ToggleButton() {
-
-    }
+    contents += new ToggleButton()
   }
-  contents += new FlowPanel() {
+  val profilePanel = new FlowPanel() {
     hGap = 70
     contents += new Label("Current active profile: ")
     contents += new Button("Change profile")
     contents += new Button("Create profile")
     contents += new Button("Delete profile")
   }
+
+  contents += welcomePanel
+  contents += temperaturePanel
+  contents += humidityPanel
+  contents += alarmPanel
+  contents += profilePanel
 
   def getDate : String = {
     val cal = Calendar.getInstance()
