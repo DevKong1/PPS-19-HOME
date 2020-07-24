@@ -6,8 +6,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.swing._
-import scala.swing.event.{ButtonClicked, SelectionChanged}
-import javax.swing.ImageIcon
+import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueChanged}
+import javax.swing.{Box, ImageIcon}
 import javax.swing.border.LineBorder
 
 sealed trait Room {
@@ -50,9 +50,11 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
   def addDevice(dev : Component): Unit ={
-    devicePanel.contents+=dev
+    val GAP = 5
+    devicePanel.peer.add(Box.createVerticalStrut(GAP))
+    devicePanel.contents += dev
   }
-  override def equals(that: Any): Boolean = that match{
+  override def equals(that: Any):   Boolean = that match{
     case that: GUIRoom => this.name equals that.name
     case _ => false
   }
@@ -254,14 +256,11 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     deviceInfo.contents++= Seq(
       new Label("DeviceType: "+d.deviceType),
       new Label("Consumption: "+d.consumption),
-      new Label("sdf: "+d.deviceType),
-      new Label("sdfsdf: "+d.deviceType),
-      new Label("sdfsfds: "+d.deviceType),
       new ToggleButton(status){
           reactions+={
-            case ButtonClicked(_) => {
+            case ButtonClicked(_) =>
               text = switchStatus{ case ON => status = OFF case _ => status = ON }
-            }
+              // TODO: device needs to be switched on/off
           }
       }
     )
@@ -278,18 +277,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
    *
    *
    **/
-   /*case class deviceFeature[A <: Component](val txt: String, var featureType: A) extends Label{
-    reactions+={
-      case MouseClicked(_,_,_,_,_){
-      }
-    }
-    listenTo(this.mouse.clicks)
-   }
-    object deviceVal{
-      def apply[A <: Component](txt:String, featureType:A) = new deviceFeature(txt,featureType)
-    }*/
-
-   private class devIcon(name:String, iconPath :String) extends Label{
+   class myIcon(name:String, iconPath :String) extends Label{
     private val JPG = ".jpg"
     text=name
     border = new LineBorder(Color.black,1)
@@ -299,7 +287,15 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     verticalTextPosition = Alignment.Bottom
   }
 }
-
+case class deviceFeature[A <: RichWindow](txt: String, featureType: A) extends Label{
+  text = txt
+  border = new LineBorder(Color.black,1)
+  reactions+={
+    case MouseClicked(_,_,_,_,_) => featureType.visible = true
+  }
+  listenTo(mouse.clicks)
+  this.visible = true
+}
 object PrintDevicePane {
   def apply(device: Device) : GUIDevice = device.deviceType  match{
     case AirConditionerType => AirConditionerPane(AirConditioner(device.name,device.room))
@@ -336,7 +332,44 @@ case class DishWasherPane(override val d: SimulatedDishWasher) extends GUIDevice
 }
 case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
   require(d.deviceType == LightType)
-  //contents += new Label("Intensity: " + d.consumption)
+  contents++=Seq(new Label("Intensity: "),
+  deviceFeature(d.value toString, new Dialog() {
+    title = "Intensity"
+    private val intensitySlider = new Slider(){
+      min = 0
+      max = 100
+    }
+    contents =
+      new BoxPanel(Orientation.Vertical){
+        contents++= Seq(new FlowPanel(){
+            contents++=Seq(
+              new Label("Set intensity:"),
+              intensitySlider
+            )
+          },
+          new FlowPanel(){
+            contents ++=Seq(
+              new Button("Confirm"){
+                var changed = false;
+                reactions+={
+                  case ButtonClicked(_) => {
+                    if(changed) {
+                      //TODO SEND COMMAND NEW INTENSITY
+                    }
+                    close()
+                  }
+                  case ValueChanged(_) => changed=true
+                }
+              },
+              new Button("Cancel"){
+                reactions+={
+                  case ButtonClicked(_) => close()
+                }
+              })
+          }
+        )
+    }
+  }))
 }
 case class MotionSensorPane(override val d: SimulatedMotionSensor) extends GUIDevice(d){
   require (d.deviceType == MotionSensorType)
