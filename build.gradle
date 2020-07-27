@@ -12,6 +12,11 @@ plugins {
 
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+	
+	// Apply the application plugin to add support for building a CLI application.
+	id 'application'
+	
+	id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 repositories {
@@ -34,6 +39,11 @@ dependencies {
 	
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
 	implementation 'com.typesafe.play:play-json_2.12:2.9.0'
+}
+
+application {
+	// Define the main class for the application.
+	mainClassName = "HOME.GUI"
 }
 
 compileScala {

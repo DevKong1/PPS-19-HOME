@@ -29,7 +29,7 @@ trait MQTTUtils extends JSONUtils {
 
   private val mqttUserName: String = "HOME"
   private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
-  private val brokerURL: String = "tcp://localhost:1883"
+  private val brokerURL: String = "tcp://mosquitto-service:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
 
   class ConnectionException(message: String) extends Exception(message)

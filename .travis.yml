@@ -1,13 +1,16 @@
 language: scala
 scala:
-- 2.12.2
+  - 2.12.2
 jdk:
   - openjdk8
 services:
   - docker
 before_install:
- - docker pull eclipse-mosquitto
- - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
- - chmod +x gradlew
+  - docker pull eclipse-mosquitto
+  - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
+  - chmod +x gradlew
 script:
-- ./gradlew clean build test
+  - ./gradlew clean build test
+after_success:
+  - docker-compose build
+  - docker-compose push
