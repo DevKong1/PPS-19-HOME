@@ -3,32 +3,33 @@ package HOME
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
-import HOME.Constants._
+import HOME.ConstantsTest._
 
 class MQTTTest extends AnyFunSuite with Eventually with Matchers {
-  val coordinator: Coordinator = CoordinatorImpl()
-  val light: SimulatedLight = Light("A","salotto")
+  val light: SimulatedLight = Light("A","Salotto")
 
-  //This test needs the MQTT Broker active and running
-  test("Coordinator sends commands to the light"){
-    assert(coordinator.connect)
+  test("Coordinator sends commands to the light", BrokerRequired){
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
     assert(light.connect)
     assert(light.subscribe)
     assert(!light.isOn)
-    assert(coordinator.publish(light.subTopic, "on"))
+    assert(Coordinator.publish(light.getSubTopic, "0_on"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
-    assert(coordinator.publish(light.getSubTopic, "on"))
+    assert(Coordinator.publish(light, CommandMsg(Msg.nullCommandId, Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
-    assert(coordinator.publish(light.getSubTopic, "off"))
+    assert(Coordinator.publish(light.getSubTopic, "0_off"))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.on)))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     assert(light.value == 50)
-    assert(coordinator.publish(light.getSubTopic, "setIntensity_15"))
+    assert(Coordinator.publish(light.getSubTopic, "0_setIntensity_15"))
     eventually { Thread.sleep(testSleepTime); light.value should be (15) }
-    assert(coordinator.publish(light.getSubTopic, light.deviceType.subTopicMsg + 12))
+    assert(Coordinator.publish(light, CommandMsg(3, Msg.setIntensity, 12)))
     eventually { Thread.sleep(testSleepTime); light.value should be (12) }
-    assert(coordinator.publish(light.getSubTopic, LightType.subTopicMsg + 13))
+    assert(Coordinator.publish(light, CommandMsg(4, Msg.setIntensity, 13)))
     eventually { Thread.sleep(testSleepTime); light.value shouldNot be (12) }
-    assert(coordinator.disconnect)
+    assert(Coordinator.disconnect)
     assert(light.disconnect)
   }
 }

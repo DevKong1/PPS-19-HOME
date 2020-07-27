@@ -23,7 +23,8 @@ repositories {
 dependencies {
     // Use Scala 2.12 in our library project
     implementation 'org.scala-lang:scala-library:2.12.10'
-
+    //Scala swing
+    implementation 'org.scala-lang.modules:scala-swing_2.12:2.1.1'
     // Use Scalatest for testing our library
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.scalatest:scalatest_2.12:3.2.0'
@@ -45,3 +46,9 @@ task spec(dependsOn: ['testClasses'], type: JavaExec) {
   classpath = sourceSets.test.runtimeClasspath
 }
 test.dependsOn spec
+
+task testNoBroker(dependsOn: ['testClasses'], type: JavaExec) {
+    main = 'org.scalatest.tools.Runner'
+    args = ['-R', 'build/classes/scala/test', '-o', '-l', 'HOME.tags.BrokerRequired']
+    classpath = sourceSets.test.runtimeClasspath
+}

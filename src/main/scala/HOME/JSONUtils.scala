@@ -21,62 +21,68 @@ case object SenderTypeCoordinator extends SenderType {
 }
 
 trait JSONSender {
-  var senderType: SenderType
-  var name: String
-  var lastWillTopic: String
-  var lastWillMessage: String
+  def senderType: SenderType
+  def name: String
+  def lastWillTopic: String
+  def lastWillMessage: String
 }
 
 trait JSONUtils {
   private val msgField: String = "msg"
   private val senderField: String = "sender"
   private val typeField: String = "type"
+  private val nameField: String = "name"
+  private val idField: String = "id"
+  private val roomField: String = "room"
+  private val deviceTypeField: String = "deviceType"
+  private val consumptionField: String = "consumption"
 
   private implicit val jsonSenderWrites: Writes[JSONSender] = {
     case sender@s if s.isInstanceOf[AssociableDevice] => deviceWrites.writes(sender.asInstanceOf[AssociableDevice])
-    case sender@s if s.isInstanceOf[Coordinator] => coordinatorWrites.writes(sender.asInstanceOf[Coordinator])
+    case s if s == Coordinator => coordinatorWrites.writes(Coordinator)
   }
 
   private implicit val deviceTypeWrites: Writes[DeviceType] = (deviceType: DeviceType) => Json.obj(
-    "name" -> deviceType.getSimpleClassName
+    nameField -> deviceType.getSimpleClassName
   )
 
   private implicit val deviceWrites: Writes[AssociableDevice] = (device: AssociableDevice) => Json.obj(
     typeField -> device.senderType._type,
-    "id" -> device.id,
-    "room" -> device.room,
-    "device_type" -> device.deviceType,
-    "consumption" -> device.consumption,
-    "pubTopic" -> (if (device.pubTopic == null) "" else device.pubTopic)
+    idField -> device.id,
+    roomField -> device.room,
+    deviceTypeField -> device.deviceType,
+    consumptionField -> device.consumption,
   )
 
-  private implicit val coordinatorWrites: Writes[Coordinator] = (coordinator: Coordinator) => Json.obj(
-    typeField -> coordinator.senderType._type,
-    "name" -> coordinator.name
+  private implicit val coordinatorWrites: Writes[Coordinator.type] = _ => Json.obj(
+    typeField -> Coordinator.senderType._type,
+    nameField -> Coordinator.name
   )
 
   private implicit val jsonSenderReads: Reads[JSONSender] = {
     case sender@s if (s \ typeField).validate[String].get == SenderTypeDevice._type => deviceReads.reads(sender.asInstanceOf[JsObject])
-    case sender@s if (s \ typeField).validate[String].get == SenderTypeCoordinator._type => coordinatorReads.reads(sender.asInstanceOf[JsObject])
+    case sender@s if (s \ typeField).validate[String].get == SenderTypeCoordinator._type => coordinatorReads.reads(sender)
   }
 
-  private implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ "name").read[String].map {
+  private implicit val deviceTypeReads: Reads[DeviceType] = (JsPath \ nameField).read[String].map {
     DeviceType.apply
   }
 
   private implicit val deviceReads: Reads[AssociableDevice] = (
-    (JsPath \ "id").read[String] and
-      (JsPath \ "room").read[String] and
-      (JsPath \ "device_type").read[DeviceType] and
-      (JsPath \ "consumption").read[Int] and
-      (JsPath \ "pubTopic").read[String]
+    (JsPath \ idField).read[String] and
+      (JsPath \ roomField).read[String] and
+      (JsPath \ deviceTypeField).read[DeviceType] and
+      (JsPath \ consumptionField).read[Int]
     ) (AssociableDevice.apply _)
 
-  private implicit val coordinatorReads: Reads[Coordinator] = (JsPath \ "name").read[String].map {
-    Coordinator.apply
+  private implicit val coordinatorReads: Reads[Coordinator.type] = (JsPath \ nameField).read[String].map {
+    _ => Coordinator
   }
 
+  def getMsg(command: CommandMsg, sender: JSONSender): String = getMsg(command.toString, sender)
+
   def getMsg(message: String, sender: JSONSender): String = {
+    if (message == null || sender == null) return null
     JsObject(
       Seq(
         msgField -> JsString(message),
@@ -85,31 +91,25 @@ trait JSONUtils {
     ).toString()
   }
 
-  def getMessageFromMsg(msg: String): String = {
-    toJsValue(msg) match {
-        case null => null
-        case v => (v \ msgField).validate[String].get
-      }
-  }
-
-  def getSenderFromMsg(msg: String): JSONSender = {
-    toJsValue(msg) match {
-      case null => null
-      case v => (v \ senderField).validate[JSONSender].get
+  def getMessageFromMsg(msg: String): String = toJsValue(msg) match {
+      case v if v == null => null
+      case v => (v \ msgField).validate[String].get
     }
+
+  def getSenderFromMsg[A >: Null <: JSONSender](msg: String): A = toJsValue(msg) match {
+      case v if v == null => null
+      case v => (v \ senderField).validate[JSONSender].get.asInstanceOf[A]
   }
 
-  private def toJsValue(msg: String): JsValue =
+  private def toJsValue(msg: String): JsValue = {
+    if (msg == null) return null
     Try {
-      val jsValue: JsValue = Json.parse(msg)
-      jsValue match {
-        case null => null
-        case v => v
-      }
+      Json.parse(msg)
     } match {
       case Failure(exception) =>
         throw new MalformedParametersException(s"ERROR : $exception + ${exception.getCause}")
       case Success(value) => value
-      case _ => throw new IllegalArgumentException("Unexpected result")
+      case result => this.errUnexpected(UnexpectedResult, result.get.toString())
     }
+  }
 }
