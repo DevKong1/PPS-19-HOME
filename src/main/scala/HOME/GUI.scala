@@ -250,20 +250,20 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     c(status)
     status
   }
-     border = new LineBorder(Color.BLACK, 2)
-    contents+= new devIcon(d.name,iconPath=d.deviceType.toString)
-    val deviceInfo =new GridPanel(3,3)
-    deviceInfo.contents++= Seq(
-      new Label("DeviceType: "+d.deviceType),
-      new Label("Consumption: "+d.consumption),
-      new ToggleButton(status){
-          reactions+={
-            case ButtonClicked(_) =>
-              text = switchStatus{ case ON => status = OFF case _ => status = ON }
-              // TODO: device needs to be switched on/off
-          }
-      }
-    )
+  border = new LineBorder(Color.BLACK, 2)
+  contents+= new myIcon(d.name, d.deviceType.toString)
+  val deviceInfo =new GridPanel(3,3)
+  deviceInfo.contents++= Seq(
+    new Label("DeviceType: "+d.deviceType),
+    new Label("Consumption: "+d.consumption),
+    new ToggleButton(status){
+        reactions+={
+          case ButtonClicked(_) =>
+            text = switchStatus{ case ON => status = OFF case _ => status = ON }
+            // TODO: device needs to be switched on/off
+        }
+    }
+  )
 
   contents+=deviceInfo
 
