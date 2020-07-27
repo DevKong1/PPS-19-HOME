@@ -238,7 +238,7 @@ object ChangeProfile {
 class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
-  private val allRooms = new ComboBox[DeviceType](Rooms.allRooms toSeq)
+  private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
   private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
 
