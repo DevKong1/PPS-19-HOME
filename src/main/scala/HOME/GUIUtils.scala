@@ -16,11 +16,12 @@ import scala.language.postfixOps
     def apply(windType : WindowSizeType.Value): Dimension = windType match{
       case MainW => new Dimension(width, height)
       case Dialog => new Dimension(width*WIN_PROP_W toInt,height*WIN_PROP_H toInt)
+      case AddProfile => new Dimension(width*0.4 toInt, height*0.2 toInt)
     }
   }
   object WindowSizeType extends Enumeration {
     type Type = Value
-    val MainW, Dialog = Value
+    val MainW, Dialog, AddProfile = Value
   }
 
 object IDGenerator {

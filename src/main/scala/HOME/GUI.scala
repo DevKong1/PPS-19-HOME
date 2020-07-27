@@ -119,7 +119,7 @@ object GUI extends SimpleSwingApplication {
   }
 }
 
-class CustomDeviceDialog extends Dialog {
+class AddDeviceDialog extends Dialog {
   private val dimension = WindowSize(WindowSizeType.Dialog)
   private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   private val deviceName = new TextField(10)
@@ -174,9 +174,64 @@ class CustomDeviceDialog extends Dialog {
   }
 }
 object DeviceDialog {
-  def apply(): CustomDeviceDialog = {
-    new CustomDeviceDialog()
+  def apply(): AddDeviceDialog = {
+    new AddDeviceDialog()
   }
+}
+
+class ChangeProfileDialog(delete: String) extends Dialog {
+  private val dimension = WindowSize(WindowSizeType.AddProfile)
+  private val profiles = new ComboBox[Profile](Profile.getProfiles toSeq)
+  preferredSize = dimension
+  private val dialog = new BoxPanel(Orientation.Vertical) {
+    contents += new BoxPanel(Orientation.Horizontal) {
+      contents += new FlowPanel() {
+        contents += new Label("Profiles: ")
+        contents += profiles
+      }
+    }
+    contents += applyDialog()
+  }
+  contents = dialog
+  open()
+
+  def applyDialog(): Button = {
+    delete match {
+      case "Change profile" =>
+        this.title = "Change Profile"
+        new Button("Confirm") {
+          reactions += {
+            case ButtonClicked(_) => {
+              close()
+            }
+          }
+        }
+      case "Delete profile" =>
+        this.title = "Delete Profile"
+        new Button("Delete") {
+          reactions += {
+            case ButtonClicked(_) => {
+              close()
+            }
+          }
+        }
+    }
+  }
+}
+object ChangeProfile {
+  def apply(delete: String): ChangeProfileDialog = {
+    new ChangeProfileDialog(delete)
+  }
+}
+
+class CreateProfileDialog extends Dialog {
+  private val profileName = new TextField(10)
+  private val description = new TextField(10)
+  private val allRooms = new ComboBox[DeviceType](Rooms.allRooms toSeq)
+  private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
+  title = "New Profile"
+
+
 }
 
 class HomePageLayout extends BoxPanel(Orientation.Vertical) {
@@ -204,10 +259,22 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
   }
   val profilePanel = new FlowPanel() {
     hGap = 70
-    contents += new Label("Current active profile: ")
-    contents += new Button("Change profile")
+    contents += new Label("Current active profile: " + Coordinator.getActiveProfile)
+    contents += new Button("Change profile") {
+      reactions += {
+        case ButtonClicked(_) => {
+          ChangeProfile(this.text)
+        }
+      }
+    }
     contents += new Button("Create profile")
-    contents += new Button("Delete profile")
+    contents += new Button("Delete profile") {
+      reactions += {
+        case ButtonClicked(_) => {
+          ChangeProfile(this.text)
+        }
+      }
+    }
   }
 
   contents += welcomePanel
