@@ -54,7 +54,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assert(Coordinator.disconnect)
   }
 
-  test("The coordinator correctly applies the NIGHT profile)") {
+  test("The coordinator correctly applies the NIGHT profile", BrokerRequired) {
     val tv = TV("TV1","Salotto")
     val light = Light("Light1","Salotto")
     val shutter = Shutter("Shutter1","Salotto")
@@ -95,7 +95,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.disconnect
   }
 
-  test("The custom profile builder builds and Saves a Set of instructions correctly)") {
+  test("The custom profile builder builds and Saves a Set of instructions correctly", BrokerRequired) {
     val tv = TV("TV1","Salotto")
     tv.connect
     tv.subscribe
