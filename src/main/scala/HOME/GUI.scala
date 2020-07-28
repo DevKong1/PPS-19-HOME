@@ -236,7 +236,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
       case "DEFAULT_PROFILE" => selectedProfile = constants.default_profile_name
       case _ =>
     }
-    Coordinator.activeProfile = Profile(selectedProfile)
+    //Coordinator.activeProfile = Profile(selectedProfile)
     close()
   }
 }
