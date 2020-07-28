@@ -190,7 +190,7 @@ object DeviceDialog {
   }
 }
 
-class ChangeProfileDialog(delete: String) extends Dialog {
+class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
   private val dimension = WindowSize(WindowSizeType.AddProfile)
   private val profiles = new ComboBox[Profile](Profile.getProfiles toSeq)
   preferredSize = dimension
@@ -201,19 +201,19 @@ class ChangeProfileDialog(delete: String) extends Dialog {
         contents += profiles
       }
     }
-    contents += applyDialog()
+    contents += applyDialog
   }
   contents = dialog
   open()
 
-  def applyDialog(): Button = {
+  def applyDialog: Button = {
     delete match {
       case "Change profile" =>
         this.title = "Change Profile"
         new Button("Confirm") {
           reactions += {
             case ButtonClicked(_) => {
-              close()
+              changeProfile
             }
           }
         }
@@ -228,10 +228,21 @@ class ChangeProfileDialog(delete: String) extends Dialog {
         }
     }
   }
+
+  def changeProfile : Unit = {
+    var selectedProfile = profiles.selection.item.toString
+    labelProfile.text = "Current active profile: " +  selectedProfile
+    selectedProfile match {
+      case "DEFAULT_PROFILE" => selectedProfile = constants.default_profile_name
+      case _ =>
+    }
+    Coordinator.activeProfile = Profile(selectedProfile)
+    close()
+  }
 }
 object ChangeProfile {
-  def apply(delete: String): ChangeProfileDialog = {
-    new ChangeProfileDialog(delete)
+  def apply(delete: String, labelProfile: Label): ChangeProfileDialog = {
+    new ChangeProfileDialog(delete, labelProfile)
   }
 }
 
@@ -242,7 +253,46 @@ class CreateProfileDialog extends Dialog {
   private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
 
+  contents = new GridPanel(5,2) {
+    contents += new FlowPanel() {
+      contents += new Label("Insert a profile name: ")
+      contents += profileName
+    }
+    contents += new FlowPanel() {
+      contents += new Label("Insert a description: ")
+      contents += description
+    }
+    contents += new FlowPanel() {
+      contents += new Label("Select a room: ")
+      contents += allRooms
+    }
+    contents += new FlowPanel() {
+      contents += new Label("Select a device: ")
+      contents += allDevice
+    }
+    contents += new FlowPanel() {
+      contents += new Button("Confirm")
+      contents += new Button("Cancel") {
+        reactions += {
+          case ButtonClicked(_) => {
+            close()
+          }
+        }
+      }
+    }
+  }
+  open()
 
+  //TODO: Change device's ComboBox based on selected room
+  /*def getDevices() : Unit = allRooms.selection.item match {
+    case "Bedroom" =>
+  }*/
+
+}
+object CreateProfile {
+  def apply(): CreateProfileDialog = {
+    new CreateProfileDialog()
+  }
 }
 
 class HomePageLayout extends BoxPanel(Orientation.Vertical) {
@@ -268,21 +318,28 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     contents += new Label("Alarm status")
     contents += new ToggleButton()
   }
+  val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile)
   val profilePanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents += new Label("Current active profile: " + Coordinator.getActiveProfile)
+    contents += currentProfile
     contents += new Button("Change profile") {
       reactions += {
         case ButtonClicked(_) => {
-          ChangeProfile(this.text)
+          ChangeProfile(this.text, currentProfile)
         }
       }
     }
-    contents += new Button("Create profile")
+    contents += new Button("Create profile") {
+      reactions += {
+        case ButtonClicked(_) => {
+          CreateProfile()
+        }
+      }
+    }
     contents += new Button("Delete profile") {
       reactions += {
         case ButtonClicked(_) => {
-          ChangeProfile(this.text)
+          ChangeProfile(this.text, currentProfile)
         }
       }
     }
