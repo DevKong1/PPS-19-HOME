@@ -236,7 +236,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
       case "DEFAULT_PROFILE" => selectedProfile = constants.default_profile_name
       case _ =>
     }
-    //Coordinator.activeProfile = Profile(selectedProfile)
+    Coordinator.activeProfile = Profile(selectedProfile)
     close()
   }
 }
@@ -249,8 +249,8 @@ object ChangeProfile {
 class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
-  private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
-  private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
+  //private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
+  //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
 
   contents = new GridPanel(5,2) {
@@ -263,12 +263,26 @@ class CreateProfileDialog extends Dialog {
       contents += description
     }
     contents += new FlowPanel() {
-      contents += new Label("Select a room: ")
-      contents += allRooms
+      contents += new Label("Modify device's settings: ")
+      contents += new Button("Modify") {
+        reactions += {
+          case ButtonClicked(_) => {
+            AllDevice()
+          }
+        }
+      }
+      //contents += allRooms
     }
     contents += new FlowPanel() {
-      contents += new Label("Select a device: ")
-      contents += allDevice
+      contents += new Label("Add rules: ")
+      contents += new Button("Add") {
+        reactions += {
+          case ButtonClicked(_) =>
+            AddRules()
+        }
+      }
+      //contents += new Label("Select a device: ")
+      //contents += allDevice
     }
     contents += new FlowPanel() {
       contents += new Button("Confirm")
@@ -292,6 +306,67 @@ class CreateProfileDialog extends Dialog {
 object CreateProfile {
   def apply(): CreateProfileDialog = {
     new CreateProfileDialog()
+  }
+}
+
+class AllDeviceDialog extends Dialog {
+  val panel = new BoxPanel(Orientation.Vertical)
+  //TODO: Used only for testing
+  private val light: SimulatedLight = Light("Lamp", "Bedroom")
+  private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
+  private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", "Bedroom")
+  Coordinator.addDevice(light)
+  Coordinator.addDevice(AC)
+  Coordinator.addDevice(dehumidifier)
+  title = "Change settings"
+  location = new Point(300,0)
+
+  for(i <- Coordinator.getDevices) {
+    panel.contents += new Label(i.room)
+    addDevice(PrintDevicePane(i))
+  }
+  panel.contents += new Button("Confirm") {
+    reactions += {
+      case ButtonClicked(_) => close()
+    }
+  }
+
+  contents = new ScrollPane() {
+    contents = panel
+  }
+  open()
+
+  def addDevice(dev : Component): Unit = {
+    val GAP = 5
+    panel.peer.add(Box.createVerticalStrut(GAP))
+    panel.contents += dev
+  }
+}
+object AllDevice {
+  def apply(): AllDeviceDialog = {
+    new AllDeviceDialog()
+  }
+}
+
+class AddRulesDialog extends Dialog {
+  title = "Add rules"
+  location = new Point(0,250)
+
+  contents = new GridPanel(2,2) {
+    contents += new FlowPanel() {
+      contents += new Button("Ciao")
+      contents += new Label("Miao")
+    }
+    contents += new FlowPanel() {
+      contents += new Button("Ciao")
+      contents += new Label("Miao")
+    }
+  }
+  open()
+}
+object AddRules {
+  def apply(): AddRulesDialog = {
+    new AddRulesDialog()
   }
 }
 
