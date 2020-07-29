@@ -95,7 +95,7 @@ object Profile {
   def getProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT)
 
   private case object DEFAULT_PROFILE extends Profile  {
-    override val name: String = constants.default_profile_name
+    override val name: String = Constants.default_profile_name
     override val description: String = "Default Profile"
 
     override var initialRoutine: Set[Device => Unit] = Set()

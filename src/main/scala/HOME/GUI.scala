@@ -233,7 +233,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
     var selectedProfile = profiles.selection.item.toString
     labelProfile.text = "Current active profile: " +  selectedProfile
     selectedProfile match {
-      case "DEFAULT_PROFILE" => selectedProfile = constants.default_profile_name
+      case "DEFAULT_PROFILE" => selectedProfile = Constants.default_profile_name
       case _ =>
     }
     Coordinator.activeProfile = Profile(selectedProfile)
@@ -253,7 +253,7 @@ class CreateProfileDialog extends Dialog {
   //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
 
-  contents = new GridPanel(5,2) {
+  contents = new GridPanel(6,2) {
     contents += new FlowPanel() {
       contents += new Label("Insert a profile name: ")
       contents += profileName
@@ -267,7 +267,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Modify") {
         reactions += {
           case ButtonClicked(_) => {
-            AllDevice()
+            SensorReaction()
           }
         }
       }
@@ -278,11 +278,21 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Add") {
         reactions += {
           case ButtonClicked(_) =>
-            AddRules()
+            AddProgrammedStuff()
         }
       }
       //contents += new Label("Select a device: ")
       //contents += allDevice
+    }
+    contents += new FlowPanel() {
+      contents += new Label("All active devices: ")
+      contents += new Button("Devices") {
+        reactions += {
+          case ButtonClicked(_) => {
+            AllActiveDevice()
+          }
+        }
+      }
     }
     contents += new FlowPanel() {
       contents += new Button("Confirm")
@@ -296,12 +306,6 @@ class CreateProfileDialog extends Dialog {
     }
   }
   open()
-
-  //TODO: Change device's ComboBox based on selected room
-  /*def getDevices() : Unit = allRooms.selection.item match {
-    case "Bedroom" =>
-  }*/
-
 }
 object CreateProfile {
   def apply(): CreateProfileDialog = {
@@ -309,64 +313,105 @@ object CreateProfile {
   }
 }
 
-class AllDeviceDialog extends Dialog {
-  val panel = new BoxPanel(Orientation.Vertical)
-  //TODO: Used only for testing
+class SensorReactionDialog extends Dialog {
+  //TODO: Used only for testing, need to delete those lines of code
   private val light: SimulatedLight = Light("Lamp", "Bedroom")
   private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
   private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", "Bedroom")
   Coordinator.addDevice(light)
   Coordinator.addDevice(AC)
   Coordinator.addDevice(dehumidifier)
-  title = "Change settings"
+
+  title = "Sensor Reaction"
   location = new Point(300,0)
-
-  for(i <- Coordinator.getDevices) {
-    panel.contents += new Label(i.room)
-    addDevice(PrintDevicePane(i))
-  }
-  panel.contents += new Button("Confirm") {
-    reactions += {
-      case ButtonClicked(_) => close()
-    }
-  }
-
   contents = new ScrollPane() {
-    contents = panel
+    contents = applyTemplate
+  }
+
+  def applyTemplate : BoxPanel = {
+    val panel = new BoxPanel(Orientation.Vertical)
+    for(i <- Coordinator.getDevices) {
+      val devicePanel = new BoxPanel(Orientation.Horizontal) {
+        contents += new FlowPanel() {
+          contents += new Label(i.name+""+i.room)
+          contents += new Label("On: ")
+          contents += new TextField(8)
+          contents += new Label("Do: ")
+          contents += new TextField(8)
+        }
+      }
+      panel.contents += devicePanel
+    }
+    panel
   }
   open()
-
-  def addDevice(dev : Component): Unit = {
-    val GAP = 5
-    panel.peer.add(Box.createVerticalStrut(GAP))
-    panel.contents += dev
-  }
 }
-object AllDevice {
-  def apply(): AllDeviceDialog = {
-    new AllDeviceDialog()
+object SensorReaction {
+  def apply(): SensorReactionDialog = {
+    new SensorReactionDialog()
   }
 }
 
-class AddRulesDialog extends Dialog {
-  title = "Add rules"
+class AddProgrammedStuffDialog extends Dialog {
+  title = "Add Programmed Stuff"
   location = new Point(0,250)
 
-  contents = new GridPanel(2,2) {
-    contents += new FlowPanel() {
-      contents += new Button("Ciao")
-      contents += new Label("Miao")
+  contents = new ScrollPane() {
+    contents = applyTemplate
+  }
+
+  def applyTemplate : BoxPanel = {
+    val panel = new BoxPanel(Orientation.Vertical)
+    for(i <- Coordinator.devices) {
+      val devPanel = new BoxPanel(Orientation.Horizontal) {
+        contents += new FlowPanel() {
+          contents += new Label(i.name+""+i.room)
+          contents += new BoxPanel(Orientation.Vertical) {
+            contents += new TextField(8)
+            contents += new TextField(8)
+          }
+          contents += new Button("Add")
+        }
+      }
+      panel.contents += devPanel
     }
-    contents += new FlowPanel() {
-      contents += new Button("Ciao")
-      contents += new Label("Miao")
-    }
+    panel
   }
   open()
 }
-object AddRules {
-  def apply(): AddRulesDialog = {
-    new AddRulesDialog()
+object AddProgrammedStuff {
+  def apply(): AddProgrammedStuffDialog = {
+    new AddProgrammedStuffDialog()
+  }
+}
+
+class AllActiveDeviceDialog extends Dialog {
+  title = "Active Devices"
+  location = new Point(300,250)
+
+  contents = new ScrollPane() {
+    contents = applyTemplate
+  }
+
+  def applyTemplate : BoxPanel = {
+    val panel = new BoxPanel(Orientation.Vertical)
+    for(i <- Coordinator.getDevices) {
+      val devPanel = new BoxPanel(Orientation.Horizontal) {
+        contents += new FlowPanel() {
+          contents += new Label(i.name+""+i.room)
+          contents += new Label("Do: ")
+          contents += new TextField(8)
+        }
+      }
+      panel.contents += devPanel
+    }
+    panel
+  }
+  open()
+}
+object AllActiveDevice {
+  def apply(): AllActiveDeviceDialog = {
+    new AllActiveDeviceDialog()
   }
 }
 
