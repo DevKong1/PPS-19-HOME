@@ -1,9 +1,6 @@
 package HOME
 
-import org.scalatest.PrivateMethodTester.PrivateMethod
 import org.scalatest.funsuite.AnyFunSuite
-
-import scala.swing.{ComboBox, Component}
 
 class GUITest extends AnyFunSuite {
 

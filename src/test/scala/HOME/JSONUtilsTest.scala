@@ -3,7 +3,8 @@ package HOME
 import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import HOME.Constants._
+
+import HOME.ConstantsTest._
 
 class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
 
