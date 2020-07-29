@@ -10,6 +10,8 @@ import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueCh
 import javax.swing.{Box, ImageIcon}
 import javax.swing.border.LineBorder
 
+import HOME.MyClass._
+
 sealed trait Room {
   def devices : Set[Device]
   def name : String
@@ -39,24 +41,23 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
       }
     }
 
-
-
   name toLowerCase match {
-    case "home" => contents=HomePage()
+    case "home" => contents = HomePage()
     case _ => val bp: BorderPanel = new BorderPanel {
-        /*add(new FlowPanel() {
+      /*add(new FlowPanel() {
           border = new LineBorder(Color.black,3)
           contents ++=Seq(
             //TODO: ADD BASIC SENSORS
         },BorderPanel.Position.North)*/
-        add(devicePanel, BorderPanel.Position.Center)
-        add(adDeviceBtn, BorderPanel.Position.South)
-      }
+      add(devicePanel, BorderPanel.Position.Center)
+      add(adDeviceBtn, BorderPanel.Position.South)
+    }
       contents = bp
       for (i <- devices) {
         addDevice(PrintDevicePane(i))
       }
   }
+  //First release ugly print
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
   def addDevice(dev : Component): Unit ={
@@ -73,8 +74,10 @@ object GUI extends SimpleSwingApplication {
   private val ADD = "+"
   var rooms: Set[GUIRoom] = Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
   val tp: TabbedPane = new TabbedPane {
-    for(i <- rooms) yield {pages += new TabbedPane.Page(i.name,i)}
-    pages+= new TabbedPane.Page(ADD,new BorderPanel())
+    for (i <- rooms) yield {
+      pages += new TabbedPane.Page(i.name, i)
+    }
+    pages += new TabbedPane.Page(ADD, new BorderPanel())
   }
 
   def top: MainFrame = new MainFrame {
@@ -87,10 +90,10 @@ object GUI extends SimpleSwingApplication {
           name <- getRoomName
         } yield {
           val newRoom = new GUIRoom(name)
-          val newRoomPane = new TabbedPane.Page(name,  newRoom)
+          val newRoomPane = new TabbedPane.Page(name, newRoom)
           rooms += newRoom
           tp.selection.page = newRoomPane
-          tp.pages.insert(last.index,newRoomPane)
+          tp.pages.insert(last.index, newRoomPane)
         }
     }
     //used to set items in the main window inside a vertical BoxPanel
@@ -116,7 +119,7 @@ object GUI extends SimpleSwingApplication {
         Swing.EmptyIcon,
         Nil, "")
       //TODO: THINK OF A MORE FUNCTIONAL WAY TO IMPLEMENT INPUT CHECK
-      if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(ADD)&& !tp.pages.exists(page => page.title equals name.get)) {
+      if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(ADD) && !tp.pages.exists(page => page.title equals name.get)) {
         Rooms.addRoom(name.get)
         name
       } else {
@@ -126,6 +129,11 @@ object GUI extends SimpleSwingApplication {
         None
       }
     }
+  }
+
+  def handleUpdateMsg(msg: CommandMsg): Unit = msg.command match {
+    case Msg.confirmUpdate => println("Success from request " + msg.id) //TODO update GUI
+    case _ => this.errUnexpected(UnexpectedMessage, msg.toString)
   }
 }
 
@@ -237,7 +245,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
       case "DEFAULT_PROFILE" => selectedProfile = Constants.default_profile_name
       case _ =>
     }
-    Coordinator.activeProfile = Profile(selectedProfile)
+    //Coordinator.activeProfile = Profile(selectedProfile)
     close()
   }
 }
@@ -483,9 +491,15 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
 
   def getCurrentTime : String = {
     val today = Calendar.getInstance().getTime
-    val currentHour = new SimpleDateFormat("hh").format(today)
-    val currentMinute = new SimpleDateFormat("mm").format(today)
-    val amOrPm = new SimpleDateFormat("a").format(today)
+
+    // create the date/time formatters
+    val minuteFormat = new SimpleDateFormat("mm")
+    val hourFormat = new SimpleDateFormat("hh")
+    val amPmFormat = new SimpleDateFormat("a")
+
+    val currentHour = hourFormat.format(today)
+    val currentMinute = minuteFormat.format(today)
+    val amOrPm = amPmFormat.format(today)
 
     currentHour+":"+currentMinute+" " + amOrPm
   }
