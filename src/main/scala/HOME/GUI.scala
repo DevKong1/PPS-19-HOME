@@ -14,8 +14,9 @@ sealed trait Room {
   def devices : Set[Device]
   def name : String
 }
-sealed trait EditableFeature {
+sealed trait EditableFeature{
   def update(id: String, device : Device, updateType: String)
+  def getVal : String
 }
 
 class GUIRoom(override val name:String) extends ScrollPane with Room {
@@ -497,18 +498,54 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     verticalTextPosition = Alignment.Bottom
   }
 }
-class DeviceFeature[A <: RichWindow](txt: String, setterComponent: A ) extends Label with EditableFeature{
-  text = txt
+class DeviceFeature[A <: Component with EditableFeature](featureTitle : String, initialValue: String, setterComponent: A ) extends Label {
+  text = initialValue
   border = new LineBorder(Color.black,1)
   reactions+={
-    case MouseClicked(_,_,_,_,_) => setterComponent open
+    case MouseClicked(_,_,_,_,_) => new Dialog(){
+      title = featureTitle
+      private var changed = false
+      private val value : Label = new Label("Value")
+
+      contents = new BoxPanel(Orientation.Vertical) {
+        contents ++= Seq(new FlowPanel() {
+          contents ++= Seq(
+            new Label("Set "+featureTitle+": "),
+            setterComponent,
+            value
+          )
+        },
+          new FlowPanel() {
+            contents ++= Seq(
+              new Button("Confirm") {
+                reactions += {
+                  case ButtonClicked(_) => if (changed) {
+                    println(setterComponent.getVal)
+                    //TODO: Update val
+                    close()
+                  }else close()
+                }
+              },
+              new Button("Cancel") {
+                reactions += {
+                  case ButtonClicked(_) => close()
+                }
+              })
+          }
+        )
+      }
+      reactions+={
+        case ValueChanged(_) => changed = true; value.text = setterComponent getVal
+      }
+      listenTo(setterComponent)
+      open()
+    }
   }
   listenTo(mouse.clicks)
   this.visible = true
-  override def update(id: String, device: Device, updateType: String): Unit = ???
 }
 object Feature{
-  def apply[A<:RichWindow](text:String,setterComponent:A): DeviceFeature[A] = new DeviceFeature(text,setterComponent)
+  def apply[A<: Component with EditableFeature](title:String,text:String,setterComponent:A): DeviceFeature[A] = new DeviceFeature(title,text,setterComponent)
 }
 
 object PrintDevicePane {
@@ -529,35 +566,35 @@ object PrintDevicePane {
 case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
   require (d.deviceType == AirConditionerType)
   contents++=Seq(new Label("Temperature: "),
-  Feature(d.value toString,SliderFeature("Temperature",d.minValue,d.maxValue)))
+  Feature("Temperature",d.value toString,SliderFeature(d.minValue,d.maxValue)))
 }//TODO: DONE
 case class DehumidifierPane(override val d: SimulatedDehumidifier) extends GUIDevice(d){
   require (d.deviceType == DehumidifierType)
   contents++=Seq(new Label("Humidity %: "),
-    Feature(d.value toString,SliderFeature("Humidity",d.minValue,d.maxValue)))
+    Feature("Humidity",d.value toString,SliderFeature(d.minValue,d.maxValue)))
 } //TODO:DONE
 case class DishWasherPane(override val d: SimulatedDishWasher) extends GUIDevice(d){
   require (d.deviceType == DishWasherType)
   contents++= Seq(
     new Label("Washing program: "),
-    Feature(d.getWashingProgram toString,ListFeature("WashingProgram",Seq(DishWasherProgram.DIRTY,DishWasherProgram.FAST,DishWasherProgram.FRAGILE)map(_ toString))),
+    Feature("Washing program",d.getWashingProgram toString,ListFeature(Seq(DishWasherProgram.DIRTY,DishWasherProgram.FAST,DishWasherProgram.FRAGILE)map(_ toString))),
     new Label("Extras: "),
-    Feature("Extra",ListFeature("Extras",Seq(DishWasherExtra.SuperDirty,DishWasherExtra.SuperHygiene,DishWasherExtra.SuperSteam)map(_ toString))),
+    Feature("Extra","Extra",ListFeature(Seq(DishWasherExtra.SuperDirty,DishWasherExtra.SuperHygiene,DishWasherExtra.SuperSteam)map(_ toString))),
   )
 } //TODO: DONE
 case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
   require(d.deviceType == LightType)
   contents++=Seq(new Label("Intensity: "),
-  Feature(d.value toString,SliderFeature("Intensity",d.minValue,d.maxValue)))
+  Feature("Intensity",d.value toString,SliderFeature(d.minValue,d.maxValue)))
 } //TODO: DONE
 case class OvenPane(override val d: SimulatedOven) extends GUIDevice(d){ //TODO: DONE
   require (d.deviceType == OvenType)
   println(d.maxValue)
   contents++=Seq(
     new Label("Oven temperature: "),
-    Feature(d.value toString, SliderFeature("Temperature",d.minValue,d.maxValue)),
+    Feature("Oven temperature",d.value toString, SliderFeature(d.minValue,d.maxValue)),
     new Label("Oven Mode: "),
-    Feature(d.getOvenMode toString, ListFeature("Mode",Seq(OvenMode.CONVENTIONAL,OvenMode.DEFROSTING,OvenMode.GRILL,OvenMode.LOWER,
+    Feature("Oven mode",d.getOvenMode toString, ListFeature(Seq(OvenMode.CONVENTIONAL,OvenMode.DEFROSTING,OvenMode.GRILL,OvenMode.LOWER,
       OvenMode.UPPER,OvenMode.VENTILATED)map(_ toString)))
   )
 }//TODO: DONE
@@ -569,7 +606,7 @@ case class ShutterPane(override val d: SimulatedShutter) extends GUIDevice(d){
 case class StereoPane(override val d: SimulatedStereoSystem) extends GUIDevice(d){
   contents++=Seq(
     new Label("Volume: "),
-    Feature(d.value toString,SliderFeature("Volume",d.minValue,d.maxValue))
+    Feature("Volume",d.value toString,SliderFeature(d.minValue,d.maxValue))
   )
 } //TODO: DONE
 case class ThermometerPane(override val d: SimulatedThermometer) extends GUIDevice(d){
@@ -579,92 +616,31 @@ case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
   require (d.deviceType == TvType)
   contents++=Seq(
     new Label("Volume: "),
-    Feature(d.value toString,SliderFeature("Volume",d.minValue,d.maxValue))
+    Feature("Volume",d.value toString,SliderFeature(d.minValue,d.maxValue))
   )
 } //TODO: DONE
 case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
   require (d.deviceType == WashingMachineType)
   contents++= Seq(
   new Label("Working mode: "),
-  Feature(d.getWashingType toString,ListFeature("Mode",Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString))),
+  Feature("Working mode",d.getWashingType toString,ListFeature(Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString))),
   new Label("Extras: "),
-  Feature("Extra",ListFeature("Extras",Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString))),
+  Feature("Extras","Extra",ListFeature(Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString))),
   new Label("RPM: "),
-  Feature(d.getRPM toString,ListFeature("RPM",Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)))
+  Feature("RMP",d.getRPM toString,ListFeature(Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)))
   )
 } //TODO: DONE
 
 
-case class SliderFeature(text:String, mini: Int, maxi: Int) extends Dialog {
-  title = text
-  private var changed = false
-  private val slider = new Slider(){
-    this.min = mini
-    this.max = maxi
-  }
-  private val value : Label = new Label("Value")
-
-  contents = new BoxPanel(Orientation.Vertical) {
-      contents ++= Seq(new FlowPanel() {
-        contents ++= Seq(
-          new Label("Set "+text+": "),
-          slider,
-          value
-        )
-      },
-        new FlowPanel() {
-          contents ++= Seq(
-            new Button("Confirm") {
-              reactions += {
-                case ButtonClicked(_) => if (changed) {
-                  println(slider.value)
-                  //TODO: Update val
-                  close()
-                }else close()
-              }
-            },
-            new Button("Cancel") {
-              reactions += {
-                case ButtonClicked(_) => close()
-              }
-            })
-        }
-      )
-    }
-  reactions+={
-    case ValueChanged(_) => changed = true; value.text = slider.value.toString
-  }
-  listenTo(slider)
+case class SliderFeature(mini : Int, maxi: Int) extends Slider with EditableFeature {
+  min = mini
+  max = maxi
+  override def update(id: String, device: Device, updateType: String): Unit = println("Update")
+  override def getVal :String = value toString
 }
-case class ListFeature(text:String,values: Seq[String]) extends Dialog{
-  title = text
-  private val lw = new ComboBox(values)
-  contents =
-    new BoxPanel(Orientation.Vertical) {
-      contents ++= Seq(new FlowPanel() {
-        contents ++= Seq(
-          new Label("Set "+text+": "),
-          lw,
-        )
-      },
-        new FlowPanel() {
-          contents ++= Seq(
-            new Button("Confirm") {
-              reactions += {
-                case ButtonClicked(_) =>
-                  println(lw.selection.item)
-                  //TODO: Update val
-                  close()
-              }
-            },
-            new Button("Cancel") {
-              reactions += {
-                case ButtonClicked(_) => close()
-              }
-            })
-        }
-      )
-    }
+case class ListFeature(items: Seq[String]) extends ComboBox(items) with EditableFeature {
+  override def update(id: String, device: Device, updateType: String): Unit = println("sdf")
+  override def getVal : String = selection.item
 
 }
 
