@@ -13,4 +13,5 @@ script:
   - ./gradlew clean -x test -x spec build testNoBroker
 after_success:
   - docker-compose build
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker-compose push
