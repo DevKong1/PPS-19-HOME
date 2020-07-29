@@ -272,22 +272,22 @@ class CreateProfileDialog extends Dialog {
       contents += description
     }
     contents += new FlowPanel() {
-      contents += new Label("Modify device's settings: ")
+      contents += new Label("On activation: ")
       contents += new Button("Modify") {
         reactions += {
           case ButtonClicked(_) => {
-            SensorReaction()
+            AllDevice()
           }
         }
       }
       //contents += allRooms
     }
     contents += new FlowPanel() {
-      contents += new Label("Add rules: ")
+      contents += new Label("On sensor changed: ")
       contents += new Button("Add") {
         reactions += {
           case ButtonClicked(_) =>
-            AddProgrammedStuff()
+            SensorReaction()
         }
       }
       //contents += new Label("Select a device: ")
@@ -298,7 +298,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Devices") {
         reactions += {
           case ButtonClicked(_) => {
-            AllActiveDevice()
+            AllDevice()
           }
         }
       }
@@ -324,13 +324,13 @@ object CreateProfile {
 
 class SensorReactionDialog extends Dialog {
   //TODO: Used only for testing, need to delete those lines of code
-  private val light: SimulatedLight = Light("Lamp", "Bedroom")
-  private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
-  private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", "Bedroom")
-  Coordinator.addDevice(light)
-  Coordinator.addDevice(AC)
-  Coordinator.addDevice(dehumidifier)
-
+  private val motionSensor = MotionSensor("Motion","Bedroom")
+  private val hygrometer = Hygrometer("Hygro","Bedroom")
+  private val photometer = Photometer("Photo","Bedroom")
+  Coordinator.addDevice(motionSensor)
+  Coordinator.addDevice(hygrometer)
+  Coordinator.addDevice(photometer)
+  //private val sensors = new ComboBox[Device](Coordinator.getDevices.filter(_.isInstanceOf[SensorAssociableDevice[Any]]) toSeq)
   title = "Sensor Reaction"
   location = new Point(300,0)
   contents = new ScrollPane() {
@@ -341,17 +341,26 @@ class SensorReactionDialog extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devicePanel = new BoxPanel(Orientation.Horizontal) {
-        contents += new FlowPanel() {
-          contents += new Label(i.name+""+i.room)
-          contents += new Label("On: ")
-          contents += new TextField(8)
-          contents += new Label("Do: ")
-          contents += new TextField(8)
+      if(i.isInstanceOf[SensorAssociableDevice[Any]]) {
+          contents += new FlowPanel() {
+            contents += new Label(i.name + "" + i.room)
+            contents += new Label("On: ")
+            contents += applyComponent(i)
+            contents += new TextField(8)
+            contents += new Button("Do")
+          }
         }
       }
       panel.contents += devicePanel
     }
     panel
+  }
+
+  def applyComponent(dev: Device) : Component = dev.deviceType match {
+    case MotionSensorType => new ComboBox[String](Set("Detecting", "Not detecting") toSeq)
+    case HygrometerType => new ComboBox[String](Set("Humidity =", "Humidity >=", "Humidity <=", "Humidity >", "Humidity <") toSeq)
+    case PhotometerType => new ComboBox[String](Set("Intensity =", "Intensity >=", "Intensity <=", "Intensity >", "Intensity <") toSeq)
+    case ThermometerType => new ComboBox[String](Set("Temperature =", "Temperature >=", "Temperature <=", "Temperature >", "Temperature <") toSeq)
   }
   open()
 }
@@ -394,8 +403,16 @@ object AddProgrammedStuff {
   }
 }
 
-class AllActiveDeviceDialog extends Dialog {
-  title = "Active Devices"
+class AllDeviceDialog extends Dialog {
+  private val light: SimulatedLight = Light("Lamp", "Bedroom")
+  private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
+  private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", "Bedroom")
+  private val oven: SimulatedTV = TV("TV", "Kitchen")
+  Coordinator.addDevice(light)
+  Coordinator.addDevice(AC)
+  Coordinator.addDevice(dehumidifier)
+  Coordinator.addDevice(oven)
+  title = "All Devices"
   location = new Point(300,250)
 
   contents = new ScrollPane() {
@@ -406,21 +423,41 @@ class AllActiveDeviceDialog extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal) {
-        contents += new FlowPanel() {
-          contents += new Label(i.name+""+i.room)
-          contents += new Label("Do: ")
-          contents += new TextField(8)
+        if(!i.isInstanceOf[SensorAssociableDevice[Any]]) {
+          contents += new FlowPanel() {
+            contents += new Label(i.name+""+i.room)
+            contents += new Label("Do: ")
+            MapDeviceCommands.apply(i)
+            for(a <- MapDeviceCommands.getCommands) {
+              contents += new BoxPanel(Orientation.Vertical) {
+                contents += applyComponent(a)
+                if(applyComponent(a).isInstanceOf[Label]) {
+                  contents += new TextField(10)
+                }
+              }
+            }
+            contents += new Button("Apply")
+            //contents += new ComboBox[String](MapDeviceCommands.getCommands toSeq)
+          }
         }
       }
       panel.contents += devPanel
     }
+    panel.contents += new FlowPanel() {
+      contents += new Button("Confirm")
+    }
     panel
+  }
+
+  def applyComponent(command: String): Component = command match {
+    case Msg.on | Msg.off | Msg.mute => new ToggleButton(command)
+    case _ => new Label(command)
   }
   open()
 }
-object AllActiveDevice {
-  def apply(): AllActiveDeviceDialog = {
-    new AllActiveDeviceDialog()
+object AllDevice {
+  def apply(): AllDeviceDialog = {
+    new AllDeviceDialog()
   }
 }
 
