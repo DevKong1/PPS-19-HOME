@@ -105,20 +105,21 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
   test("The custom profile builder builds and Saves a Set of instructions correctly", BrokerRequired) {
     val tv = TV("TV1","Salotto")
-    tv.connect
-    tv.subscribe
 
     assert(!tv.isOn)
     assert(tv.value == 50)
 
-    Coordinator.connect
-    Coordinator.addDevice(tv)
+    prepareDevices(tv)
 
     val commands: Set[(Device,CommandMsg)] = Set((tv,CommandMsg(cmd = Msg.on)), (tv,CommandMsg(cmd = Msg.mute)))
     val generatedCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(commands)
+    val temperatureCommands: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
+    val generatedTemperatureCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(temperatureCommands)
+    val temperatureCheck = CustomProfileBuilder.generateCheckFunction(">",50)
+
     val dummySet: Set[Device => Unit] = Set({_.id})
     val dummyCheck: Int => Boolean = _ => false
-    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, dummyCheck , dummySet, dummyCheck, dummySet,
+    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, temperatureCheck, generatedTemperatureCommands, dummyCheck, dummySet,
       dummyCheck, dummySet, dummySet,dummySet,{})
 
     Profile.addProfile(builtProfile)
@@ -128,12 +129,13 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
-    tv.disconnect
-    Coordinator.removeAllDevices()
+    Coordinator.activeProfile.onThermometerNotification("Salotto", 51)
+    eventually { Thread.sleep(testSleepTime); tv.value should be (100) }
+
     Profile.removeProfile("Custom1")
     assert(!Profile.savedProfiles.contains(builtProfile))
 
-    Coordinator.disconnect
     Coordinator.setProfile(Profile(Constants.default_profile_name))
+    concludeTest(tv)
   }
 }

@@ -53,6 +53,9 @@ case object UnexpectedResult extends Unexpected {
 case object UnexpectedProfile extends Unexpected {
   override var item: String = "profile"
 }
+case object UnexpectedValue extends Unexpected {
+  override var item: String = "value"
+}
 
 trait WashingType
 object WashingType {

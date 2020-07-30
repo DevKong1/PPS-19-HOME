@@ -246,6 +246,30 @@ case class CustomProfile(override val name: String, override val description: St
 
 object CustomProfileBuilder {
 
+  def generateCheckFunction(symbol: String, value: Int): Int => Boolean = symbol match {
+    case "=" => {
+      case int: Int if int == value => true
+      case _ => false
+    }
+    case ">=" => {
+      case int: Int if int >= value => true
+      case _ => false
+    }
+    case "<=" => {
+      case int: Int if int <= value => true
+      case _ => false
+    }
+    case "<" => {
+      case int: Int if int < value => true
+      case _ => false
+    }
+    case ">" => {
+      case int: Int if int > value => true
+      case _ => false
+    }
+    case _ => this.errUnexpected(UnexpectedValue, symbol)
+  }
+
   //Set of device and command
   def generateCommandSet(commands: Set[(Device,CommandMsg)]): Set[Device => Unit] = {
     var result: Set[Device => Unit] = Set.empty
