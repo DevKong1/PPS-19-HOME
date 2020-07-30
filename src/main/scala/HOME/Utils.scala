@@ -6,6 +6,7 @@ import scala.language.implicitConversions
 
 object Constants {
   def default_profile_name: String = "DEFAULT"
+  def dayLightValue: Int = 40
 }
 
 case class MyClass(_class: Any) {

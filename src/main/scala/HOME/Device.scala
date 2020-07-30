@@ -118,7 +118,9 @@ sealed trait ChangeableValue extends Device {
   var value : Int
 
   private def _mapValue: Int => Int = ValueChecker(minValue,maxValue)(_)
+
   def setValue(newValue: Int): Boolean = { value = _mapValue(newValue); true}
+  def getValue: Int = value
 }
 
 sealed trait MutableExtras[A <: GenericExtra] extends Device {
