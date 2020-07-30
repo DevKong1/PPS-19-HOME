@@ -170,11 +170,11 @@ class AddDeviceDialog extends Dialog {
           }
         },
         new Button("Cancel") {
-        reactions += {
-          case ButtonClicked(_) =>
-            close()
-        }
-      })
+          reactions += {
+            case ButtonClicked(_) =>
+              close()
+          }
+        })
     }
     contents++= Seq(labels,buttons)
   }
@@ -276,11 +276,10 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Modify") {
         reactions += {
           case ButtonClicked(_) => {
-            AllDevice()
+            AllDevice(Rooms.allRooms, false)
           }
         }
       }
-      //contents += allRooms
     }
     contents += new FlowPanel() {
       contents += new Label("On sensor changed: ")
@@ -290,15 +289,13 @@ class CreateProfileDialog extends Dialog {
             SensorReaction()
         }
       }
-      //contents += new Label("Select a device: ")
-      //contents += allDevice
     }
     contents += new FlowPanel() {
-      contents += new Label("All active devices: ")
+      contents += new Label("Programmed Stuff: ")
       contents += new Button("Devices") {
         reactions += {
           case ButtonClicked(_) => {
-            AllDevice()
+            AllDevice(Rooms.allRooms, true)
           }
         }
       }
@@ -341,13 +338,17 @@ class SensorReactionDialog extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devicePanel = new BoxPanel(Orientation.Horizontal) {
-      if(i.isInstanceOf[SensorAssociableDevice[Any]]) {
+        if(i.isInstanceOf[SensorAssociableDevice[Any]]) {
           contents += new FlowPanel() {
-            contents += new Label(i.name + "" + i.room)
+            contents += new Label(i.name + "-" + i.room)
             contents += new Label("On: ")
             contents += applyComponent(i)
             contents += new TextField(8)
-            contents += new Button("Do")
+            contents += new Button("Do") {
+              reactions += {
+                case ButtonClicked(_) => roomsDevices(i.room)
+              }
+            }
           }
         }
       }
@@ -361,6 +362,10 @@ class SensorReactionDialog extends Dialog {
     case HygrometerType => new ComboBox[String](Set("Humidity =", "Humidity >=", "Humidity <=", "Humidity >", "Humidity <") toSeq)
     case PhotometerType => new ComboBox[String](Set("Intensity =", "Intensity >=", "Intensity <=", "Intensity >", "Intensity <") toSeq)
     case ThermometerType => new ComboBox[String](Set("Temperature =", "Temperature >=", "Temperature <=", "Temperature >", "Temperature <") toSeq)
+  }
+
+  def roomsDevices(room: String) : Dialog = {
+    AllDevice(Set(room), false)
   }
   open()
 }
@@ -403,10 +408,10 @@ object AddProgrammedStuff {
   }
 }
 
-class AllDeviceDialog extends Dialog {
+class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
   private val light: SimulatedLight = Light("Lamp", "Bedroom")
   private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
-  private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", "Bedroom")
+  private val dehumidifier: SimulatedOven = Oven("Dehumidifier", "Bedroom")
   private val oven: SimulatedTV = TV("TV", "Kitchen")
   Coordinator.addDevice(light)
   Coordinator.addDevice(AC)
@@ -423,9 +428,17 @@ class AllDeviceDialog extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal) {
-        if(!i.isInstanceOf[SensorAssociableDevice[Any]]) {
-          contents += new FlowPanel() {
-            contents += new Label(i.name+""+i.room)
+        if(!i.isInstanceOf[SensorAssociableDevice[Any]] && rooms.contains(i.room)) {
+          addDevice(PrintDevicePane(i), panel)
+          if(isRoutine) {
+            contents += new Label("Start at: ")
+            contents += new TextField(8)
+            contents += new Label("End at: ")
+            contents += new TextField(8)
+          }
+          contents += new Button("Apply")
+          /*contents += new FlowPanel() {
+            contents += new Label(i.name+"-"+i.room)
             contents += new Label("Do: ")
             MapDeviceCommands.apply(i)
             for(a <- MapDeviceCommands.getCommands) {
@@ -436,13 +449,26 @@ class AllDeviceDialog extends Dialog {
                 }
               }
             }
+            if(isRoutine) {
+              contents += new Label("Start at: ")
+              contents += new TextField(8)
+              contents += new Label("End at: ")
+              contents += new TextField(8)
+            }
             contents += new Button("Apply")
             //contents += new ComboBox[String](MapDeviceCommands.getCommands toSeq)
-          }
+          }*/
         }
       }
       panel.contents += devPanel
     }
+
+    def addDevice(dev : Component, panel: BoxPanel): Unit ={
+      val GAP = 5
+      panel.peer.add(Box.createVerticalStrut(GAP))
+      panel.contents += dev
+    }
+
     panel.contents += new FlowPanel() {
       contents += new Button("Confirm")
     }
@@ -456,8 +482,8 @@ class AllDeviceDialog extends Dialog {
   open()
 }
 object AllDevice {
-  def apply(): AllDeviceDialog = {
-    new AllDeviceDialog()
+  def apply(rooms: Set[String], isRoutine: Boolean): AllDeviceDialog = {
+    new AllDeviceDialog(rooms, isRoutine)
   }
 }
 
@@ -549,29 +575,33 @@ object HomePage {
 
 abstract class GUIDevice(val d : Device) extends FlowPanel{
   //private val FONT_SIZE : Int = 18
-   val ON = "ON"
+  val ON = "ON"
   //OFF is lazy because of Shutter type, allowing to overwrite its value before using it as button text
-   lazy val OFF = "OFF"
+  lazy val OFF = "OFF"
   private var status = OFF
   /** BASIC TEMPLATE */
   val switchStatus: (String => Unit) => String = (c : String => Unit) => {
     c(status)
     status
   }
-     border = new LineBorder(Color.BLACK, 2)
-    contents+= new myIcon(d.name,d.deviceType.toString)
-    val deviceInfo =new GridPanel(3,3)
-    deviceInfo.contents++= Seq(
-      new Label("DeviceType: "+d.deviceType),
-      new Label("Consumption: "+d.consumption),
-      new ToggleButton(status){
-          reactions+={
-            case ButtonClicked(_) =>
-              text = switchStatus{ case ON => status = OFF case _ => status = ON }
-              // TODO: device needs to be switched on/off
-          }
+  border = new LineBorder(Color.BLACK, 2)
+  contents+= new myIcon(d.name,d.deviceType.toString)
+  val deviceInfo =new GridPanel(4,4)
+  deviceInfo.contents++= Seq(
+    new Label("DeviceType: "+d.deviceType),
+    new Label("Consumption: "+d.consumption),
+    new ToggleButton(status){
+      reactions+={
+        case ButtonClicked(_) =>
+          text = switchStatus{ case ON => status = OFF case _ => status = ON }
+        // TODO: device needs to be switched on/off
       }
-    )
+    }
+  )
+
+  if(d.deviceType == TvType) {
+    deviceInfo.contents+=new ToggleButton("Mute")
+  }
   contents+=deviceInfo
 
 
@@ -584,7 +614,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
    *
    *
    **/
-   private class myIcon(name:String, iconPath :String) extends Label{
+  private class myIcon(name:String, iconPath :String) extends Label{
     private val JPG = ".jpg"
     text=name
     border = new LineBorder(Color.black,1)
@@ -662,7 +692,7 @@ object PrintDevicePane {
 case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
   require (d.deviceType == AirConditionerType)
   contents++=Seq(new Label("Temperature: "),
-  Feature("Temperature",d.value toString,SliderFeature(d.minValue,d.maxValue)))
+    Feature("Temperature",d.value toString,SliderFeature(d.minValue,d.maxValue)))
 }//TODO: DONE
 case class DehumidifierPane(override val d: SimulatedDehumidifier) extends GUIDevice(d){
   require (d.deviceType == DehumidifierType)
@@ -681,7 +711,7 @@ case class DishWasherPane(override val d: SimulatedDishWasher) extends GUIDevice
 case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
   require(d.deviceType == LightType)
   contents++=Seq(new Label("Intensity: "),
-  Feature("Intensity",d.value toString,SliderFeature(d.minValue,d.maxValue)))
+    Feature("Intensity",d.value toString,SliderFeature(d.minValue,d.maxValue)))
 } //TODO: DONE
 case class OvenPane(override val d: SimulatedOven) extends GUIDevice(d){ //TODO: DONE
   require (d.deviceType == OvenType)
@@ -718,12 +748,12 @@ case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
 case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
   require (d.deviceType == WashingMachineType)
   contents++= Seq(
-  new Label("Working mode: "),
-  Feature("Working mode",d.getWashingType toString,ListFeature(Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString))),
-  new Label("Extras: "),
-  Feature("Extras","Extra",ListFeature(Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString))),
-  new Label("RPM: "),
-  Feature("RMP",d.getRPM toString,ListFeature(Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)))
+    new Label("Working mode: "),
+    Feature("Working mode",d.getWashingType toString,ListFeature(Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString))),
+    new Label("Extras: "),
+    Feature("Extras","Extra",ListFeature(Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString))),
+    new Label("RPM: "),
+    Feature("RMP",d.getRPM toString,ListFeature(Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)))
   )
 } //TODO: DONE
 
