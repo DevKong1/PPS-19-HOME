@@ -103,6 +103,7 @@ object GUI extends SimpleSwingApplication {
       //TODO: THINK OF A MORE FUNCTIONAL WAY TO IMPLEMENT INPUT CHECK
       if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(ADD)&& !tp.pages.exists(page => page.title equals name.get)) {
         Rooms.addRoom(name.get)
+		    Coordinator.connect
         name
       } else {
         if (name.isDefined) {
