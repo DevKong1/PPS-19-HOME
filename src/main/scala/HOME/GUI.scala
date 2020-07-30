@@ -579,30 +579,33 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
   //OFF is lazy because of Shutter type, allowing to overwrite its value before using it as button text
   lazy val OFF = "OFF"
   private var status = OFF
+  private val devType = new Label("DeviceType: "+d.deviceType)
+  private val statusButton = new ToggleButton(status) {
+    reactions += {
+      case ButtonClicked(_) =>
+        this.text = switchStatus { case ON => status = OFF case _ => status = ON }
+      // TODO: device needs to be switched on/off
+    }
+  }
   /** BASIC TEMPLATE */
-  val switchStatus: (String => Unit) => String = (c : String => Unit) => {
+  val switchStatus: (String => Unit) => String = (c: String => Unit) => {
     c(status)
     status
   }
+
   border = new LineBorder(Color.BLACK, 2)
-  contents+= new myIcon(d.name,d.deviceType.toString)
-  val deviceInfo =new GridPanel(4,4)
-  deviceInfo.contents++= Seq(
-    new Label("DeviceType: "+d.deviceType),
-    new Label("Consumption: "+d.consumption),
-    new ToggleButton(status){
-      reactions+={
-        case ButtonClicked(_) =>
-          text = switchStatus{ case ON => status = OFF case _ => status = ON }
-        // TODO: device needs to be switched on/off
-      }
-    }
+  contents += new myIcon(d.name, d.deviceType.toString)
+  val deviceInfo = new GridPanel(3, 3)
+  deviceInfo.contents ++= Seq(
+    devType,
+    new Label("Consumption: " + d.consumption),
+    statusButton
   )
 
-  if(d.deviceType == TvType) {
-    deviceInfo.contents+=new ToggleButton("Mute")
+  if (d.deviceType == TvType) {
+    deviceInfo.contents += new ToggleButton("Mute")
   }
-  contents+=deviceInfo
+  contents += deviceInfo
 
 
 
