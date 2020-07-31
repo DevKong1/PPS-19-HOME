@@ -11,4 +11,4 @@ before_install:
   - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
   - chmod +x gradlew
 script:
-  - xvfb-run gradle clean build test
+  - ./gradlew clean build test
