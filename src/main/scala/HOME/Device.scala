@@ -37,6 +37,24 @@ sealed trait Device extends JSONSender {
   require(Rooms.allRooms contains room, this.errUnexpected(UnexpectedRoom, room))
 }
 
+object Device {
+
+  def apply(devType: String,name:String,room : String) : Option[Device] = DeviceType(devType) match{
+    case LightType => Some(Light(name,room))
+    case AirConditionerType => Some(AirConditioner(name,room))
+    case DehumidifierType => Some(Dehumidifier(name,room))
+    case ShutterType => Some(Shutter(name,room))
+    case BoilerType => Some(Boiler(name,room))
+    case TvType => Some(TV(name,room))
+    case WashingMachineType => Some(WashingMachine(name,room))
+    case DishWasherType => Some(DishWasher(name,room))
+    case OvenType => Some(Oven(name,room))
+    case StereoSystemType => Some(StereoSystem(name,room))
+    case _ => None
+  }
+
+}
+
 object AssociableDevice {
   //Used during the registration to simulate the subscriber device
   class AssociableDeviceImpl(override val id: String, override val room: String, override val deviceType: DeviceType,

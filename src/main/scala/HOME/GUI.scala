@@ -148,7 +148,7 @@ class AddDeviceDialog extends Dialog {
       contents ++= Seq(new Label("Device name: "),deviceName,new Label("Device type: "),deviceType)
     }
     private val buttons = new FlowPanel() {
-      contents ++=Seq(
+      contents ++= Seq(
         new Button("Create"){
           reactions += {
             case ButtonClicked(_) =>
@@ -158,7 +158,7 @@ class AddDeviceDialog extends Dialog {
               if(name.trim.length > 0){
                 for {
                   i <- GUI.rooms.find(_.name equals currentRoom)
-                  c <- stringToDevice(devType,name,currentRoom)
+                  c <- Device(devType,name,currentRoom)
                 }yield{
                   println(i)
                   println(c)
@@ -179,19 +179,6 @@ class AddDeviceDialog extends Dialog {
     contents++= Seq(labels,buttons)
   }
   open()
-  def stringToDevice(devType: String,name:String,room : String) : Option[Device] = devType match{
-    case "LightType" => Some(Light(name,room))
-    case "AirConditionerType" => Some(AirConditioner(name,room))
-    case "DehumidifierType" => Some(Dehumidifier(name,room))
-    case "ShutterType" => Some(Shutter(name,room))
-    case "BoilerType" => Some(Boiler(name,room))
-    case "TvType" => Some(TV(name,room))
-    case "WashingMachineType" => Some(WashingMachine(name,room))
-    case "DishWasherType" => Some(DishWasher(name,room))
-    case "OvenType" =>Some(Oven(name,room))
-    case "StereoSystemType" =>Some(StereoSystem(name,room))
-    case _ => None
-  }
 }
 object DeviceDialog {
   def apply(): AddDeviceDialog = {
