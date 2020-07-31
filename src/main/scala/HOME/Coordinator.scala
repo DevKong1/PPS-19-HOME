@@ -17,6 +17,14 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   //DEVICES
 
+  def addDevice(devType: String,name:String,room : String): Option[Device] = {
+    val dev: Option[Device] = Device(devType, name, room)
+    dev match {
+      case Some(device) => devices += device
+      case _ => None
+    }
+    dev
+  }
   def addDevice(device: Device): Unit = devices += device
 
   def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)
