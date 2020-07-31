@@ -3,6 +3,8 @@ package HOME
 import java.awt.{Dimension, GraphicsEnvironment}
 import scala.language.postfixOps
 
+import HOME.MyClass._
+
 object WindowSize {
   import WindowSizeType._
   private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
@@ -25,7 +27,7 @@ object WindowSizeType extends Enumeration {
 }
 
 object IDGenerator {
-  private var _id = 0
+  private val _id = 0
   def apply(): Int = {
     _id+1
   }
@@ -59,6 +61,7 @@ object MapDeviceCommands {
     case OvenType => commands = Set.empty
       commands += "setTemperature"
       commands += "setMode"
+    case _ => this.errUnexpected(UnexpectedDeviceType, dev.deviceType.toString)
   }
 
   def getCommands : Set[String] = {

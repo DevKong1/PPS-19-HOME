@@ -45,10 +45,9 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def getActiveProfile: Profile = activeProfile
   def setProfile(newProfile: Profile): Unit = newProfile match {
-    case profile: Profile if profile != activeProfile => {
-      activeProfile = newProfile;
+    case profile: Profile if profile != activeProfile =>
+      activeProfile = newProfile
       activeProfile.onActivation ()
-    }
     case _ =>
   }
 
@@ -193,9 +192,9 @@ object Profile {
     }
 
     override def motionSensorNotificationCommands(room: String): Device => Unit = {
-      case device: AssociableDevice if device.room == room && device.deviceType == LightType => {
-        Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 30)); Coordinator.publish(device, CommandMsg(cmd = Msg.on));
-      }
+      case device: AssociableDevice if device.room == room && device.deviceType == LightType =>
+        Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 30))
+        Coordinator.publish(device, CommandMsg(cmd = Msg.on))
       case _ =>
     }
 

@@ -26,9 +26,9 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
   private val light: SimulatedLight = Light("Lamp", name)
   private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", name)
   private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", name)
-  private val motionSensor = MotionSensor("Motion",name)
+  /*private val motionSensor = MotionSensor("Motion",name)
   private val hygrometer = Hygrometer("Hygro",name)
-  private val photometer = Photometer("photo",name)
+  private val photometer = Photometer("photo",name)*/
 
   val devicePanel = new BoxPanel(Orientation.Vertical)
 
@@ -208,24 +208,20 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
         this.title = "Change Profile"
         new Button("Confirm") {
           reactions += {
-            case ButtonClicked(_) => {
-              changeProfile
-            }
+            case ButtonClicked(_) => changeProfile()
           }
         }
       case "Delete profile" =>
         this.title = "Delete Profile"
         new Button("Delete") {
           reactions += {
-            case ButtonClicked(_) => {
-              close()
-            }
+            case ButtonClicked(_) => close()
           }
         }
     }
   }
 
-  def changeProfile : Unit = {
+  def changeProfile() : Unit = {
     var selectedProfile = profiles.selection.item.toString
     labelProfile.text = "Current active profile: " +  selectedProfile
     selectedProfile match {
@@ -262,9 +258,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("On activation: ")
       contents += new Button("Modify") {
         reactions += {
-          case ButtonClicked(_) => {
-            AllDevice(Rooms.allRooms, false)
-          }
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = false)
         }
       }
     }
@@ -281,9 +275,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("Programmed Stuff: ")
       contents += new Button("Devices") {
         reactions += {
-          case ButtonClicked(_) => {
-            AllDevice(Rooms.allRooms, true)
-          }
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true)
         }
       }
     }
@@ -291,9 +283,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Confirm")
       contents += new Button("Cancel") {
         reactions += {
-          case ButtonClicked(_) => {
-            close()
-          }
+          case ButtonClicked(_) => close()
         }
       }
     }
@@ -325,7 +315,7 @@ class SensorReactionDialog extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devicePanel = new BoxPanel(Orientation.Horizontal) {
-        if(i.isInstanceOf[SensorAssociableDevice[Any]]) {
+        if(i.isInstanceOf[SensorAssociableDevice[_]]) {
           contents += new FlowPanel() {
             contents += new Label(i.name + "-" + i.room)
             contents += new Label("On: ")
@@ -349,10 +339,11 @@ class SensorReactionDialog extends Dialog {
     case HygrometerType => new ComboBox[String](Set("Humidity =", "Humidity >=", "Humidity <=", "Humidity >", "Humidity <") toSeq)
     case PhotometerType => new ComboBox[String](Set("Intensity =", "Intensity >=", "Intensity <=", "Intensity >", "Intensity <") toSeq)
     case ThermometerType => new ComboBox[String](Set("Temperature =", "Temperature >=", "Temperature <=", "Temperature >", "Temperature <") toSeq)
+    case _ => this.errUnexpected(UnexpectedDeviceType, dev.deviceType.toString)
   }
 
   def roomsDevices(room: String) : Dialog = {
-    AllDevice(Set(room), false)
+    AllDevice(Set(room), isRoutine = false)
   }
   open()
 }
@@ -415,7 +406,7 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal) {
-        if(!i.isInstanceOf[SensorAssociableDevice[Any]] && rooms.contains(i.room)) {
+        if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
           addDevice(PrintDevicePane(i), panel)
           if(isRoutine) {
             contents += new Label("Start at: ")
@@ -503,23 +494,17 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     contents += currentProfile
     contents += new Button("Change profile") {
       reactions += {
-        case ButtonClicked(_) => {
-          ChangeProfile(this.text, currentProfile)
-        }
+        case ButtonClicked(_) => ChangeProfile(this.text, currentProfile)
       }
     }
     contents += new Button("Create profile") {
       reactions += {
-        case ButtonClicked(_) => {
-          CreateProfile()
-        }
+        case ButtonClicked(_) => CreateProfile()
       }
     }
     contents += new Button("Delete profile") {
       reactions += {
-        case ButtonClicked(_) => {
-          ChangeProfile(this.text, currentProfile)
-        }
+        case ButtonClicked(_) => ChangeProfile(this.text, currentProfile)
       }
     }
   }
@@ -676,6 +661,7 @@ object PrintDevicePane {
     case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
     case TvType => TVPane(TV(device.name,device.room))
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
+    case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }
 

@@ -4,12 +4,12 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class GUITest extends AnyFunSuite {
 
-  val gui = GUI
+  val gui: GUI.type = GUI
   val home = new GUIRoom("Home")
   val bedroom = new GUIRoom("Bedroom")
   val kitchen = new GUIRoom("Kitchen")
-  val homePanel = HomePage()
-  val deviceDialog = DeviceDialog()
+  val homePanel: HomePageLayout = HomePage()
+  val deviceDialog: AddDeviceDialog = DeviceDialog()
 
   test("FailTest") {
     assert(!gui.tp.pages.contains("Bathroom"))
