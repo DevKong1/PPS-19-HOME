@@ -14,12 +14,13 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assert(Coordinator.activeProfile.name == Constants.default_profile_name)
   }
 
+  private val salotto: String = "Living room"
   test("Adding and removing devices which are identified by ID") {
-    Coordinator.addDevice(Light("Light1","Salotto"))
+    Coordinator.addDevice(Light("Light1",salotto))
     assert(Coordinator.getDevices.size == 1)
-    Coordinator.addDevice(Light("Light2","Salotto"))
+    Coordinator.addDevice(Light("Light2",salotto))
     assert(Coordinator.getDevices.size == 2)
-    Coordinator.addDevice(Light("Light2","Salotto"))
+    Coordinator.addDevice(Light("Light2",salotto))
     assert(Coordinator.getDevices.size == 2)
     Rooms.addRoom("Salottino")
     Coordinator.addDevice(Light("Light2","Salottino"))
@@ -72,10 +73,10 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   }
 
   test("The coordinator correctly applies the NIGHT profile", BrokerRequired) {
-    val light = Light("Light1","Salotto")
-    val shutter = Shutter("Shutter1","Salotto")
-    val ac = AirConditioner("AC1","Salotto")
-    val humid = Dehumidifier("Dehumidifier1","Salotto")
+    val light = Light("Light1",salotto)
+    val shutter = Shutter("Shutter1",salotto)
+    val ac = AirConditioner("AC1",salotto)
+    val humid = Dehumidifier("Dehumidifier1",salotto)
 
     light.turnOn()
     shutter.turnOn()
@@ -93,18 +94,18 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); ac.getValue should be (21) }
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
 
-    Coordinator.activeProfile.onMotionSensorNotification("Salotto")
+    Coordinator.activeProfile.onMotionSensorNotification(salotto)
     eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
 
-    Coordinator.activeProfile.onPhotometerNotification("Salotto", 45)
+    Coordinator.activeProfile.onPhotometerNotification(salotto, 45)
     eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile should be (Profile(Constants.default_profile_name)) }
 
     concludeTest(light, shutter, ac, humid)
   }
 
   test("The custom profile builder builds and Saves a Set of instructions correctly", BrokerRequired) {
-    val tv = TV("TV1","Salotto")
+    val tv = TV("TV1",salotto)
 
     assert(!tv.isOn)
     assert(tv.value == 50)
@@ -129,7 +130,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
-    Coordinator.activeProfile.onThermometerNotification("Salotto", 51)
+    Coordinator.activeProfile.onThermometerNotification(salotto, 51)
     eventually { Thread.sleep(testSleepTime); tv.value should be (100) }
 
     Profile.removeProfile("Custom1")

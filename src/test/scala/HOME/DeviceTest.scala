@@ -5,7 +5,7 @@ import java.lang.reflect.MalformedParametersException
 import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
-  val room: String = "Salotto"
+  val room: String = "Living room"
 
   //Actuators
   val light: SimulatedLight = Light("A", room)
@@ -27,7 +27,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
 
   test("The light is instantiated correctly") {
     assert(light.id == "A")
-    assert(light.room == "Salotto")
+    assert(light.room == "Living room")
     assert(light.deviceType == LightType)
     assert(light.consumption == 5)
 
@@ -213,7 +213,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("Adding and removing rooms") {
-    assert(Rooms.allRooms contains "Salotto")
+    assert(Rooms.allRooms contains "Living room")
     assert(!(Rooms.allRooms contains "Salottino"))
     assertThrows[IllegalArgumentException](Light("A", "Salottino"))
     Rooms.addRoom("Salottino")
