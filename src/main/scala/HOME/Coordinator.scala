@@ -85,7 +85,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 }
 
 object Rooms {
-  private var _allRooms = Set("Salotto", "Home", "Kitchen", "Garage", "Bedroom", "Bagno", "Corridoio")
+  private var _allRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
 
   def addRoom(room: String): Unit = _allRooms += room
   def removeRoom(room: String): Unit = _allRooms -= room  //TODO remove all devices in the room

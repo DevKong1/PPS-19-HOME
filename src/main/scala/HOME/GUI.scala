@@ -21,18 +21,19 @@ sealed trait EditableFeature{
   def getVal : String
 }
 
-class GUIRoom(override val name:String) extends ScrollPane with Room {
+class GUIRoom(override val name:String) extends ScrollPane  {
   /*always present device in every room*/
-  private val light: SimulatedLight = Light("Lamp", name)
+  /*private val light: SimulatedLight = Light("Lamp", name)
   private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", name)
   private val dehumidifier: SimulatedDehumidifier = Dehumidifier("Dehumidifier", name)
-  /*private val motionSensor = MotionSensor("Motion",name)
+  private val motionSensor = MotionSensor("Motion",name)
   private val hygrometer = Hygrometer("Hygro",name)
   private val photometer = Photometer("photo",name)*/
+  StartingDemo()
 
   val devicePanel = new BoxPanel(Orientation.Vertical)
 
-  override def devices: Set[Device] = Set(light, AC, dehumidifier)
+  //override def devices: Set[Device] = Set(light, AC, dehumidifier)
 
   val adDeviceBtn: Button =
     new Button("Add device") {
@@ -53,7 +54,7 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
       add(adDeviceBtn, BorderPanel.Position.South)
     }
       contents = bp
-      for (i <- devices) {
+      for (i <- Coordinator.getDevices.filter(_.room==name)) {
         addDevice(PrintDevicePane(i))
       }
   }
@@ -72,8 +73,12 @@ class GUIRoom(override val name:String) extends ScrollPane with Room {
 }
 object GUI extends SimpleSwingApplication {
   private val ADD = "+"
-  var rooms: Set[GUIRoom] = Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
+  var rooms: Set[GUIRoom] = Set.empty//Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
+  for(i <- Rooms.allRooms) {
+    rooms += new GUIRoom(i)
+  }
   val tp: TabbedPane = new TabbedPane {
+    pages += new TabbedPane.Page("Home", new GUIRoom("Home"))
     for (i <- rooms) yield {
       pages += new TabbedPane.Page(i.name, i)
     }
