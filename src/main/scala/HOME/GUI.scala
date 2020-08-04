@@ -191,7 +191,7 @@ object DeviceDialog {
   }
 }
 
-class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
+class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends Dialog {
   private val dimension = WindowSize(WindowSizeType.AddProfile)
   private val profiles = new ComboBox[Profile](Profile.getProfiles toSeq)
   preferredSize = dimension
@@ -213,7 +213,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
         this.title = "Change Profile"
         new Button("Confirm") {
           reactions += {
-            case ButtonClicked(_) => changeProfile()
+            case ButtonClicked(_) => changeProfile
           }
         }
       case "Delete profile" =>
@@ -226,7 +226,7 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
     }
   }
 
-  def changeProfile() : Unit = {
+  def changeProfile : Unit = {
     var selectedProfile = profiles.selection.item.toString
     labelProfile.text = "Current active profile: " +  selectedProfile
     selectedProfile match {
@@ -237,9 +237,9 @@ class ChangeProfileDialog(delete: String, labelProfile: Label) extends Dialog {
     close()
   }
 }
-object ChangeProfile {
-  def apply(delete: String, labelProfile: Label): ChangeProfileDialog = {
-    new ChangeProfileDialog(delete, labelProfile)
+object ChangeOrDeleteProfile {
+  def apply(delete: String, labelProfile: Label): ChangeOrDeleteProfileDialog = {
+    new ChangeOrDeleteProfileDialog(delete, labelProfile)
   }
 }
 
@@ -392,16 +392,9 @@ object AddProgrammedStuff {
 }
 
 class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
-  private val light: SimulatedLight = Light("Lamp", "Bedroom")
-  private val AC: SimulatedAirConditioner = AirConditioner("AirConditioner", "Bedroom")
-  private val dehumidifier: SimulatedOven = Oven("Dehumidifier", "Bedroom")
-  private val oven: SimulatedTV = TV("TV", "Kitchen")
-  Coordinator.addDevice(light)
-  Coordinator.addDevice(AC)
-  Coordinator.addDevice(dehumidifier)
-  Coordinator.addDevice(oven)
   title = "All Devices"
   location = new Point(300,250)
+  preferredSize = new Dimension(1000,500)
 
   contents = new ScrollPane() {
     contents = applyTemplate
@@ -410,26 +403,16 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
   def applyTemplate : BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
-      val devPanel = new BoxPanel(Orientation.Horizontal) {
-        if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
-          addDevice(PrintDevicePane(i), panel)
-          if(isRoutine) {
-            contents += new Label("Start at: ")
-            contents += new TextField(8)
-            contents += new Label("End at: ")
-            contents += new TextField(8)
-          }
-          contents += new Button("Apply")
-          /*contents += new FlowPanel() {
-            contents += new Label(i.name+"-"+i.room)
-            contents += new Label("Do: ")
+      val devPanel = new BoxPanel(Orientation.Horizontal)
+      if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
+          devPanel.peer.add(Box.createVerticalStrut(5))
+          devPanel.border = new LineBorder(Color.BLACK, 2)
+          devPanel.contents += new FlowPanel() {
+            contents += new Label(i.name)
             MapDeviceCommands.apply(i)
             for(a <- MapDeviceCommands.getCommands) {
               contents += new BoxPanel(Orientation.Vertical) {
-                contents += applyComponent(a)
-                if(applyComponent(a).isInstanceOf[Label]) {
-                  contents += new TextField(10)
-                }
+                contents += applyComponent(a,i,giveComponent(a,i))
               }
             }
             if(isRoutine) {
@@ -439,17 +422,9 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
               contents += new TextField(8)
             }
             contents += new Button("Apply")
-            //contents += new ComboBox[String](MapDeviceCommands.getCommands toSeq)
-          }*/
-        }
+          }
+        panel.contents += devPanel
       }
-      panel.contents += devPanel
-    }
-
-    def addDevice(dev : Component, panel: BoxPanel): Unit ={
-      val GAP = 5
-      panel.peer.add(Box.createVerticalStrut(GAP))
-      panel.contents += dev
     }
 
     panel.contents += new FlowPanel() {
@@ -458,10 +433,85 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     panel
   }
 
-  def applyComponent(command: String): Component = command match {
-    case Msg.on | Msg.off | Msg.mute => new ToggleButton(command)
-    case _ => new Label(command)
+  //TODO: Create a function to get a component
+  def giveComponent(command: String, device: Device): Component = command match {
+    case Msg.washingType => new ComboBox[String](Seq(WashingType.MIX, WashingType.RAPID, WashingType.WOOL)map(_.toString))
+    case Msg.setProgram => new ComboBox[String](Seq(DishWasherProgram.DIRTY, DishWasherProgram.FAST, DishWasherProgram.FRAGILE)map(_.toString))
+    case Msg.RPM =>new ComboBox[String](Seq(RPM.SLOW, RPM.MEDIUM, RPM.FAST)map(_.toString))
+    case Msg.addExtra => device.deviceType match {
+      case WashingMachineType => new ComboBox[String](Seq(WashingMachineExtra.SpecialColors, WashingMachineExtra.SuperDirty, WashingMachineExtra.SuperDry)map(_.toString))
+      case DishWasherType =>new ComboBox[String](Seq(DishWasherExtra.SuperDirty, DishWasherExtra.SuperHygiene, DishWasherExtra.SuperSteam)map(_.toString))
+      case _ => null
+    }
+    case Msg.setMode => new ComboBox[String](Seq(OvenMode.CONVENTIONAL, OvenMode.DEFROSTING, OvenMode.GRILL, OvenMode.LOWER,
+      OvenMode.UPPER, OvenMode.VENTILATED)map(_.toString))
+    case Msg.open | Msg.on | Msg.mute => new ToggleButton(command) {
+      reactions += {
+        case ButtonClicked(_) => this.text=switchStatus(this.text)
+      }
+    }
+    case _ => new TextField(10)
   }
+
+  //TODO: Change this function to add at the panel the component get from function giveComponent()
+  def applyComponent(command: String, device: Device, component: Component): Panel = command match {
+    case Msg.washingType => device.deviceType match {
+      case WashingMachineType => new FlowPanel(){
+        contents+=new Label("Washing type: ")
+        contents+=component
+      }
+      case _ => null
+    }
+    case Msg.setProgram => device.deviceType match {
+      case DishWasherType => new FlowPanel(){
+        contents+=new Label("Program type: ")
+        contents+=component
+      }
+      case _ => null
+    }
+    case Msg.RPM => device.deviceType match {
+      case WashingMachineType | DishWasherType => new FlowPanel(){
+        contents+=new Label("RPM: ")
+        contents+=component
+      }
+      case _ => null
+    }
+    case Msg.addExtra => device.deviceType match {
+      case WashingMachineType => new FlowPanel(){
+        contents+=new Label("Extras: ")
+        contents+=component
+      }
+      case DishWasherType => new FlowPanel(){
+        contents+=new Label("Extras: ")
+        contents+=component
+      }
+      case _ => null
+    }
+    case Msg.setMode => device.deviceType match {
+      case OvenType => new FlowPanel(){
+        contents+=new Label("Working mode: ")
+        contents+=component
+      }
+      case _ => null
+    }
+    case Msg.on | Msg.mute | Msg.open => new FlowPanel() {
+      contents+=component
+    }
+    case _ => new FlowPanel() {
+      contents+=new Label(command)
+      contents+=component
+    }
+  }
+
+  def switchStatus(status: String) : String = status match {
+    case "on" => "off"
+    case "off" => "on"
+    case "close" => "open"
+    case "open" => "close"
+    case "mute" => "muted"
+    case _ => "mute"
+  }
+
   open()
 }
 object AllDevice {
@@ -478,13 +528,13 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
   }
   val temperaturePanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents += new Label("Date: " + getDate)
+    contents += new Label("Date: " + DateTime.getDate)
     contents += new Label("Internal temperature: ")
     contents += new Label("External temperature: ")
   }
   val humidityPanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents += new Label("Time: " + getCurrentTime)
+    contents += new Label("Time: " + DateTime.getCurrentTime)
     contents += new Label("Internal humidity: ")
     contents += new Label("External humidity: ")
   }
@@ -496,53 +546,25 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
   val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile)
   val profilePanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents += currentProfile
-    contents += new Button("Change profile") {
-      reactions += {
-        case ButtonClicked(_) => ChangeProfile(this.text, currentProfile)
+    contents ++= Seq(currentProfile,
+      new Button("Change profile") {
+        reactions += {
+          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
+        }
+      },
+      new Button("Delete profile") {
+        reactions += {
+          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
+        }
+      },
+      new Button("Create profile") {
+        reactions += {
+          case ButtonClicked(_) => CreateProfile()
+        }
       }
-    }
-    contents += new Button("Create profile") {
-      reactions += {
-        case ButtonClicked(_) => CreateProfile()
-      }
-    }
-    contents += new Button("Delete profile") {
-      reactions += {
-        case ButtonClicked(_) => ChangeProfile(this.text, currentProfile)
-      }
-    }
+    )
   }
-
-  contents += welcomePanel
-  contents += temperaturePanel
-  contents += humidityPanel
-  contents += alarmPanel
-  contents += profilePanel
-
-  def getDate : String = {
-    val cal = Calendar.getInstance()
-    val date =cal.get(Calendar.DATE )
-    val month =cal.get(Calendar.MONTH )
-    val year =cal.get(Calendar.YEAR )
-
-    date+"/"+month+"/"+year
-  }
-
-  def getCurrentTime : String = {
-    val today = Calendar.getInstance().getTime
-
-    // create the date/time formatters
-    val minuteFormat = new SimpleDateFormat("mm")
-    val hourFormat = new SimpleDateFormat("hh")
-    val amPmFormat = new SimpleDateFormat("a")
-
-    val currentHour = hourFormat.format(today)
-    val currentMinute = minuteFormat.format(today)
-    val amOrPm = amPmFormat.format(today)
-
-    currentHour+":"+currentMinute+" " + amOrPm
-  }
+  contents ++= Seq(welcomePanel, temperaturePanel, humidityPanel, alarmPanel, profilePanel)
 }
 object HomePage {
   def apply(): HomePageLayout = {

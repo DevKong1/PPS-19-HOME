@@ -1,8 +1,10 @@
 package HOME
 
 import java.awt.{Dimension, GraphicsEnvironment}
-import scala.language.postfixOps
+import java.text.SimpleDateFormat
+import java.util.Calendar
 
+import scala.language.postfixOps
 import HOME.MyClass._
 
 object WindowSize {
@@ -45,7 +47,6 @@ object MapDeviceCommands {
       commands += "setHumidity"
     case ShutterType => commands = Set.empty
       commands += "open"
-      commands += "close"
     case TvType | StereoSystemType => commands = Set.empty
       commands += "setVolume"
       commands += "mute"
@@ -65,7 +66,34 @@ object MapDeviceCommands {
   }
 
   def getCommands : Set[String] = {
-    commands ++= Set("on", "off")
+    commands ++= Set("on")
     commands
+  }
+}
+
+object DateTime {
+
+  def getDate : String = {
+    val cal = Calendar.getInstance()
+    val date = cal.get(Calendar.DATE )
+    val month = cal.get(Calendar.MONTH )
+    val year = cal.get(Calendar.YEAR )
+
+    date+"/"+month+"/"+year
+  }
+
+  def getCurrentTime : String = {
+    val today = Calendar.getInstance().getTime
+
+    // create the date/time formatters
+    val minuteFormat = new SimpleDateFormat("mm")
+    val hourFormat = new SimpleDateFormat("hh")
+    val amPmFormat = new SimpleDateFormat("a")
+
+    val currentHour = hourFormat.format(today)
+    val currentMinute = minuteFormat.format(today)
+    val amOrPm = amPmFormat.format(today)
+
+    currentHour+":"+currentMinute+" "+ amOrPm
   }
 }
