@@ -135,7 +135,9 @@ object GUI extends SimpleSwingApplication {
       }
     }
   }
+}
 
+object GUIHandler {
   def handleUpdateMsg(msg: CommandMsg): Unit = msg.command match {
     case Msg.confirmUpdate => println("Success from request " + msg.id) //TODO update GUI
     case _ => this.errUnexpected(UnexpectedMessage, msg.toString)

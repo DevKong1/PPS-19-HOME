@@ -62,7 +62,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case t if t == updateTopic => GUI.handleUpdateMsg(CommandMsg.fromString(getMessageFromMsg(message)))
+    case t if t == updateTopic => GUIHandler.handleUpdateMsg(CommandMsg.fromString(getMessageFromMsg(message)))
     //TODO topic+message managed by the active profile
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }

@@ -3,7 +3,7 @@ package HOME
 import org.scalatest.funsuite.AnyFunSuite
 
 class GUITest extends AnyFunSuite {
-
+/*
   val gui: GUI.type = GUI
   val home = new GUIRoom("Home")
   val bedroom = new GUIRoom("Bedroom")
@@ -53,5 +53,5 @@ class GUITest extends AnyFunSuite {
     //val m = deviceDialog.getClass.getDeclaredField("deviceType")
     //m.setAccessible(true)
     //assert(deviceDialog.contents.contains(m))
-  }
+  }*/
 }
