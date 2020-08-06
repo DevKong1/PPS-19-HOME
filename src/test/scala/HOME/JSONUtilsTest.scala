@@ -6,8 +6,8 @@ import org.scalatest.matchers.should.Matchers
 import HOME.ConstantsTest._
 
 class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
-
-  val light: SimulatedLight = Light("A","Living room")
+  Rooms.addRoom("Living room")
+  val light: SimulatedHygrometer = Hygrometer("A","Living room")
 
   test("The message + device/coordinator is encoded/decoded via JSON correctly") {
     val msgD: String = getMsg("testMsgD", light)
@@ -41,10 +41,11 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     eventually { Thread.sleep(testSleepTime); Coordinator.subscribe should be (true) }
     assert(light.isConnected)
     assert(!light.isRegistered)
-    eventually { Thread.sleep(testSleepTime); light.register should be (true) }
+    val p = light.register
     eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
-    assert(light.register)
+    eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
+    light.register
     eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
     assert(light.isRegistered)
     val registeredDevice: Device = Coordinator.devices.head

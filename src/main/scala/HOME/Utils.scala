@@ -4,7 +4,6 @@ import HOME.MyClass._
 
 import scala.concurrent.Promise
 import scala.language.implicitConversions
-import scala.util.Random
 
 object Constants {
   def default_profile_name: String = "DEFAULT"
@@ -13,16 +12,29 @@ object Constants {
   val IconExt = ".jpg"
   val LoginTextSize = 20
   val AddPane = "+"
+
+  val defaultRooms: Set[String] = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
 }
-object RequestHandler{
+
+object DeviceIDGenerator {
+  private var _id = 0
+  def apply(): String = {
+    _id += 1
+    _id.toString
+  }
+}
+
+object RequestHandler {
   private var updateRequests : Map[Int,Promise[Unit]]= Map.empty
   private var nextNumber : Int = 0
   def addRequest(newRequest :Promise[Unit]): Int = {
-    nextNumber = Random.nextInt()
+    nextNumber += 1
     updateRequests += (nextNumber -> newRequest); nextNumber
   }
-  def handleRequest(id : Int): Unit = {updateRequests(id) complete _ ; updateRequests -= id}
+  def handleRequest(id : Int): Unit = {
+    updateRequests(id).success(() => Unit); updateRequests -= id}
 }
+
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 
@@ -117,8 +129,8 @@ object UpdateDevice {
 object Updater {
 
 
-  def update(device : Device)(value:Int)(updateinfo: UpdateDevice)(implicit updateTypes: UpdateTypes[Device]): Unit ={
-    updateTypes.update(device)(value)(updateinfo)
+  def update(device : Device)(value:Int)(updateInfo: UpdateDevice)(implicit updateTypes: UpdateTypes[Device]): Unit ={
+    updateTypes.update(device)(value)(updateInfo)
   }
 }
 abstract class UpdateTypes [A <: Device] {

@@ -5,6 +5,7 @@ import java.lang.reflect.MalformedParametersException
 import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
+  Rooms.addRoom("Living room")
   val room: String = "Living room"
 
   //Actuators

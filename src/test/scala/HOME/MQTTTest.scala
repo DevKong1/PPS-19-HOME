@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import HOME.ConstantsTest._
 
 class MQTTTest extends AnyFunSuite with Eventually with Matchers {
+  Rooms.addRoom("Living room")
   val light: SimulatedLight = Light("A","Living room")
 
   test("Coordinator sends commands to the light", BrokerRequired){

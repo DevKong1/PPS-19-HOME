@@ -31,6 +31,7 @@ trait MQTTUtils extends JSONUtils {
   private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
   private val brokerURL: String = "tcp://localhost:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
+  private val waitAfterPublish: Int = 50
 
   class ConnectionException(message: String) extends Exception(message)
 
@@ -102,6 +103,7 @@ trait MQTTUtils extends JSONUtils {
       false
     case _ =>
       if (client.isConnected) client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
+      Thread.sleep(waitAfterPublish)
       true
   }
 }
