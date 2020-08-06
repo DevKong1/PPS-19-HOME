@@ -2,13 +2,27 @@ package HOME
 
 import HOME.MyClass._
 
+import scala.concurrent.Promise
 import scala.language.implicitConversions
+import scala.util.Random
 
 object Constants {
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
+  val GUIDeviceGAP = 5
+  val IconExt = ".jpg"
+  val LoginTextSize = 20
+  val AddPane = "+"
 }
-
+object RequestHandler{
+  private var updateRequests : Map[Int,Promise[Unit]]= Map.empty
+  private var nextNumber : Int = 0
+  def addRequest(newRequest :Promise[Unit]): Int = {
+    nextNumber = Random.nextInt()
+    updateRequests += (nextNumber -> newRequest); nextNumber
+  }
+  def handleRequest(id : Int): Unit = {updateRequests(id) complete _ ; updateRequests -= id}
+}
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 
@@ -28,7 +42,6 @@ object ValueChecker {
     case _ => value
   }
 }
-
 sealed trait Unexpected {
   var item: String
 }
@@ -70,6 +83,46 @@ object WashingType {
     case "RAPID" => RAPID
     case _ => this.errUnexpected(UnexpectedMessage, washingType)
   }
+}
+trait UpdateDevice
+object UpdateDevice {
+
+  case object INTENSITY extends UpdateDevice
+  case object WORK_MODE extends UpdateDevice
+  case object VOLUME extends UpdateDevice
+  case object RPM extends UpdateDevice
+  case object ON extends UpdateDevice
+  case object OFF extends UpdateDevice
+  case object OV_MODE extends UpdateDevice
+  case object OV_TEMP extends UpdateDevice
+  case object WASH_MODE extends UpdateDevice
+  case object HUM extends UpdateDevice
+  case object TEMP extends UpdateDevice
+
+  def apply(devType: String): UpdateDevice = devType match{
+    case "INTENSITY" => INTENSITY
+    case "WORK_MODE" => WORK_MODE
+    case "VOLUME" => VOLUME
+    case "RPM" => RPM
+    case "ON" => ON
+    case "OFF" => OFF
+    case "OV_MODE" => OV_MODE
+    case "OV_TEMP" => OV_TEMP
+    case "WASH_MODE" => WASH_MODE
+    case "HUM" => HUM
+    case "TEMP" => TEMP
+    case _ => this.errUnexpected(UnexpectedMessage, devType)
+  }
+}
+object Updater {
+
+
+  def update(device : Device)(value:Int)(updateinfo: UpdateDevice)(implicit updateTypes: UpdateTypes[Device]): Unit ={
+    updateTypes.update(device)(value)(updateinfo)
+  }
+}
+abstract class UpdateTypes [A <: Device] {
+  def update(device: A)(value:Int)( deviceType: UpdateDevice)
 }
 
 trait RPM
