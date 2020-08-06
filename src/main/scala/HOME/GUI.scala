@@ -2,8 +2,6 @@ package HOME
 
 import scala.language.postfixOps
 import java.awt.Color
-import java.text.SimpleDateFormat
-import java.util.Calendar
 
 import scala.swing._
 import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueChanged}
@@ -29,7 +27,6 @@ class GUIRoom(override val name:String) extends ScrollPane  {
   private val motionSensor = MotionSensor("Motion",name)
   private val hygrometer = Hygrometer("Hygro",name)
   private val photometer = Photometer("photo",name)*/
-  StartingDemo()
 
   val devicePanel = new BoxPanel(Orientation.Vertical)
 
@@ -73,6 +70,7 @@ class GUIRoom(override val name:String) extends ScrollPane  {
 }
 object GUI extends SimpleSwingApplication {
   private val ADD = "+"
+  StartingDemo()
   var rooms: Set[GUIRoom] = Set.empty//Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
   for(i <- Rooms.allRooms) {
     rooms += new GUIRoom(i)
@@ -402,19 +400,23 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     contents = applyTemplate
   }
 
+  private var commands: Set[(Device,CommandMsg)] = Set.empty
+
   def applyTemplate : BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal)
       if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
+          val applyButton = new Button("Add")
           devPanel.peer.add(Box.createVerticalStrut(5))
           devPanel.border = new LineBorder(Color.BLACK, 2)
           devPanel.contents += new FlowPanel() {
             contents += new Label(i.name)
             MapDeviceCommands.apply(i)
             for(a <- MapDeviceCommands.getCommands) {
-              contents += new BoxPanel(Orientation.Vertical) {
-                contents += applyComponent(a,i,giveComponent(a,i))
+              val component = applyComponent(a,i,this)
+              applyButton.reactions += {
+                  case ButtonClicked(_) => addRule(component, i, a)
               }
             }
             if(isRoutine) {
@@ -423,7 +425,7 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
               contents += new Label("End at: ")
               contents += new TextField(8)
             }
-            contents += new Button("Apply")
+            contents += applyButton
           }
         panel.contents += devPanel
       }
@@ -435,74 +437,59 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     panel
   }
 
-  //TODO: Create a function to get a component
-  def giveComponent(command: String, device: Device): Component = command match {
-    case Msg.washingType => new ComboBox[String](Seq(WashingType.MIX, WashingType.RAPID, WashingType.WOOL)map(_.toString))
-    case Msg.setProgram => new ComboBox[String](Seq(DishWasherProgram.DIRTY, DishWasherProgram.FAST, DishWasherProgram.FRAGILE)map(_.toString))
-    case Msg.RPM =>new ComboBox[String](Seq(RPM.SLOW, RPM.MEDIUM, RPM.FAST)map(_.toString))
-    case Msg.addExtra => device.deviceType match {
-      case WashingMachineType => new ComboBox[String](Seq(WashingMachineExtra.SpecialColors, WashingMachineExtra.SuperDirty, WashingMachineExtra.SuperDry)map(_.toString))
-      case DishWasherType =>new ComboBox[String](Seq(DishWasherExtra.SuperDirty, DishWasherExtra.SuperHygiene, DishWasherExtra.SuperSteam)map(_.toString))
-      case _ => null
-    }
-    case Msg.setMode => new ComboBox[String](Seq(OvenMode.CONVENTIONAL, OvenMode.DEFROSTING, OvenMode.GRILL, OvenMode.LOWER,
-      OvenMode.UPPER, OvenMode.VENTILATED)map(_.toString))
-    case Msg.open | Msg.on | Msg.mute => new ToggleButton(command) {
-      reactions += {
-        case ButtonClicked(_) => this.text=switchStatus(this.text)
-      }
-    }
-    case _ => new TextField(10)
-  }
-
-  //TODO: Change this function to add at the panel the component get from function giveComponent()
-  def applyComponent(command: String, device: Device, component: Component): Panel = command match {
+  def applyComponent(command: String, device: Device, panel: FlowPanel): Component = command match {
     case Msg.washingType => device.deviceType match {
-      case WashingMachineType => new FlowPanel(){
-        contents+=new Label("Washing type: ")
-        contents+=component
-      }
+      case WashingMachineType =>
+        val component = new ComboBox[String](Seq(WashingType.MIX, WashingType.RAPID, WashingType.WOOL)map(_.toString))
+        panel.contents ++= Seq(new Label("Washing type: "), component)
+        component
       case _ => null
     }
     case Msg.setProgram => device.deviceType match {
-      case DishWasherType => new FlowPanel(){
-        contents+=new Label("Program type: ")
-        contents+=component
-      }
+      case DishWasherType =>
+        val component = new ComboBox[String](Seq(DishWasherProgram.DIRTY, DishWasherProgram.FAST, DishWasherProgram.FRAGILE)map(_.toString))
+        panel.contents ++= Seq(new Label("Program type: "), component)
+        component
       case _ => null
     }
     case Msg.RPM => device.deviceType match {
-      case WashingMachineType | DishWasherType => new FlowPanel(){
-        contents+=new Label("RPM: ")
-        contents+=component
-      }
+      case WashingMachineType | DishWasherType =>
+        val component = new ComboBox[String](Seq(RPM.SLOW, RPM.MEDIUM, RPM.FAST)map(_.toString))
+        panel.contents ++= Seq(new Label("RPM: "), component)
+        component
       case _ => null
     }
     case Msg.addExtra => device.deviceType match {
-      case WashingMachineType => new FlowPanel(){
-        contents+=new Label("Extras: ")
-        contents+=component
-      }
-      case DishWasherType => new FlowPanel(){
-        contents+=new Label("Extras: ")
-        contents+=component
-      }
+      case WashingMachineType =>
+        val component = new ComboBox[String](Seq(WashingMachineExtra.SpecialColors, WashingMachineExtra.SuperDirty, WashingMachineExtra.SuperDry)map(_.toString))
+        panel.contents ++= Seq(new Label("Extras: "), component)
+        component
+      case DishWasherType =>
+        val component = new ComboBox[String](Seq(DishWasherExtra.SuperDirty, DishWasherExtra.SuperHygiene, DishWasherExtra.SuperSteam)map(_.toString))
+        panel.contents ++= Seq(new Label("Extras: "), component)
+        component
       case _ => null
     }
     case Msg.setMode => device.deviceType match {
-      case OvenType => new FlowPanel(){
-        contents+=new Label("Working mode: ")
-        contents+=component
-      }
+      case OvenType =>
+        val component = new ComboBox[String](Seq(OvenMode.CONVENTIONAL, OvenMode.DEFROSTING, OvenMode.GRILL, OvenMode.LOWER,
+          OvenMode.UPPER, OvenMode.VENTILATED)map(_.toString))
+        panel.contents ++= Seq(new Label("Working mode: "), component)
+        component
       case _ => null
     }
-    case Msg.on | Msg.mute | Msg.open => new FlowPanel() {
-      contents+=component
-    }
-    case _ => new FlowPanel() {
-      contents+=new Label(command)
-      contents+=component
-    }
+    case Msg.close | Msg.mute | Msg.off =>
+      val component = new ToggleButton(command) {
+        reactions += {
+          case ButtonClicked(_) => this.text=switchStatus(this.text)
+        }
+      }
+      panel.contents ++= Seq(component)
+      component
+    case _ =>
+      val component = new TextField(10)
+      panel.contents ++= Seq(new Label(command), component)
+      component
   }
 
   def switchStatus(status: String) : String = status match {
@@ -512,6 +499,30 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     case "open" => "close"
     case "mute" => "muted"
     case _ => "mute"
+  }
+
+  def addRule(component: Component, device: Device, command: String) : Unit = command match {
+    case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute =>
+      println(commands)
+      commands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+      println(commands)
+    case _ => commands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
+  }
+  
+  def getComponentInfo(x: Any, command: String): String = x match {
+    case p: TextField =>  command match {
+      case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
+      case _ => ""
+    }
+    case p: ToggleButton => command match {
+      case Msg.on | Msg.off | Msg.close | Msg.open | Msg.mute => p.text
+      case _ => ""
+    }
+    case p: ComboBox[String] =>  command match {
+        case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
+        case _ => ""
+    }
+    case _ => ""
   }
 
   open()

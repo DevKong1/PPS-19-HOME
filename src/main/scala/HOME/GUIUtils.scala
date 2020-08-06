@@ -46,7 +46,7 @@ object MapDeviceCommands {
     case DehumidifierType => commands = Set.empty
       commands += "setHumidity"
     case ShutterType => commands = Set.empty
-      commands += "open"
+      commands += "close"
     case TvType | StereoSystemType => commands = Set.empty
       commands += "setVolume"
       commands += "mute"
@@ -54,11 +54,11 @@ object MapDeviceCommands {
       commands += "washingType"
       commands += "RPM"
       commands += "addExtra"
-      commands += "removeExtra"
+      //commands += "removeExtra"
     case DishWasherType => commands = Set.empty
       commands += "setProgram"
       commands += "addExtra"
-      commands += "removeExtra"
+      //commands += "removeExtra"
     case OvenType => commands = Set.empty
       commands += "setTemperature"
       commands += "setMode"
@@ -66,7 +66,7 @@ object MapDeviceCommands {
   }
 
   def getCommands : Set[String] = {
-    commands ++= Set("on")
+    commands ++= Set("off")
     commands
   }
 }
