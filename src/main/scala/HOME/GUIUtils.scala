@@ -28,13 +28,6 @@ object WindowSizeType extends Enumeration {
   val MainW, Dialog, AddProfile = Value
 }
 
-object IDGenerator {
-  private val _id = 0
-  def apply(): Int = {
-    _id+1
-  }
-}
-
 object MapDeviceCommands {
   private var commands: Set[String] = Set.empty
 
