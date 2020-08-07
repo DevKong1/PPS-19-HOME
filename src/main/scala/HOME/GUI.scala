@@ -73,13 +73,13 @@ class GUIRoom(override val name:String) extends ScrollPane {
     case _ => false
   }
 }
-object GUI extends SimpleSwingApplication {
-  private val ADD = "+"
-  StartingDemo()
+object GUI extends MainFrame {
+  //StartingDemo()
   var rooms: Set[GUIRoom] = Set.empty//Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
   for(i <- Rooms.allRooms) {
     rooms += new GUIRoom(i)
   }
+
   var requests : List[Int]  = List()
   val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
@@ -138,13 +138,8 @@ object GUI extends SimpleSwingApplication {
       }
     }
   }
-}
 
-object GUIHandler {
-  def handleUpdateMsg(msg: CommandMsg): Unit = msg.command match {
-    case Msg.confirmUpdate => println("Success from request " + msg.id) //TODO update GUI
-    case _ => this.errUnexpected(UnexpectedMessage, msg.toString)
-  }
+
 }
 
 class AddDeviceDialog extends Dialog {
@@ -360,7 +355,7 @@ class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dial
   }
 
   def giveSymbol(x: Any): String = x match {
-    case p: ComboBox[String] => p.selection.item
+    case p: StringComboBox => p.selection.item
     case _ => ""
   }
 
@@ -524,6 +519,8 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
     case _ => commands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
   }
 
+
+
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField =>  command match {
       case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
@@ -533,15 +530,17 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
       case Msg.on | Msg.off | Msg.close | Msg.open | Msg.mute => p.text
       case _ => ""
     }
-    case p: ComboBox[String] =>  command match {
-      case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
-      case _ => ""
+
+    case p: StringComboBox => command match {
+        case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
+        case _ => ""
     }
     case _ => ""
   }
 
   open()
 }
+
 object AllDevice {
   def apply(rooms: Set[String], isRoutine: Boolean, commands: Set[(Device, CommandMsg)]): AllDeviceDialog = {
     new AllDeviceDialog(rooms, isRoutine, commands)
@@ -710,6 +709,9 @@ object PrintDevicePane {
     case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
     case TvType => TVPane(TV(device.name,device.room))
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
+
+    case HygrometerType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
+    case MotionSensorType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }

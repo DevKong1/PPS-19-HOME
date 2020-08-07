@@ -8,6 +8,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 
 class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
+  Rooms.addRoom("Living room")
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)

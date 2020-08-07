@@ -7,6 +7,8 @@ import java.util.Calendar
 import scala.language.postfixOps
 import HOME.MyClass._
 
+import scala.swing.ComboBox
+
 object WindowSize {
   import WindowSizeType._
   private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
@@ -55,7 +57,7 @@ object MapDeviceCommands {
     case OvenType => commands = Set.empty
       commands += "setTemperature"
       commands += "setMode"
-    case _ => this.errUnexpected(UnexpectedDeviceType, dev.deviceType.toString)
+    case _ => ""
   }
 
   def getCommands : Set[String] = {
@@ -90,3 +92,5 @@ object DateTime {
     currentHour+":"+currentMinute+" "+ amOrPm
   }
 }
+
+case class StringComboBox(items: Seq[String]) extends ComboBox[String](items: Seq[String])

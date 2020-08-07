@@ -16,25 +16,16 @@ object Coordinator extends JSONSender with MQTTUtils {
   var sensors: Set[Device] = Set.empty
   var activeProfile: Profile = Profile(Constants.default_profile_name)
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
-  implicit val intensityUpdate: UpdateTypes[SimulatedLight] = new UpdateTypes[SimulatedLight] {
-    def update(device: SimulatedLight)(value: Int)(deviceType: UpdateDevice): Unit = deviceType match {
-      case UpdateDevice.INTENSITY => device.setValue(value)
-      case UpdateDevice.ON => device.turnOn()
-      case UpdateDevice.OFF => device.turnOff()
-      case _ => this.errUnexpected(UnexpectedMessage,"No such value for a light")
-    }
-  }
+
   def sendUpdate(devName : String,cmdMsg : String,newValue:String) : Future[Unit] = {
     val p = Promise[Unit]
     val requestNumber = RequestHandler.addRequest(p)
-    publish(devices.find(_.name equals devName).asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
+    publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
     RequestHandler.addRequest(p)
     p.future
   }
 
   //DEVICES
-
-
   def addDevice(devType: String,name:String,room : String): Option[Device] = {
     val dev: Option[Device] = Device(devType, name, room)
     dev match {
@@ -80,7 +71,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(message).id)
+    case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(getMessageFromMsg(message)).id)
     //TODO topic+message managed by the active profile
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
@@ -103,7 +94,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 }
 
 object Rooms {
-  private var _allRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
+  private var _allRooms: Set[String] = Set.empty
 
   def addRoom(room: String): Unit = _allRooms += room
   def removeRoom(room: String): Unit = _allRooms -= room  //TODO remove all devices in the room

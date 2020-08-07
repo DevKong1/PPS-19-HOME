@@ -2,13 +2,15 @@ package HOME
 
 import HOME.MyClass._
 
+import scala.concurrent.{Future, Promise}
+
 
 sealed trait DeviceType {
   def defaultConsumption: Int
 }
 
 object DeviceType {
-  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType)
+  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType, ThermometerType, HygrometerType, MotionSensorType)
 
   def apply(devType: String): DeviceType = listTypes.find(_.getSimpleClassName == devType) match {
     case Some(t) => t
@@ -50,6 +52,9 @@ object Device {
     case DishWasherType => Some(DishWasher(name,room))
     case OvenType => Some(Oven(name,room))
     case StereoSystemType => Some(StereoSystem(name,room))
+    case ThermometerType => Some(Thermometer(name, room))
+    case HygrometerType => Some(Hygrometer(name, room))
+    case MotionSensorType => Some(MotionSensor(name, room))
     case _ => None
   }
 
@@ -78,6 +83,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
 
   def isConnected: Boolean = _connected
   def isRegistered: Boolean = _registered
+  var registrationPromise: Promise[Unit] = _
 
   private val pubTopic: String = getPubTopic //Topic used by sensors to send data
   private val subTopic: String = getSubTopic  //Topic used by actuators to receive orders
@@ -101,13 +107,17 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
 
   def publish(message: CommandMsg): Boolean = publish(pubTopic, message, this, retained)
 
-  def register: Boolean = publish(regTopic, Msg.register, this)
+  def register: Future[Unit] = {
+    registrationPromise = Promise[Unit]
+    publish(regTopic, Msg.register, this)
+    registrationPromise.future
+  }
 
   def onMessageReceived(topic: String, msg: String): Unit = {
     def message: String = getMessageFromMsg(msg)
     topic match {
       case t if t == subTopic => message match {
-        case m if m == Msg.regSuccess => _registered = true
+        case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
         case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
         case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
