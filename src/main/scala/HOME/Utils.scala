@@ -1,26 +1,53 @@
 package HOME
 
+import java.util.concurrent.TimeUnit
+
 import HOME.MyClass._
 
-import scala.concurrent.Promise
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.implicitConversions
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object Constants {
+  //Room in every house
+  val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
+  //Used to generate the set of devices that are in every room
+  def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp",name),Thermometer("Thermometer",name),Hygrometer("Hygrometer",name),MotionSensor("MotionSensor",name))
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
   val IconExt = ".jpg"
   val LoginTextSize = 20
   val AddPane = "+"
-
-  val defaultRooms: Set[String] = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
+  val registrationTimeout = 500
 }
-
-object DeviceIDGenerator {
-  private var _id = 0
-  def apply(): String = {
-    _id += 1
-    _id.toString
+object RegisterDevice {
+  def apply(devType:String,name :String, roomName:String): Future[Unit] = {
+    val p = Promise[Unit]
+    val dev = Device(devType,name,roomName).get.asInstanceOf[AssociableDevice]
+    startDevice(dev)
+    registerDevice(dev,p)
+    p.future
+  }
+  def apply(d : Set[AssociableDevice]):Future[Unit] ={
+    val p = Promise[Unit]
+    d foreach startDevice
+    Await.ready(Future.sequence(d.map(_.register)), Duration.Inf).onComplete {
+      case Failure(exception) => println("ERR, can't register device, " + exception);
+      case Success(_) =>p.success(()=>Unit)
+    }
+    p.future
+  }
+  private def startDevice(d : AssociableDevice): Unit ={
+    d.connect && d.subscribe
+  }
+  private def registerDevice(d:AssociableDevice,p:Promise[Unit]) : Unit = {
+    Await.ready(d.register, Duration.create(Constants.registrationTimeout,TimeUnit.MILLISECONDS)).onComplete {
+      case Success(_) => p.success(()=>Unit)
+      case Failure(exception) => println("ERR, can't register device, " + exception);
+    }
   }
 }
 
