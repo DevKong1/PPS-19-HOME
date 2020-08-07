@@ -252,6 +252,17 @@ object StartingDemo {
   private val tv_bedroom: SimulatedTV = TV("TV_Bedroom", "Bedroom")
   private val stereo_bedroom: SimulatedStereoSystem = StereoSystem("Stereo_Bedroom", "Bedroom")
 
+  for(room <- Rooms.allRooms) yield {
+    val thermometer: SimulatedThermometer = Thermometer("Thermometer_"+room, room)
+    val photometer: SimulatedPhotometer = Photometer("Photometer_"+room, room)
+    val motionSensor: SimulatedMotionSensor = MotionSensor("MotionSensor_"+room, room)
+    val hygrometer: SimulatedHygrometer = Hygrometer("Hygrometer_"+room, room)
+    Coordinator.addDevice(thermometer)
+    Coordinator.addDevice(photometer)
+    Coordinator.addDevice(motionSensor)
+    Coordinator.addDevice(hygrometer)
+  }
+
   def apply(): Unit = {
     //Add all devices to Coordinator
     Coordinator.addDevice(light_kitchen)

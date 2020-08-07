@@ -8,6 +8,7 @@ import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueCh
 import javax.swing.{Box, ImageIcon}
 import javax.swing.border.LineBorder
 import HOME.MyClass._
+import HOME.UpdateDevice.HUM
 
 import scala.util.{Failure, Success}
 import scala.concurrent._
@@ -59,7 +60,7 @@ class GUIRoom(override val name:String) extends ScrollPane {
       add(adDeviceBtn, BorderPanel.Position.South)
     }
       contents = bp
-      for (i <- Coordinator.getDevices.filter(_.room == name)) addDevice(PrintDevicePane(i))
+      for (i <- Coordinator.getDevices.filter(_.room == name).filter(!_.isInstanceOf[SensorAssociableDevice[_]])) addDevice(PrintDevicePane(i))
   }
 
   def apply(roomName: String): GUIRoom = new GUIRoom(roomName)
@@ -247,6 +248,9 @@ object ChangeOrDeleteProfile {
 class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
+  private val onActivationCommands: Set[(Device, CommandMsg)] = Set.empty
+  private val onSensorChangeCommands: Set[(Device, CommandMsg)] = Set.empty
+  private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
   //private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
   //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
@@ -264,7 +268,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("On activation: ")
       contents += new Button("Modify") {
         reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = false)
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, false, onActivationCommands)
         }
       }
     }
@@ -273,7 +277,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Add") {
         reactions += {
           case ButtonClicked(_) =>
-            SensorReaction()
+            SensorReaction(onSensorChangeCommands)
         }
       }
     }
@@ -281,12 +285,17 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("Programmed Stuff: ")
       contents += new Button("Devices") {
         reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true)
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, true, programmedStuffCommands)
         }
       }
     }
     contents += new FlowPanel() {
-      contents += new Button("Confirm")
+      contents += new Button("Confirm") {
+        reactions += {
+          case ButtonClicked(_) => println(profileName.text)
+            println(description.text)
+        }
+      }
       contents += new Button("Cancel") {
         reactions += {
           case ButtonClicked(_) => close()
@@ -302,14 +311,7 @@ object CreateProfile {
   }
 }
 
-class SensorReactionDialog extends Dialog {
-  //TODO: Used only for testing, need to delete those lines of code
-  private val motionSensor = MotionSensor("Motion","Bedroom")
-  private val hygrometer = Hygrometer("Hygro","Bedroom")
-  private val photometer = Photometer("Photo","Bedroom")
-  Coordinator.addDevice(motionSensor)
-  Coordinator.addDevice(hygrometer)
-  Coordinator.addDevice(photometer)
+class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dialog {
   //private val sensors = new ComboBox[Device](Coordinator.getDevices.filter(_.isInstanceOf[SensorAssociableDevice[Any]]) toSeq)
   title = "Sensor Reaction"
   location = new Point(300,0)
@@ -320,42 +322,56 @@ class SensorReactionDialog extends Dialog {
   def applyTemplate : BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
-      val devicePanel = new BoxPanel(Orientation.Horizontal) {
-        if(i.isInstanceOf[SensorAssociableDevice[_]]) {
-          contents += new FlowPanel() {
-            contents += new Label(i.name + "-" + i.room)
-            contents += new Label("On: ")
-            contents += applyComponent(i)
-            contents += new TextField(8)
-            contents += new Button("Do") {
-              reactions += {
-                case ButtonClicked(_) => roomsDevices(i.room)
-              }
+      val devicePanel = new BoxPanel(Orientation.Horizontal)
+      devicePanel.peer.add(Box.createVerticalStrut(10))
+      devicePanel.border = new LineBorder(Color.BLACK, 2)
+      if(i.isInstanceOf[SensorAssociableDevice[_]]) {
+        devicePanel.contents += new FlowPanel() {
+          contents += new Label(i.name)
+          contents += new Label("On: ")
+          contents += applyComponent(i, this)
+          contents += new TextField(8)
+          contents += new Button("Do") {
+            reactions += {
+              case ButtonClicked(_) =>
+                for(sym <- devicePanel.contents(1).asInstanceOf[FlowPanel].contents) yield {
+                  if(sym.isInstanceOf[ComboBox[_]]) println(giveSymbol(sym))
+                }
+                roomsDevices(i.room)
             }
           }
         }
+        panel.contents += devicePanel
       }
-      panel.contents += devicePanel
     }
     panel
   }
 
-  def applyComponent(dev: Device) : Component = dev.deviceType match {
-    case MotionSensorType => new ComboBox[String](Set("Detecting", "Not detecting") toSeq)
-    case HygrometerType => new ComboBox[String](Set("Humidity =", "Humidity >=", "Humidity <=", "Humidity >", "Humidity <") toSeq)
-    case PhotometerType => new ComboBox[String](Set("Intensity =", "Intensity >=", "Intensity <=", "Intensity >", "Intensity <") toSeq)
-    case ThermometerType => new ComboBox[String](Set("Temperature =", "Temperature >=", "Temperature <=", "Temperature >", "Temperature <") toSeq)
+  def applyComponent(dev: Device, panel: FlowPanel) : Component = dev.deviceType match {
+    case MotionSensorType => panel.contents+=new Label("Motion ")
+      new ComboBox[String](Set("Detecting", "Not detecting") toSeq)
+    case HygrometerType =>  panel.contents+=new Label("Humidity ")
+      new ComboBox[String](Set("=", ">=", "<=", ">", "<") toSeq)
+    case PhotometerType => panel.contents+=new Label("Intensity ")
+      new ComboBox[String](Set("=", ">=", "<=", ">", "<") toSeq)
+    case ThermometerType => panel.contents+=new Label("Temperature ")
+      new ComboBox[String](Set("=", ">=", "<=", ">", "<") toSeq)
     case _ => this.errUnexpected(UnexpectedDeviceType, dev.deviceType.toString)
   }
 
+  def giveSymbol(x: Any): String = x match {
+    case p: ComboBox[String] => p.selection.item
+    case _ => ""
+  }
+
   def roomsDevices(room: String) : Dialog = {
-    AllDevice(Set(room), isRoutine = false)
+    AllDevice(Set(room), isRoutine = false, commands)
   }
   open()
 }
 object SensorReaction {
-  def apply(): SensorReactionDialog = {
-    new SensorReactionDialog()
+  def apply(commands: Set[(Device, CommandMsg)]): SensorReactionDialog = {
+    new SensorReactionDialog(commands)
   }
 }
 
@@ -392,7 +408,7 @@ object AddProgrammedStuff {
   }
 }
 
-class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
+class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[(Device, CommandMsg)]) extends Dialog {
   title = "All Devices"
   location = new Point(300,250)
   preferredSize = new Dimension(1000,500)
@@ -401,33 +417,31 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
     contents = applyTemplate
   }
 
-  private var commands: Set[(Device,CommandMsg)] = Set.empty
-
   def applyTemplate : BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal)
       if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
-          val applyButton = new Button("Add")
-          devPanel.peer.add(Box.createVerticalStrut(5))
-          devPanel.border = new LineBorder(Color.BLACK, 2)
-          devPanel.contents += new FlowPanel() {
-            contents += new Label(i.name)
-            MapDeviceCommands.apply(i)
-            for(a <- MapDeviceCommands.getCommands) {
-              val component = applyComponent(a,i,this)
-              applyButton.reactions += {
-                  case ButtonClicked(_) => addRule(component, i, a)
-              }
+        val applyButton = new Button("Add")
+        devPanel.peer.add(Box.createVerticalStrut(10))
+        devPanel.border = new LineBorder(Color.BLACK, 2)
+        devPanel.contents += new FlowPanel() {
+          contents += new Label(i.name)
+          MapDeviceCommands.apply(i)
+          for(a <- MapDeviceCommands.getCommands) {
+            val component = applyComponent(a,i,this)
+            applyButton.reactions += {
+              case ButtonClicked(_) => addRule(component, i, a)
             }
-            if(isRoutine) {
-              contents += new Label("Start at: ")
-              contents += new TextField(8)
-              contents += new Label("End at: ")
-              contents += new TextField(8)
-            }
-            contents += applyButton
           }
+          if(isRoutine) {
+            contents += new Label("Start at: ")
+            contents += new TextField(8)
+            contents += new Label("End at: ")
+            contents += new TextField(8)
+          }
+          contents += applyButton
+        }
         panel.contents += devPanel
       }
     }
@@ -504,12 +518,12 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
 
   def addRule(component: Component, device: Device, command: String) : Unit = command match {
     case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute =>
-      println(commands)
+      //println(commands)
       commands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
       println(commands)
     case _ => commands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
   }
-  
+
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField =>  command match {
       case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
@@ -520,8 +534,8 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
       case _ => ""
     }
     case p: ComboBox[String] =>  command match {
-        case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
-        case _ => ""
+      case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
+      case _ => ""
     }
     case _ => ""
   }
@@ -529,8 +543,8 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean) extends Dialog {
   open()
 }
 object AllDevice {
-  def apply(rooms: Set[String], isRoutine: Boolean): AllDeviceDialog = {
-    new AllDeviceDialog(rooms, isRoutine)
+  def apply(rooms: Set[String], isRoutine: Boolean, commands: Set[(Device, CommandMsg)]): AllDeviceDialog = {
+    new AllDeviceDialog(rooms, isRoutine, commands)
   }
 }
 
@@ -702,7 +716,7 @@ object PrintDevicePane {
 case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
   require (d.deviceType == AirConditionerType)
   contents++=Seq(new Label("Temperature: "),
-  Feature(d.name,"Temperature",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setTemperature))
+    Feature(d.name,"Temperature",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setTemperature))
 }
 case class DehumidifierPane(override val d: SimulatedDehumidifier) extends GUIDevice(d){
   require (d.deviceType == DehumidifierType)
@@ -721,7 +735,7 @@ case class DishWasherPane(override val d: SimulatedDishWasher) extends GUIDevice
 case class LightPane(override val d: SimulatedLight) extends GUIDevice(d) {
   require(d.deviceType == LightType)
   contents++=Seq(new Label("Intensity: "),
-  Feature(d.name,"Intensity",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setIntensity))
+    Feature(d.name,"Intensity",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setIntensity))
 }
 case class OvenPane(override val d: SimulatedOven) extends GUIDevice(d){
   require (d.deviceType == OvenType)
@@ -757,12 +771,12 @@ case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
 case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
   require (d.deviceType == WashingMachineType)
   contents++= Seq(
-  new Label("Working mode: "),
-  Feature(d.name,"Working mode",d.getWashingType toString,ListFeature(Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString)),Msg.washingType),
-  new Label("Extras: "),
-  Feature(d.name,"Extras","Extra",ListFeature(Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString)),Msg.addExtra),
-  new Label("RPM: "),
-  Feature(d.name,"RMP",d.getRPM toString,ListFeature(Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)),Msg.RPM)
+    new Label("Working mode: "),
+    Feature(d.name,"Working mode",d.getWashingType toString,ListFeature(Seq(WashingType.RAPID,WashingType.MIX,WashingType.WOOL)map(_ toString)),Msg.washingType),
+    new Label("Extras: "),
+    Feature(d.name,"Extras","Extra",ListFeature(Seq(WashingMachineExtra.SpecialColors,WashingMachineExtra.SuperDirty,WashingMachineExtra.SuperDry)map(_ toString)),Msg.addExtra),
+    new Label("RPM: "),
+    Feature(d.name,"RMP",d.getRPM toString,ListFeature(Seq(RPM.FAST,RPM.MEDIUM,RPM.SLOW)map(_ toString)),Msg.RPM)
   )
 }
 
@@ -788,11 +802,11 @@ object LoginPage{
     contents = new BoxPanel(Orientation.Vertical) {
       contents ++= Seq(
         new FlowPanel() {
-        contents ++= Seq(
-          new Label("Username:"),
-          id,
-        )
-      },
+          contents ++= Seq(
+            new Label("Username:"),
+            id,
+          )
+        },
         new FlowPanel() {
           contents ++= Seq(
             new Label("Password:"),
