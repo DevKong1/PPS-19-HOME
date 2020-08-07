@@ -320,7 +320,7 @@ class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dial
       val devicePanel = new BoxPanel(Orientation.Horizontal)
       devicePanel.peer.add(Box.createVerticalStrut(10))
       devicePanel.border = new LineBorder(Color.BLACK, 2)
-      if(i.isInstanceOf[SensorAssociableDevice[_]]) {
+      if(Device.isSensor(i)) {
         devicePanel.contents += new FlowPanel() {
           contents += new Label(i.name)
           contents += new Label("On: ")
@@ -712,6 +712,7 @@ object PrintDevicePane {
 
     case HygrometerType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
     case MotionSensorType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
+    case PhotometerType => ThermometerPane(Thermometer(device.name,device.room))
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }

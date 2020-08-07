@@ -221,7 +221,7 @@ object OvenMode {
 //TODO add a checkAndRemove pimping the Iterable
 
 //A little object for create a starting demo of the program
-object StartingDemo {
+/*object StartingDemo {
 
   //Add devices to the kitchen
   private val light_kitchen: SimulatedLight = Light("Lamp_Kitchen", "Kitchen")
@@ -311,4 +311,4 @@ object StartingDemo {
     Coordinator.addDevice(airConditioner_bedroom)
     Coordinator.addDevice(stereo_bedroom)
   }
-}
+}*/

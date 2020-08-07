@@ -57,7 +57,7 @@ object MapDeviceCommands {
     case OvenType => commands = Set.empty
       commands += "setTemperature"
       commands += "setMode"
-    case _ => ""
+    case _ =>
   }
 
   def getCommands : Set[String] = {

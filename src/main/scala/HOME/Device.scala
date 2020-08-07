@@ -10,7 +10,7 @@ sealed trait DeviceType {
 }
 
 object DeviceType {
-  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType, ThermometerType, HygrometerType, MotionSensorType)
+  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType, ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
   def apply(devType: String): DeviceType = listTypes.find(_.getSimpleClassName == devType) match {
     case Some(t) => t
@@ -55,7 +55,13 @@ object Device {
     case ThermometerType => Some(Thermometer(name, room))
     case HygrometerType => Some(Hygrometer(name, room))
     case MotionSensorType => Some(MotionSensor(name, room))
+    case PhotometerType => Some(Photometer(name, room))
     case _ => None
+  }
+
+  def isSensor(device: Device): Boolean = device.deviceType match {
+    case ThermometerType | HygrometerType | PhotometerType | MotionSensorType => true
+    case _ => false
   }
 
 }
