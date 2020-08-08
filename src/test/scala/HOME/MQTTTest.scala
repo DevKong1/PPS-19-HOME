@@ -1,9 +1,9 @@
 package HOME
 
-import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers
 import HOME.ConstantsTest._
+import org.scalatest.concurrent.Eventually
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 class MQTTTest extends AnyFunSuite with Eventually with Matchers {
   Rooms.addRoom("Living room")
@@ -32,5 +32,21 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); light.value shouldNot be (12) }
     assert(Coordinator.disconnect)
     assert(light.disconnect)
+  }
+
+  test("Coordinator forces a registered device to disconnect", BrokerRequired){
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    assert(light.connect)
+    assert(light.subscribe)
+    val p = light.register
+    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
+    eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
+    assert(Coordinator.publish(Coordinator.devices.head.asInstanceOf[AssociableDevice].getSubTopic, Msg.disconnect))
+    eventually { Thread.sleep(testSleepTime); light.isConnected should be (false) }
+    eventually { Thread.sleep(testSleepTime); light.isRegistered should be (false) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (0) }
+    assert(Coordinator.disconnect)
   }
 }

@@ -276,7 +276,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("Programmed Stuff: ")
       contents += new Button("Devices") {
         reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, true, programmedStuffCommands)
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true, programmedStuffCommands)
         }
       }
     }

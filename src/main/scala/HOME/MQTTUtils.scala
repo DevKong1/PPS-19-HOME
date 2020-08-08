@@ -135,6 +135,7 @@ object CommandMsg {
 object Msg {
   val nullCommandId: Int = 0
 
+  val disconnect: String = "disconnect" //Message sent by the coordinator to tell a device to disconnect
   val disconnected: String = "disconnected" //Message sent when the connection is lost
   val register: String = "register" //Message sent by the device to register to the system
   val regSuccess: String = "regSuccess" //Message sent by the coordinator to assert the device has registered successfully
