@@ -15,7 +15,24 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assert(Coordinator.activeProfile.name == Constants.default_profile_name)
   }
 
+
   private val salotto: String = "Living room"
+
+  test("Coordinator correctly calculates Consuption"){
+    val Light1 = Light("Light1",salotto)
+    val Light2 = Light("Light2",salotto)
+
+    assert(Coordinator.getActiveConsumption == 0)
+    Coordinator.addDevice(Light1)
+    Light1.turnOn()
+    assert(Coordinator.getActiveConsumption == 5)
+    Coordinator.addDevice(Light2)
+    Light2.turnOn()
+    assert(Coordinator.getActiveConsumption == 10)
+    Coordinator.removeAllDevices()
+    assert(Coordinator.getActiveConsumption == 0)
+  }
+
   test("Adding and removing devices which are identified by ID") {
     Coordinator.addDevice(Light("Light1",salotto))
     assert(Coordinator.getDevices.size == 1)
