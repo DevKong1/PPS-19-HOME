@@ -34,6 +34,9 @@ dependencies {
 	
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
 	implementation 'com.typesafe.play:play-json_2.12:2.9.0'
+
+    implementation 'com.typesafe.akka:akka-actor_2.12:2.6.8'
+    implementation 'com.enragedginger:akka-quartz-scheduler_2.12:1.8.4-akka-2.6.x'
 }
 
 compileScala {

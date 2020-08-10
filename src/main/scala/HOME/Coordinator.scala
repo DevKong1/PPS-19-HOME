@@ -71,10 +71,10 @@ object Coordinator extends JSONSender with MQTTUtils {
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
 
-  def sendUpdate(devName : String,cmdMsg : String,newValue:String = null) : Future[Unit] = {
+  def sendUpdate(devName: String, cmdMsg: String, newValue: String = null) : Future[Unit] = {
     val p = Promise[Unit]
     val requestNumber = RequestHandler.addRequest(p)
-    publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
+    publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice], CommandMsgImpl(requestNumber, cmdMsg, newValue))
     RequestHandler.addRequest(p)
     p.future
   }
@@ -110,6 +110,8 @@ object Rooms {
 sealed trait Profile {
   val name: String
   val description: String
+  val programmedRoutineStart: String
+  val programmedRoutineStop: String
 
   def onActivation(): Unit
 
@@ -119,6 +121,10 @@ sealed trait Profile {
   def onMotionSensorNotification(room: String): Unit
 
   def doProgrammedRoutine(): Unit
+  def applyStartRoutine(): Unit
+  def applyStopRoutine(): Unit
+
+  def hasProgrammedRoutine: Boolean = programmedRoutineStart != Constants.default_empty_time && programmedRoutineStop != Constants.default_empty_time
 
   override def equals(o: Any): Boolean = o match {
     case profile: Profile if this.name == profile.name => true
@@ -137,7 +143,8 @@ trait BasicProfile extends Profile {
   def photometerNotificationCommands(room: String,value: Int): Device => Unit
   def motionSensorNotificationCommands(room: String): Device => Unit
 
-  val programmedRoutineCommands: Device => Unit
+  val programmedRoutineStartCommands: Device => Unit
+  val programmedRoutineStopCommands: Device => Unit
 
   def applyCommand(command: Device => Unit): Unit = {
       for (device <- Coordinator.getDevices) {
@@ -151,6 +158,9 @@ trait BasicProfile extends Profile {
   override def onHygrometerNotification(room: String,value: Int): Unit = applyCommand(hygrometerNotificationCommands(room,value))
   override def onPhotometerNotification(room: String,value: Int): Unit = applyCommand(photometerNotificationCommands(room,value))
   override def onMotionSensorNotification(room: String): Unit = applyCommand(motionSensorNotificationCommands(room))
+
+  override def applyStartRoutine(): Unit = applyCommand(programmedRoutineStartCommands)
+  override def applyStopRoutine(): Unit = applyCommand(programmedRoutineStopCommands)
 }
 
 object Profile {
@@ -170,9 +180,12 @@ object Profile {
 
     override val name: String = Constants.default_profile_name
     override val description: String = "Default Profile"
+    override val programmedRoutineStart: String = Constants.default_empty_time
+    override val programmedRoutineStop: String = Constants.default_empty_time
 
     override val initialRoutine: Device => Unit = _.id
-    override val programmedRoutineCommands: Device => Unit = _.id
+    override val programmedRoutineStartCommands: Device => Unit = _.id
+    override val programmedRoutineStopCommands: Device => Unit = _.id
 
     override def thermometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
     override def hygrometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
@@ -186,6 +199,8 @@ object Profile {
 
     override val name: String = "NIGHT"
     override val description: String = "Night Profile"
+    override val programmedRoutineStart: String = Constants.default_empty_time
+    override val programmedRoutineStop: String = Constants.default_empty_time
 
     override val initialRoutine: Device => Unit = {
       case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.close)); Coordinator.publish(device, CommandMsg(cmd = Msg.off))
@@ -210,7 +225,8 @@ object Profile {
       case _ =>
     }
 
-    override val programmedRoutineCommands: Device => Unit = null
+    override val programmedRoutineStartCommands: Device => Unit = _.id
+    override val programmedRoutineStopCommands: Device => Unit = _.id
 
     override def doProgrammedRoutine(): Unit = {}
   }
@@ -230,8 +246,9 @@ case class CustomProfile(override val name: String, override val description: St
                          thermometerCheck: Int => Boolean, thermometerNotificationCommandsSet: Set[Device => Unit],
                          hygrometerCheck: Int => Boolean, hygrometerNotificationCommandsSet: Set[Device => Unit],
                          photometerCheck: Int => Boolean, photometerNotificationCommandsSet: Set[Device => Unit],
-                         motionSensorNotificationCommandsSet: Set[Device => Unit], programmedRoutineCommandsSet: Set[Device => Unit],
-                         override val doProgrammedRoutine: Unit) extends Profile {
+                         motionSensorNotificationCommandsSet: Set[Device => Unit], programmedRoutineStartCommandsSet: Set[Device => Unit],
+                         programmedRoutineEndCommandsSet: Set[Device => Unit], override val programmedRoutineStart: String,
+                         override val programmedRoutineStop: String) extends Profile {
 
   val initialRoutine: Set[Device => Unit] = initialRoutineSet
   def thermometerNotificationCommands: Set[Device => Unit] = thermometerNotificationCommandsSet
@@ -239,7 +256,8 @@ case class CustomProfile(override val name: String, override val description: St
   def photometerNotificationCommands: Set[Device => Unit] = photometerNotificationCommandsSet
   def motionSensorNotificationCommands: Set[Device => Unit] = motionSensorNotificationCommandsSet
 
-  val programmedRoutineCommands: Set[Device => Unit] = programmedRoutineCommandsSet
+  val programmedRoutineStartCommands: Set[Device => Unit] = programmedRoutineStartCommandsSet
+  val programmedRoutineEndCommands: Set[Device => Unit] = programmedRoutineEndCommandsSet
 
   def applyCommand(commands: Set[Device => Unit], filter: Device => Boolean = _ => true ): Unit = {
     for(device <- Coordinator.getDevices.filter(filter)) {
@@ -261,6 +279,14 @@ case class CustomProfile(override val name: String, override val description: St
   override def onHygrometerNotification(room: String,value: Int): Unit = if(hygrometerCheck(value)) applySensorCommand(hygrometerNotificationCommands, room)
   override def onPhotometerNotification(room: String,value: Int): Unit = if(photometerCheck(value)) applySensorCommand(photometerNotificationCommands, room)
   override def onMotionSensorNotification(room: String): Unit = applySensorCommand(motionSensorNotificationCommands, room)
+
+  override def doProgrammedRoutine(): Unit = {
+    if (hasProgrammedRoutine) {
+    }
+  }
+
+  override def applyStartRoutine(): Unit = applyCommand(programmedRoutineStartCommands)
+  override def applyStopRoutine(): Unit = applyCommand(programmedRoutineEndCommands)
 }
 
 object CustomProfileBuilder {

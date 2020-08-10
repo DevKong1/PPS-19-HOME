@@ -16,6 +16,7 @@ object Constants {
   //Used to generate the set of devices that are in every room
   def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp",name),Thermometer("Thermometer",name),Hygrometer("Hygrometer",name),MotionSensor("MotionSensor",name))
   def default_profile_name: String = "DEFAULT"
+  def default_empty_time: String = ""
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
   val IconExt = ".jpg"

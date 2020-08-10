@@ -1,0 +1,33 @@
+import HOME.Coordinator
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
+
+object Scheduler {
+  val system: ActorSystem = ActorSystem("System")
+  val scheduler: QuartzSchedulerExtension = QuartzSchedulerExtension(system)
+
+  val Actor: ActorRef = system.actorOf(Props(new Actor {
+    def receive: Receive = {
+      case "start" => Coordinator.activeProfile.applyStartRoutine()
+      case "stop" => Coordinator.activeProfile.applyStopRoutine()
+    }
+  }))
+
+  def scheduleTask(name: String, hour: String, minute: String, msg: String): Boolean = {
+    val scheduleJobName : String = name
+    val messageReceiverActor: ActorRef = Actor
+    val messageSentToReceiver : AnyRef = msg
+    val scheduleCronExpression: String = "0 "+ minute + " " + hour + "* * ?"
+
+    try {
+      scheduler.createJobSchedule(
+        name = scheduleJobName,
+        receiver = messageReceiverActor,
+        msg = messageSentToReceiver,
+        cronExpression = scheduleCronExpression)
+        true
+    } catch {
+      case _: Throwable => false
+    }
+  }
+}
