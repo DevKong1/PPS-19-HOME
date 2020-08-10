@@ -6,14 +6,16 @@ import java.awt.Color
 import scala.swing._
 import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueChanged}
 import javax.swing.{Box, ImageIcon}
-import javax.swing.border.LineBorder
+import javax.swing.border.{LineBorder, TitledBorder}
 import HOME.MyClass._
 
 import scala.util.Success
 import scala.concurrent._
 import ExecutionContext.Implicits.global
+import scala.swing.Dialog.Result
+
 sealed trait Room {
-  def devices : Set[Device]
+  var devices : Set[Device]
   def name : String
 }
 
@@ -31,7 +33,7 @@ sealed trait EditableFeature{
   def setVal(v:String) : Unit
 }
 
-class GUIRoom(override val name:String, override val devices:Set[Device] = Set.empty) extends ScrollPane with Room {
+class GUIRoom(override val name:String, override var devices:Set[Device] = Set.empty) extends ScrollPane with Room {
   val devicePanel = new BoxPanel(Orientation.Vertical)
   val adDeviceBtn: Button =
     new Button("Add device") {
@@ -43,20 +45,20 @@ class GUIRoom(override val name:String, override val devices:Set[Device] = Set.e
   name toLowerCase match {
     case "home" => contents = HomePage()
     case _ => val bp: BorderPanel = new BorderPanel {
-      /*add(new FlowPanel() {
-          border = new LineBorder(Color.black,3)
-          contents ++=Seq(
-            //TODO: ADD BASIC SENSORS
-        },BorderPanel.Position.North)*/
+      add(new FlowPanel() {
+          border = new TitledBorder("Sensors")
+          contents ++= devices.filter(Device.isSensor).map(PrintDevicePane(_))
+        },BorderPanel.Position.North)
+
       add(devicePanel, BorderPanel.Position.Center)
       add(adDeviceBtn, BorderPanel.Position.South)
     }
       contents = bp
-      for (i <- devices) addDevicePane(PrintDevicePane(i))
+      for (i <- devices.filter(!Device.isSensor(_))) addDevicePane(PrintDevicePane(i))
   }
 
   def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices)
-  def addDevicePane(dev : Component): Unit ={
+  def addDevicePane(dev : GUIDevice): Unit ={
     devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
     devicePanel.contents += dev
   }
@@ -135,36 +137,33 @@ object GUI extends MainFrame {
   def getCurrentRoom: String = {
     tp.selection.page.title
   }
-
+  def removeDevice(device:Device) : Unit = {
+    rooms.foreach(_.devices -= device)
+  }
 }
 
 class AddDeviceDialog extends Dialog {
   private val dimension = WindowSize(WindowSizeType.Dialog)
-  private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
-  private val deviceName = new TextField(10)
+  //Can't add sensors
+  private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes -- Seq(MotionSensorType,ThermometerType,HygrometerType,PhotometerType) toSeq)
+
   preferredSize = dimension
   title = "Add device"
   contents = new BoxPanel(Orientation.Vertical) {
     private val labels = new FlowPanel() {
-      contents ++= Seq(new Label("Device name: "),deviceName,new Label("Device type: "),deviceType)
+      contents ++= Seq(new Label("Device name: "),new Label("Device type: "),deviceType)
     }
     private val buttons = new FlowPanel() {
       contents ++= Seq(
         new Button("Create"){
           reactions += {
             case ButtonClicked(_) =>
-              val name = deviceName.text
-              val currentRoom = GUI.getCurrentRoom
-              val devType = deviceType.selection.item.toString
-              if(name.trim.length > 0){
-                for {
-                  room <- GUI.rooms.find(_.name equals currentRoom)
-                  dev <- Coordinator.addDevice(devType,name,currentRoom)
-                }yield{
-                  room.addDevicePane(PrintDevicePane(dev))
-                  close()
+              val room = GUI.getCurrentRoom
+              val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get
+              RegisterDevice(dev).onComplete {
+                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevicePane(PrintDevicePane(dev));repaint(); close()
+                    case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
-              }
           }
         },
         new Button("Cancel") {
@@ -599,53 +598,53 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
   val ON = "ON"
   //OFF is lazy because of Shutter type, allowing to overwrite its value before using it as button text
   lazy val OFF = "OFF"
-  private var status = OFF
   private val devType = new Label("DeviceType: "+d.deviceType)
-  private val statusButton = new ToggleButton(status) {
-    reactions += {
-      case ButtonClicked(_) =>
-        this.text = switchStatus { case ON => Coordinator.sendUpdate(d.name,Msg.off); status = OFF case _ => Coordinator.sendUpdate(d.name,Msg.on);status = ON }
-    }
-  }
-  /** BASIC TEMPLATE */
-  val switchStatus: (String => Unit) => String = (c: String => Unit) => {
-    c(status)
-    status
-  }
 
   border = new LineBorder(Color.BLACK, 2)
-  contents += new myIcon(d.id, d.deviceType.toString)
-  val deviceInfo = new GridPanel(3, 3)
+  contents += new myIcon(d.deviceType.toString)
+  private val deviceInfo = new GridPanel(3, 3)
   deviceInfo.contents ++= Seq(
     devType,
     new Label("Consumption: " + d.consumption),
-    statusButton
+    BinaryFeature(d.name,"ON",Msg.on,"OFF",Msg.off),
+    new Button("Delete") {
+      reactions +={
+        case ButtonClicked(_) => Dialog.showConfirmation(message="Are you sure you want to delete this device? There is no coming back",title ="Delete device") match{
+          case Result.Ok =>  Coordinator.sendUpdate(d.name,Msg.disconnect); GUI.removeDevice(d); shutdown()/*.onComplete{
+            case Success(_) => println("OK"); GUI.removeDevice(d); this.visible = false
+            case _ => println("Something wrong") //TODO: Error dialog
+          }*/
+          case _ => println("Nothing yet")
+        }
+      }
+    }
   )
-
-  if (d.deviceType == TvType) {
-    deviceInfo.contents += new ToggleButton("Mute")
+  private def shutdown(): Unit ={
+    this.visible = false
   }
-  contents += deviceInfo
+  private val sensorInfo = new FlowPanel(){
+    contents++=  Seq(
+      new Button("+"),
+    new Label("Value"),
+    new Button("-")
+    )
+  }
 
-
-
-  /** define a function that depending on the thing to update chooses what to update
-   * def updateVal(whatToUpdate: String(?), val : Int) = {
-   *  valType match {
-   *  case "sensitivity" => d.setSens(val)
-   * }
-   *
-   *
-   **/
-  private class myIcon(name:String, iconPath :String) extends Label{
-    text=name
+  if (Device.isSensor(d)) {
+    contents += sensorInfo
+  } else {
+    contents += deviceInfo
+  }
+  private class myIcon(iconName :String) extends Label{
+    text=iconName
     border = new LineBorder(Color.black,1)
-    icon = new ImageIcon(getClass.getClassLoader.getResource(iconPath + Constants.IconExt) getPath)
+    icon = new ImageIcon(getClass.getClassLoader.getResource(iconName + Constants.IconExt) getPath)
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
   }
 }
+
 class DeviceFeature[A <: Component with EditableFeature](deviceName :String,featureTitle : String, initialValue: String, setterComponent: A ,updateType:String) extends Label {
   text = initialValue
   border = new LineBorder(Color.black,1)
@@ -669,7 +668,7 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
                 reactions += {
                   case ButtonClicked(_) => setterComponent.update(deviceName,updateType,setterComponent.getVal).onComplete{
                     case Success(_) => setFeatureValue(setterComponent.getVal); close()
-                    case _ => //Do nothing
+                    case _ => //TODO: PRINT ERROR DIALOG
                   }
                 }
               },
@@ -705,16 +704,30 @@ object PrintDevicePane {
     case OvenType => OvenPane(Oven(device.name,device.room))
     case ShutterType => ShutterPane(Shutter(device.name,device.room))
     case StereoSystemType => StereoPane(StereoSystem(device.name,device.room))
-    case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
     case TvType => TVPane(TV(device.name,device.room))
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
-
-    case HygrometerType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
-    case MotionSensorType => ThermometerPane(Thermometer(device.name,device.room))  //TODO CHANGE
-    case PhotometerType => ThermometerPane(Thermometer(device.name,device.room))
+    case BoilerType => LightPane(Light(device.name,device.room))
+    case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
+    case HygrometerType => HygrometerPane(Hygrometer(device.name,device.room))
+    case MotionSensorType => MotionSensorPane(MotionSensor(device.name,device.room))
+    case PhotometerType => PhotometerPane(Photometer(device.name,device.room))
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }
+/* SENSOR PANE*/
+private case class HygrometerPane(override val d: SimulatedHygrometer)extends GUIDevice(d){
+  require (d.deviceType == HygrometerType)
+}
+private case class MotionSensorPane(override val d: SimulatedMotionSensor)extends GUIDevice(d){
+  require (d.deviceType == MotionSensorType)
+}
+private case class PhotometerPane(override val d: SimulatedPhotometer)extends GUIDevice(d){
+  require (d.deviceType == PhotometerType)
+}
+private case class ThermometerPane(override val d: SimulatedThermometer) extends GUIDevice(d){
+  require (d.deviceType == ThermometerType)
+}
+/* DEVICES PANE*/
 private case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
   require (d.deviceType == AirConditionerType)
   contents++=Seq(new Label("Temperature: "),
@@ -760,17 +773,15 @@ private case class StereoPane(override val d: SimulatedStereoSystem) extends GUI
     Feature(d.name,"Volume",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setVolume)
   )
 }
-private case class ThermometerPane(override val d: SimulatedThermometer) extends GUIDevice(d){
-  require (d.deviceType == ThermometerType)
-}
 private case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
   require (d.deviceType == TvType)
   contents++=Seq(
     new Label("Volume: "),
-    Feature(d.name,"Volume",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setVolume)
+    Feature(d.name,"Volume",d.value toString,SliderFeature(d.minValue,d.maxValue),Msg.setVolume),
+    BinaryFeature(d.name,"MUTED",Msg.mute,"NOT MUTED",Msg.mute)
   )
 }
-case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
+private case class WashingMachinePane(override val d: SimulatedWashingMachine) extends GUIDevice(d){
   require (d.deviceType == WashingMachineType)
   contents++= Seq(
     new Label("Working mode: "),
@@ -792,6 +803,24 @@ case class SliderFeature(mini : Int, maxi: Int) extends Slider with EditableFeat
 case class ListFeature(items: Seq[String]) extends ComboBox(items) with EditableFeature {
   override def getVal : String = selection.item
   override def setVal(v: String): Unit = selection.item = v
+}
+case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton{
+  text = toDisplay
+  private var status = toDisplay
+  reactions += {
+      case ButtonClicked(_) =>
+        switchStatus { case `toDisplay` => update(cmd1); status = other case _ => update(cmd2);status = toDisplay }
+  }
+
+  val switchStatus: (String => Unit) => Unit = (c: String => Unit) => {
+    c(status)
+  }
+  private def update(cmd : String): Unit ={
+    Coordinator.sendUpdate(devName,cmd).onComplete {
+      case Success(_) => text = status
+      case _ => //TODO: print error dialog
+    }
+  }
 }
 
 
@@ -827,5 +856,4 @@ object LoginPage{
     }
     this.open()
   }
-
 }

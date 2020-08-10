@@ -23,10 +23,17 @@ object Constants {
   val AddPane = "+"
   val registrationTimeout = 500
 }
+object DeviceIDGenerator {
+  private var _id = 0
+  def apply(): String = {
+    _id += 1
+    _id.toString
+  }
+}
 object RegisterDevice {
-  def apply(devType:String,name :String, roomName:String): Future[Unit] = {
+  def apply(d : Device): Future[Unit] = {
     val p = Promise[Unit]
-    val dev = Device(devType,name,roomName).get.asInstanceOf[AssociableDevice]
+    val dev = d.asInstanceOf[AssociableDevice]
     startDevice(dev)
     registerDevice(dev,p)
     p.future

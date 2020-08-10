@@ -14,7 +14,7 @@ object Application {
     if (!startCoordinator() || !startDevices()) {
       return
     }
-    registerDevices()
+    RegisterDevice(devices)
     println("Launching GUI")
     GUI.pack()
     GUI.top.visible = true
