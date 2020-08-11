@@ -66,5 +66,6 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(Coordinator.disconnect)
     eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (false) }
     assert(thermometer.disconnect)
+    Coordinator.removeAllDevices()
   }
 }
