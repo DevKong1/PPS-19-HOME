@@ -169,9 +169,7 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
   private var _lastVal: Option[A] = None
-
-  def getValue[A]: Option[A] = _lastVal
-
+  
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
       if (_lastVal.isEmpty || (currentVal match {
