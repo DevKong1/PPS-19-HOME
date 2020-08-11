@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 class MQTTTest extends AnyFunSuite with Eventually with Matchers {
   Rooms.addRoom("Living room")
   val light: SimulatedLight = Light("A","Living room")
+  val thermometer: SimulatedThermometer = Thermometer("T","Living room")
 
   test("Coordinator sends commands to the light", BrokerRequired){
     assert(Coordinator.connect)
@@ -48,5 +49,22 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (false) }
     eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (0) }
     assert(Coordinator.disconnect)
+  }
+
+  test("Coordinator receives messages from sensors", BrokerRequired){
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    assert(thermometer.connect)
+    assert(thermometer.subscribe)
+    val p = thermometer.register
+    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (true) }
+    eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
+    assert(thermometer.valueChanged(12.5))
+    assert(!thermometer.valueChanged(12.5))
+    assert(thermometer.valueChanged(22.5))
+    assert(Coordinator.disconnect)
+    eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (false) }
+    assert(thermometer.disconnect)
   }
 }
