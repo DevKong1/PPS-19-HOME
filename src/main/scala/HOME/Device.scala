@@ -168,14 +168,17 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
 
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
-  private var _lastVal: Option[A] = None
+  private var _lastVal: Option[A] = None  //Stores the last received value
+  private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
 
+  //Used for simulation purposes
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
-      if (_lastVal.isEmpty || (currentVal match {
-        case _val: Double => Math.abs(1-_val/_lastVal.get.asInstanceOf[Double]) > _minDelta
-        case _val: Boolean => _val != _lastVal.get.asInstanceOf[Boolean]
+      if (_lastVariationVal.isEmpty || (currentVal match {
+        case _val: Double => Math.abs(1-_val/_lastVariationVal.get.asInstanceOf[Double]) > _minDelta
+        case _val: Boolean => _val != _lastVariationVal.get.asInstanceOf[Boolean]
         })) {
+        _lastVariationVal = Some(currentVal)
         return publish(CommandMsg(Msg.nullCommandId, message, currentVal))
       }
       false

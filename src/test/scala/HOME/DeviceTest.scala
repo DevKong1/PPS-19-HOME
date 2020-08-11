@@ -179,6 +179,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(thermometer.connect)
     assert(thermometer.valueChanged(12))
     assert(!thermometer.valueChanged(13))
+    assert(thermometer.valueChanged(14))
+    assert(!thermometer.valueChanged(15))
+    assert(thermometer.valueChanged(16))
     assert(thermometer.valueChanged(50.5))
     assert(thermometer.disconnect)
   }
