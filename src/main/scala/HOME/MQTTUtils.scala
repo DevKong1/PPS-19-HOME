@@ -18,6 +18,7 @@ trait MQTTUtils extends JSONUtils {
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
   val updateTopic: String = "update"  //Topic used by the devices to confirm the update requested
+  val sensorUpdateTopic: String = "sensorUpdate"  //Topic used by the sensors to send updates
 
   //Quality of Service
   //private val QoS_0: Int = 0
@@ -159,8 +160,5 @@ object Msg {
   val setMode: String = "setMode"
 
   //Sensor values
-  val temperatureRead: String = "temperatureRead"
-  val humidityRead: String = "humidityRead"
-  val intensityRead: String = "intensityRead"
-  val motionDetected: String = "motionDetected"
+  val updateBaseString = "sensorUpdate"
 }

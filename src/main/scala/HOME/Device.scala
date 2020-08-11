@@ -10,9 +10,15 @@ sealed trait DeviceType {
 }
 
 object DeviceType {
-  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType, ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
+  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType)
+  def sensorTypes: Set[DeviceType] = Set(ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
-  def apply(devType: String): DeviceType = listTypes.find(_.getSimpleClassName == devType) match {
+  def isSensor(devType: String): Boolean = sensorTypes.find(_.getSimpleClassName == devType) match {
+    case Some(_) => true
+    case _ => false
+  }
+
+  def apply(devType: String): DeviceType = (listTypes ++ sensorTypes).find(_.getSimpleClassName == devType) match {
     case Some(t) => t
     case _ => this.errUnexpected(UnexpectedDeviceType, devType)
   }
@@ -185,6 +191,8 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
     } finally {
       _lastVal = Some(currentVal)
     }
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
 
 case object LightType extends DeviceType {
@@ -488,9 +496,7 @@ case class SimulatedThermometer(override val id: String, override val room: Stri
                                 override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == ThermometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.temperatureRead)
-
-  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 }
 
 //////////////////
@@ -506,9 +512,7 @@ case class SimulatedHygrometer(override val id: String, override val room: Strin
                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == HygrometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.humidityRead)
-
-  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 }
 
 //////////////////
@@ -524,9 +528,7 @@ case class SimulatedPhotometer(override val id: String, override val room: Strin
                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == PhotometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.intensityRead)
-
-  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 }
 
 //////////////////////
@@ -542,7 +544,5 @@ case class SimulatedMotionSensor(override val id: String, override val room: Str
                                  override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Boolean] {
   require(deviceType == MotionSensorType)
 
-  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.motionDetected)
-
-  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 }

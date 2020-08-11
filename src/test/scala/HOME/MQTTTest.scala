@@ -9,6 +9,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
   Rooms.addRoom("Living room")
   val light: SimulatedLight = Light("A","Living room")
   val thermometer: SimulatedThermometer = Thermometer("T","Living room")
+  val motionSensor: SimulatedMotionSensor = MotionSensor("M","Living room")
 
   test("Coordinator sends commands to the light", BrokerRequired){
     assert(Coordinator.connect)
@@ -63,9 +64,31 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(thermometer.valueChanged(12.5))
     assert(!thermometer.valueChanged(12.5))
     assert(thermometer.valueChanged(22.5))
+
+    assert(motionSensor.connect)
+    assert(motionSensor.subscribe)
+    val p1 = motionSensor.register
+    assert(light.connect)
+    assert(light.subscribe)
+    val p2 = light.register
+    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (3) }
+    eventually { Thread.sleep(testSleepTime); motionSensor.isRegistered should be (true) }
+    eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
+    eventually { Thread.sleep(testSleepTime); p1.isCompleted should be (true) }
+    eventually { Thread.sleep(testSleepTime); p2.isCompleted should be (true) }
+    Coordinator.setProfile(Profile("NIGHT"))
+    assert(!light.isOn)
+    assert(motionSensor.valueChanged(true))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
+
     assert(Coordinator.disconnect)
     eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (false) }
+    eventually { Thread.sleep(testSleepTime); motionSensor.isRegistered should be (false) }
+    eventually { Thread.sleep(testSleepTime); light.isRegistered should be (false) }
     assert(thermometer.disconnect)
+    assert(motionSensor.disconnect)
+    assert(light.disconnect)
     Coordinator.removeAllDevices()
+    Coordinator.setProfile(Profile(Constants.default_profile_name))
   }
 }
