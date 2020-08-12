@@ -41,15 +41,6 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def getDevices: Set[Device] = devices
 
-  //SENSORS
-
-  def addSensor(device: Device): Unit = sensors += device
-
-  def removeSensor(device: String): Unit = sensors --= sensors.filter(_.name == device)
-  def removeAllSensors(): Unit = sensors = Set.empty
-
-  def getSensors: Set[Device] = sensors
-
   //PROFILES
 
   def getActiveProfile: Profile = activeProfile
