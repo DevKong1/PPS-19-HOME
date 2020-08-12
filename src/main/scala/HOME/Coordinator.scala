@@ -57,7 +57,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
     case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(getMessageFromMsg(message)).id)
-    case _ if message contains Msg.updateBaseString =>
+    case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
       val device = getSenderFromMsg[AssociableDevice](message)
       device.deviceType match {
@@ -67,6 +67,11 @@ object Coordinator extends JSONSender with MQTTUtils {
         case MotionSensorType => Coordinator.activeProfile.onMotionSensorNotification(device.room, msg.value.toBoolean)
       }
     case _ => this.errUnexpected(UnexpectedTopic, topic)
+  }
+
+  private def isSensorUpdate(topic: String, message: String): Boolean = {
+    val split = topic.split(topicSeparator)
+    split.length > 1 && DeviceType.isSensor(split(1)) && message.contains(Msg.updateBaseString)
   }
 
   def sendUpdate(devName : String,cmdMsg : String,newValue:String = null) : Future[Unit] = {
