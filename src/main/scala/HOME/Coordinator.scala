@@ -21,7 +21,6 @@ object Coordinator extends JSONSender with MQTTUtils {
     val p = Promise[Unit]
     val requestNumber = RequestHandler.addRequest(p)
     publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
-    RequestHandler.addRequest(p)
     p.future
   }
 
@@ -34,6 +33,7 @@ object Coordinator extends JSONSender with MQTTUtils {
     }
     dev
   }
+
   def addDevice(device: Device): Unit = devices += device
 
   def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)

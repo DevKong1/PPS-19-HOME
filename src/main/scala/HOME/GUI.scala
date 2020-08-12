@@ -18,17 +18,15 @@ sealed trait Room {
   var devices : Set[Device]
   def name : String
 }
-
 sealed trait EditableFeature{
   def update(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName, cmdMsg, newValue).onComplete {
-      case Success(_) => setVal(newValue); p.success(() => Unit)
-      case _ => Dialog.showMessage(title ="Update Error",message = "Something wrong happened while trying to update a device",messageType = Dialog.Message.Error); p.failure(_)
+      case Success(_) => setVal(newValue); p.success(() => Unit);
+      case _ => Dialog.showMessage(title ="Update Error",message = "Something wrong happened while trying to update a device",messageType = Dialog.Message.Error);  p.failure(_)
     }
     p.future
   }
-
   def getVal : String
   def setVal(v:String) : Unit
 }
@@ -62,8 +60,6 @@ class GUIRoom(override val name:String, override var devices:Set[Device] = Set.e
     devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
     devicePanel.contents += dev
   }
-
-
 }
 object GUI extends MainFrame {
   //StartingDemo()
@@ -602,7 +598,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
 
   border = new LineBorder(Color.BLACK, 2)
   contents += new myIcon(d.deviceType.toString)
-  private val deviceInfo = new GridPanel(3, 3)
+  private val deviceInfo = new GridPanel(2, 2)
   deviceInfo.contents ++= Seq(
     devType,
     new Label("Consumption: " + d.consumption),
@@ -614,7 +610,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
             case Success(_) => println("OK"); GUI.removeDevice(d); this.visible = false
             case _ => println("Something wrong") //TODO: Error dialog
           }*/
-          case _ => println("Nothing yet")
+          case _ => //Do nothing
         }
       }
     }
@@ -622,19 +618,20 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
   private def shutdown(): Unit ={
     this.visible = false
   }
-  private val sensorInfo = new FlowPanel(){
-    contents++=  Seq(
-      new Button("+"),
-    new Label("Value"),
-    new Button("-")
-    )
-  }
-
-  if (Device.isSensor(d)) {
-    contents += sensorInfo
-  } else {
+  if (!Device.isSensor(d)) {
     contents += deviceInfo
+  }else contents += new Label("Value:")
+
+  /** These two functions are used to let sensor update without passing through Coordinator*/
+  protected def sensorUpdate(d: SensorAssociableDevice[Double], newValue:String):Future[Unit] = {
+      d.valueChanged(newValue toDouble,"") //TODO: IS IT OK TO SEND "" AS MESSAGE?
+      Promise[Unit].success(() => Unit).future
   }
+  protected def sensorUpdate(d:SensorAssociableDevice[Boolean], newValue:Boolean) : Future[Unit] = {
+    d.valueChanged(newValue,"")//TODO: IS IT OK TO SEND "" AS MESSAGE?
+    Promise[Unit].success(() => Unit).future
+  }
+  /********/
   private class myIcon(iconName :String) extends Label{
     text=iconName
     border = new LineBorder(Color.black,1)
@@ -693,6 +690,10 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
 }
 object Feature{
   def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A,updateType:String): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,updateType)
+  /* This second apply is used for simulating sensors: they don't need no updateType since, for simulating purposes, updates are being applied directly
+   * to them without going through Coordinator.
+   */
+  def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,null)
 }
 
 object PrintDevicePane {
@@ -706,7 +707,9 @@ object PrintDevicePane {
     case StereoSystemType => StereoPane(StereoSystem(device.name,device.room))
     case TvType => TVPane(TV(device.name,device.room))
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
-    case BoilerType => LightPane(Light(device.name,device.room))
+    case BoilerType => LightPane(Light(device.name,device.room)) //TODO: CHANGE
+
+      //Sensors
     case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
     case HygrometerType => HygrometerPane(Hygrometer(device.name,device.room))
     case MotionSensorType => MotionSensorPane(MotionSensor(device.name,device.room))
@@ -717,15 +720,47 @@ object PrintDevicePane {
 /* SENSOR PANE*/
 private case class HygrometerPane(override val d: SimulatedHygrometer)extends GUIDevice(d){
   require (d.deviceType == HygrometerType)
+  private val MAX = 100
+  private val MIN = 0
+  contents += Feature(d.name,"Humidity",30 toString,new SliderFeature(MIN,MAX){
+    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+      sensorUpdate(d, newValue:String)
+    }
+  })
 }
 private case class MotionSensorPane(override val d: SimulatedMotionSensor)extends GUIDevice(d){
   require (d.deviceType == MotionSensorType)
+  private val EMPTY = "EMPTY"
+  private val NOTEMPTY = "NOT EMPTY"
+  private var status = EMPTY
+  contents += new BinaryFeature(d.name,"Empty",Msg.motionDetected,"NOT EMPTY",Msg.motionDetected){
+    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+      status match { case EMPTY => sensorUpdate(d,newValue = true); status = NOTEMPTY; case _ => sensorUpdate(d,newValue = false);status = EMPTY}
+      text = status
+      Promise[Unit].success(() => Unit).future
+    }
+  }
 }
 private case class PhotometerPane(override val d: SimulatedPhotometer)extends GUIDevice(d){
   require (d.deviceType == PhotometerType)
+  private val MAX = 100
+  private val MIN = 0
+  contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
+    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+      sensorUpdate(d, newValue:String)
+      Promise[Unit].success(() => Unit).future
+    }
+  })
 }
 private case class ThermometerPane(override val d: SimulatedThermometer) extends GUIDevice(d){
   require (d.deviceType == ThermometerType)
+  private val MAX = 50
+  private val MIN = -20
+  contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
+     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+       sensorUpdate(d, newValue:String)
+    }
+  }) //TODO: MAGIC NUMBERS
 }
 /* DEVICES PANE*/
 private case class AirConditionerPane(override val d: SimulatedAirConditioner) extends GUIDevice(d){
@@ -804,22 +839,28 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
   override def getVal : String = selection.item
   override def setVal(v: String): Unit = selection.item = v
 }
-case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton{
+//No need to extend EditableFeature since it's a plain button that doesn't need user input.
+case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton with EditableFeature {
+  override def getVal = status
+  override def setVal(v:String) = {}//Do nothing
   text = toDisplay
   private var status = toDisplay
   reactions += {
       case ButtonClicked(_) =>
-        switchStatus { case `toDisplay` => update(cmd1); status = other case _ => update(cmd2);status = toDisplay }
+        status match { case `toDisplay` => update(cmdMsg = cmd1) case _ => update(cmdMsg = cmd2)}
   }
 
-  val switchStatus: (String => Unit) => Unit = (c: String => Unit) => {
+  val switchStatus: (String => Unit) => String = (c: String => Unit) => {
     c(status)
+    status
   }
-  private def update(cmd : String): Unit ={
-    Coordinator.sendUpdate(devName,cmd).onComplete {
-      case Success(_) => text = status
+  override def update(devName : String = devName,cmdMsg :String, newValue : String = switchStatus{case `toDisplay` => status = other case _ => status = toDisplay}): Future[Unit] ={
+    val p = Promise[Unit]
+    Coordinator.sendUpdate(devName,cmdMsg).onComplete {
+      case Success(_) => text = status; p.success(()=>Unit)
       case _ => //TODO: print error dialog
     }
+    p.future
   }
 }
 
