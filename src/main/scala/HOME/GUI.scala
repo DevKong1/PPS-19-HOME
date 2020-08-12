@@ -75,7 +75,7 @@ object GUI extends MainFrame {
     for(i <- rooms) pages += new TabbedPane.Page(i.name,i)
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
-  def setRooms(roomList : Set[String]): Unit = roomList foreach( room=> rooms+=new GUIRoom(room,Coordinator.devices.filter(_.room equals room)))
+  //def setRooms(roomList : Set[String]): Unit = roomList foreach( room=> rooms+=new GUIRoom(room,Coordinator.devices.filter(_.room equals room)))
   def top: MainFrame = new MainFrame {
     title = "Home!"
     println("Welcome")
@@ -622,15 +622,6 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     contents += deviceInfo
   }else contents += new Label("Value:")
 
-  /** These two functions are used to let sensor update without passing through Coordinator*/
-  protected def sensorUpdate(d: SensorAssociableDevice[Double], newValue:String):Future[Unit] = {
-      d.valueChanged(newValue toDouble,"") //TODO: IS IT OK TO SEND "" AS MESSAGE?
-      Promise[Unit].success(() => Unit).future
-  }
-  protected def sensorUpdate(d:SensorAssociableDevice[Boolean], newValue:Boolean) : Future[Unit] = {
-    d.valueChanged(newValue,"")//TODO: IS IT OK TO SEND "" AS MESSAGE?
-    Promise[Unit].success(() => Unit).future
-  }
   /********/
   private class myIcon(iconName :String) extends Label{
     text=iconName
@@ -710,10 +701,10 @@ object PrintDevicePane {
     case BoilerType => LightPane(Light(device.name,device.room)) //TODO: CHANGE
 
       //Sensors
-    case ThermometerType => ThermometerPane(Thermometer(device.name,device.room))
-    case HygrometerType => HygrometerPane(Hygrometer(device.name,device.room))
-    case MotionSensorType => MotionSensorPane(MotionSensor(device.name,device.room))
-    case PhotometerType => PhotometerPane(Photometer(device.name,device.room))
+    case ThermometerType => ThermometerPane(device.asInstanceOf[SimulatedThermometer])
+    case HygrometerType => HygrometerPane(device.asInstanceOf[SimulatedHygrometer])
+    case MotionSensorType => MotionSensorPane(device.asInstanceOf[SimulatedMotionSensor])
+    case PhotometerType => PhotometerPane(device.asInstanceOf[SimulatedPhotometer])
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }
@@ -724,7 +715,8 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
   private val MIN = 0
   contents += Feature(d.name,"Humidity",30 toString,new SliderFeature(MIN,MAX){
     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
-      sensorUpdate(d, newValue:String)
+      d.valueChanged(newValue toDouble)
+      Promise[Unit].success(() => Unit).future
     }
   })
 }
@@ -735,7 +727,15 @@ private case class MotionSensorPane(override val d: SimulatedMotionSensor)extend
   private var status = EMPTY
   contents += new BinaryFeature(d.name,"Empty",Msg.motionDetected,"NOT EMPTY",Msg.motionDetected){
     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
-      status match { case EMPTY => sensorUpdate(d,newValue = true); status = NOTEMPTY; case _ => sensorUpdate(d,newValue = false);status = EMPTY}
+      status match {
+        case EMPTY =>
+          d.valueChanged(currentVal = true)
+          Promise[Unit].success(() => Unit).future
+          status = NOTEMPTY;
+        case _ =>
+          d.valueChanged(currentVal = false)
+          Promise[Unit].success(() => Unit).future
+          status = EMPTY}
       text = status
       Promise[Unit].success(() => Unit).future
     }
@@ -747,7 +747,7 @@ private case class PhotometerPane(override val d: SimulatedPhotometer)extends GU
   private val MIN = 0
   contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
-      sensorUpdate(d, newValue:String)
+      d.valueChanged(newValue toDouble)
       Promise[Unit].success(() => Unit).future
     }
   })
@@ -758,7 +758,8 @@ private case class ThermometerPane(override val d: SimulatedThermometer) extends
   private val MIN = -20
   contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
      override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
-       sensorUpdate(d, newValue:String)
+       d.valueChanged(newValue toDouble)
+       Promise[Unit].success(() => Unit).future
     }
   }) //TODO: MAGIC NUMBERS
 }

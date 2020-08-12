@@ -15,6 +15,11 @@ object Application {
       return
     }
     RegisterDevice(devices)
+
+    //Patch, need to have real sensors in Coordinator and not copies for GUI simulation purposes
+    for (d <- Coordinator.devices.filter(Device.isSensor(_))) Coordinator.removeDevice(d.name)
+    for (d <- devices.filter(_.isInstanceOf[SensorAssociableDevice[_]])) Coordinator.addDevice(d)
+
     println("Launching GUI")
     GUI.pack()
     GUI.top.visible = true
