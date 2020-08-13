@@ -1,8 +1,16 @@
 package HOME
 
+import java.io.{File, FileOutputStream}
 import java.util.concurrent.TimeUnit
 
 import HOME.MyClass._
+import com.fasterxml.jackson.dataformat.csv.{CsvMapper, CsvSchema}
+import java.io.BufferedOutputStream
+import java.io.OutputStreamWriter
+
+import com.fasterxml.jackson.annotation.JsonPropertyOrder
+import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.databind.ObjectWriter
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -23,6 +31,37 @@ object Constants {
   val AddPane = "+"
   val registrationTimeout = 500
 }
+
+case class Record (
+  id: String,
+  date: String,
+  cmd: String,
+  consumption: Int
+)
+
+object Logger {
+  val fileName: String = "Log.csv"
+  val csvFile: File = new File(fileName)
+
+  val mapper: CsvMapper = new CsvMapper()
+  mapper.configure(JsonGenerator.Feature.IGNORE_UNKNOWN, true);
+
+  val schema: CsvSchema = mapper.schemaFor(classOf[Record])
+  schema.withUseHeader(true)
+
+  val writer: ObjectWriter = mapper.writer(schema)
+
+  def log(id: String, date: org.joda.time.DateTime = org.joda.time.DateTime.now(), cmd: String, consumption: Int): Boolean = {
+    try {
+      writer.writeValue(csvFile, Record(id, date.toString(), cmd, consumption))
+      true
+
+    } catch {
+      case _: Throwable => false
+    }
+  }
+}
+
 object RegisterDevice {
   def apply(devType:String,name :String, roomName:String): Future[Unit] = {
     val p = Promise[Unit]

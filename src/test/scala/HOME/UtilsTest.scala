@@ -11,4 +11,8 @@ class UtilsTest extends AnyFunSuite {
     test("The implicit conversion works as intended") {
         assert(aaa.deviceType.getSimpleClassName == "LightType")
     }
+
+    test("The logger logs correctly") {
+       assert(Logger.log(id = "AAA",cmd = Msg.on,consumption = 5))
+    }
 }

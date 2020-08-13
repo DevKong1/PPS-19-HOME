@@ -1,5 +1,7 @@
 package HOME
 
+import java.io.File
+
 import HOME.CommandMsg.CommandMsgImpl
 import HOME.MyClass._
 
