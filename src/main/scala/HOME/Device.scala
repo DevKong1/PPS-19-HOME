@@ -1,6 +1,7 @@
 package HOME
 
 import HOME.MyClass._
+import HOME.MyIterable._
 
 import scala.concurrent.{Future, Promise}
 
@@ -13,10 +14,9 @@ object DeviceType {
   def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType)
   def sensorTypes: Set[DeviceType] = Set(ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
-  def isSensor(devType: String): Boolean = sensorTypes.find(_.getSimpleClassName == devType) match {
-    case Some(_) => true
-    case _ => false
-  }
+  def isSensor(senType: String): Boolean = sensorTypes.findSimpleClassName(senType)
+
+  def isDevice(devType: String): Boolean = listTypes.findSimpleClassName(devType)
 
   def apply(devType: String): DeviceType = (listTypes ++ sensorTypes).find(_.getSimpleClassName == devType) match {
     case Some(t) => t

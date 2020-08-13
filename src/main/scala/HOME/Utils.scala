@@ -62,6 +62,7 @@ object RequestHandler {
     updateRequests(id).success(() => Unit); updateRequests -= id}
 }
 
+//pimp mu library
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 
@@ -71,6 +72,17 @@ case class MyClass(_class: Any) {
 
 object MyClass{
   implicit def toMyClass(_class: Any): MyClass = MyClass(_class)
+}
+
+case class MyIterable[A](_iterable: Iterable[A]) {
+  def findSimpleClassName(item: String): Boolean = _iterable.find(_.getSimpleClassName == item) match {
+    case Some(_) => true
+    case _ => false
+  }
+}
+
+object MyIterable{
+  implicit def toMyIterable[A](_iterable: Iterable[A]): MyIterable[A] = MyIterable(_iterable)
 }
 
 //helper object used by various devices to set the output strength
