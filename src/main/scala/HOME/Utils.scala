@@ -33,9 +33,8 @@ object DeviceIDGenerator {
 object RegisterDevice {
   def apply(d : AssociableDevice): Future[Unit] = {
     val p = Promise[Unit]
-    val dev = d.asInstanceOf[AssociableDevice]
-    startDevice(dev)
-    registerDevice(dev,p)
+    startDevice(d)
+    registerDevice(d,p)
     p.future
   }
   def apply(d : Set[AssociableDevice]):Future[Unit] ={

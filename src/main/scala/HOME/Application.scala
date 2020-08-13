@@ -1,10 +1,5 @@
 package HOME
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
-
 object Application {
   private var devices: Set[AssociableDevice] = Set.empty  //Internal use for instantiating devices
 
@@ -17,7 +12,7 @@ object Application {
     RegisterDevice(devices)
 
     //Patch, need to have real sensors in Coordinator and not copies for GUI simulation purposes
-    for (d <- Coordinator.devices.filter(Device.isSensor(_))) Coordinator.removeDevice(d.name)
+    for (d <- Coordinator.devices.filter(Device.isSensor)) Coordinator.removeDevice(d.name)
     for (d <- devices.filter(_.isInstanceOf[SensorAssociableDevice[_]])) Coordinator.addDevice(d)
 
     println("Launching GUI")
@@ -63,14 +58,14 @@ object Application {
     }
   }
 
-  private def registerDevices(): Unit = {
+  /*private def registerDevices(): Unit = {
     Await.ready(Future.sequence(devices.map(_.register)), Duration.Inf).onComplete {
       case Failure(exception) => println("ERR, can't register device, " + exception); closeApplication()
       case Success(_) =>
     }
-  }
+  }*/
 
-  private def closeApplication(): Unit = {
+  def closeApplication(): Unit = {
     stopCoordinator()
     stopDevices()
     GUI.top.visible = false

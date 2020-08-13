@@ -1,20 +1,18 @@
 package HOME
 
-import scala.language.postfixOps
 import java.awt.Color
 
-import HOME.Application.devices
+import HOME.MyClass._
+import javax.swing.border.{LineBorder, TitledBorder}
+import javax.swing.{Box, ImageIcon}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+import scala.language.postfixOps
+import scala.swing.Dialog.Result
 import scala.swing._
 import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueChanged}
-import javax.swing.{Box, ImageIcon}
-import javax.swing.border.{LineBorder, TitledBorder}
-import HOME.MyClass._
-
 import scala.util.Success
-import scala.concurrent._
-import ExecutionContext.Implicits.global
-import scala.swing.Dialog.Result
 
 sealed trait Room {
   var devices : Set[Device]
@@ -140,6 +138,11 @@ object GUI extends MainFrame {
   }
   def removeDevice(device:Device) : Unit = {
     rooms.foreach(_.devices -= device)
+  }
+
+  override def closeOperation(): Unit = {
+    super.closeOperation()
+    Application.closeApplication()
   }
 }
 
@@ -729,7 +732,7 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
 private case class MotionSensorPane(override val d: SimulatedMotionSensor)extends GUIDevice(d){
   require (d.deviceType == MotionSensorType)
   private val EMPTY = "EMPTY"
-  private val NOTEMPTY = "NOT EMPTY"
+  private val NOT_EMPTY = "NOT EMPTY"
   private var status = EMPTY
   contents += new BinaryFeature(d.name,"Empty",Msg.motionDetected,"NOT EMPTY",Msg.motionDetected){
     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
@@ -737,7 +740,7 @@ private case class MotionSensorPane(override val d: SimulatedMotionSensor)extend
         case EMPTY =>
           d.valueChanged(currentVal = true)
           Promise[Unit].success(() => Unit).future
-          status = NOTEMPTY;
+          status = NOT_EMPTY;
         case _ =>
           d.valueChanged(currentVal = false)
           Promise[Unit].success(() => Unit).future

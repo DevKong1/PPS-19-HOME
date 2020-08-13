@@ -5,7 +5,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.language.postfixOps
-import HOME.MyClass._
 
 import scala.swing.ComboBox
 
