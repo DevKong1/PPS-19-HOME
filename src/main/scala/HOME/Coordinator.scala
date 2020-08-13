@@ -65,6 +65,7 @@ object Coordinator extends JSONSender with MQTTUtils {
         case HygrometerType => Coordinator.activeProfile.onHygrometerNotification(device.room, msg.value.toInt)
         case PhotometerType => Coordinator.activeProfile.onPhotometerNotification(device.room, msg.value.toInt)
         case MotionSensorType => Coordinator.activeProfile.onMotionSensorNotification(device.room, msg.value.toBoolean)
+        case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.getSimpleClassName)
       }
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
@@ -116,9 +117,9 @@ sealed trait Profile {
 
   def onActivation(): Unit
 
-  def onThermometerNotification(room: String,value: Int): Unit
-  def onHygrometerNotification(room: String,value: Int): Unit
-  def onPhotometerNotification(room: String,value: Int): Unit
+  def onThermometerNotification(room: String, value: Double): Unit
+  def onHygrometerNotification(room: String, value: Double): Unit
+  def onPhotometerNotification(room: String, value: Double): Unit
   def onMotionSensorNotification(room: String, value: Boolean): Unit
 
   def doProgrammedRoutine(): Unit
@@ -135,9 +136,9 @@ sealed trait Profile {
 
 trait BasicProfile extends Profile {
   val initialRoutine: Device => Unit
-  def thermometerNotificationCommands(room: String,value: Int): Device => Unit
-  def hygrometerNotificationCommands(room: String,value: Int): Device => Unit
-  def photometerNotificationCommands(room: String,value: Int): Device => Unit
+  def thermometerNotificationCommands(room: String,value: Double): Device => Unit
+  def hygrometerNotificationCommands(room: String,value: Double): Device => Unit
+  def photometerNotificationCommands(room: String,value: Double): Device => Unit
   def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit
 
   val programmedRoutineCommands: Device => Unit
@@ -150,9 +151,9 @@ trait BasicProfile extends Profile {
 
   override def onActivation(): Unit = applyCommand(initialRoutine)
 
-  override def onThermometerNotification(room: String,value: Int): Unit = applyCommand(thermometerNotificationCommands(room,value))
-  override def onHygrometerNotification(room: String,value: Int): Unit = applyCommand(hygrometerNotificationCommands(room,value))
-  override def onPhotometerNotification(room: String,value: Int): Unit = applyCommand(photometerNotificationCommands(room,value))
+  override def onThermometerNotification(room: String, value: Double): Unit = applyCommand(thermometerNotificationCommands(room,value))
+  override def onHygrometerNotification(room: String, value: Double): Unit = applyCommand(hygrometerNotificationCommands(room,value))
+  override def onPhotometerNotification(room: String, value: Double): Unit = applyCommand(photometerNotificationCommands(room,value))
   override def onMotionSensorNotification(room: String, value: Boolean): Unit = applyCommand(motionSensorNotificationCommands(room, value))
 }
 
@@ -176,9 +177,9 @@ object Profile {
     override val initialRoutine: Device => Unit = _.id
     override val programmedRoutineCommands: Device => Unit = _.id
 
-    override def thermometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
-    override def hygrometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
-    override def photometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
+    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
+    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = _.id
 
     override def doProgrammedRoutine(): Unit = {}
@@ -197,9 +198,9 @@ object Profile {
     }
 
     //TODO REPLACE _.id , SHOULD BE NULL OR SOMETHING
-    override def thermometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
-    override def hygrometerNotificationCommands(room: String, value: Int): Device => Unit = _.id
-    override def photometerNotificationCommands(room: String, value: Int): Device => Unit = {
+    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
+    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = {
       case device: AssociableDevice if device.room == room && device.deviceType == ShutterType && value > Constants.dayLightValue =>
         Coordinator.setProfile(Profile(Constants.default_profile_name))
       case _ =>
@@ -229,21 +230,30 @@ object Profile {
 
 case class CustomProfile(override val name: String, override val description: String,
                          initialRoutineSet: Set[Device => Unit],
-                         thermometerCheck: Int => Boolean, thermometerNotificationCommandsSet: Set[Device => Unit],
-                         hygrometerCheck: Int => Boolean, hygrometerNotificationCommandsSet: Set[Device => Unit],
-                         photometerCheck: Int => Boolean, photometerNotificationCommandsSet: Set[Device => Unit],
-                         motionSensorNotificationCommandsSet: Set[Device => Unit], programmedRoutineCommandsSet: Set[Device => Unit],
+                         thermometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
+                         hygrometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
+                         photometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
+                         motionSensorNotificationCommandsSet:Set[Device => Unit],
+                         programmedRoutineCommandsSet: Set[Device => Unit],
                          override val doProgrammedRoutine: Unit) extends Profile {
 
   val initialRoutine: Set[Device => Unit] = initialRoutineSet
-  def thermometerNotificationCommands: Set[Device => Unit] = thermometerNotificationCommandsSet
-  def hygrometerNotificationCommands: Set[Device => Unit] = hygrometerNotificationCommandsSet
-  def photometerNotificationCommands: Set[Device => Unit] = photometerNotificationCommandsSet
+  def thermometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = thermometerNotificationCheckAndCommandsSet
+  def hygrometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = hygrometerNotificationCheckAndCommandsSet
+  def photometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = photometerNotificationCheckAndCommandsSet
   def motionSensorNotificationCommands: Set[Device => Unit] = motionSensorNotificationCommandsSet
 
   val programmedRoutineCommands: Set[Device => Unit] = programmedRoutineCommandsSet
 
-  def applyCommand(commands: Set[Device => Unit], filter: Device => Boolean = _ => true ): Unit = {
+  override def onActivation(): Unit = applyCommand(initialRoutine)
+
+  //if required condition for value is fulfilled apply the commands in given room
+  override def onThermometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, thermometerNotificationCommands, room)
+  override def onHygrometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, hygrometerNotificationCommands, room)
+  override def onPhotometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, photometerNotificationCommands, room)
+  override def onMotionSensorNotification(room: String, value: Boolean): Unit = if(value) applySensorCommand(motionSensorNotificationCommands, room)
+
+  private def applyCommand(commands: Set[Device => Unit], filter: Device => Boolean = _ => true ): Unit = {
     for(device <- Coordinator.getDevices.filter(filter)) {
       for(command <- commands) {
         command(device)
@@ -252,40 +262,42 @@ case class CustomProfile(override val name: String, override val description: St
   }
 
   //only on devices in the sensor room
-  def applySensorCommand(commands: Set[Device => Unit], room: String): Unit = {
+  private def applySensorCommand(commands: Set[Device => Unit], room: String): Unit = {
     applyCommand(commands, filter = _.room == room)
   }
 
-  override def onActivation(): Unit = applyCommand(initialRoutine)
+  private def checkAndApplySensorCommand(value: Double, checkAndCommands: Map[Double => Boolean, Set[Device => Unit]], room: String): Unit = {
+   for(checkAndCommand <- checkAndCommands) {
+     if (checkAndCommand._1(value)) {
+       applySensorCommand(checkAndCommand._2, room)
+       return
+     }
+   }
+  }
 
-  //if required condition for value is fulfilled apply the commands in given room
-  override def onThermometerNotification(room: String,value: Int): Unit = if(thermometerCheck(value)) applySensorCommand(thermometerNotificationCommands, room)
-  override def onHygrometerNotification(room: String,value: Int): Unit = if(hygrometerCheck(value)) applySensorCommand(hygrometerNotificationCommands, room)
-  override def onPhotometerNotification(room: String,value: Int): Unit = if(photometerCheck(value)) applySensorCommand(photometerNotificationCommands, room)
-  override def onMotionSensorNotification(room: String, value: Boolean): Unit = applySensorCommand(motionSensorNotificationCommands, room)
 }
 
 object CustomProfileBuilder {
 
-  def generateCheckFunction(symbol: String, value: Int): Int => Boolean = symbol match {
+  def generateCheckFunction(symbol: String, value: Double): Double => Boolean = symbol match {
     case "=" => {
-      case int: Int if int == value => true
+      case double: Double if double == value => true
       case _ => false
     }
     case ">=" => {
-      case int: Int if int >= value => true
+      case double: Double if double >= value => true
       case _ => false
     }
     case "<=" => {
-      case int: Int if int <= value => true
+      case double: Double if double <= value => true
       case _ => false
     }
     case "<" => {
-      case int: Int if int < value => true
+      case double: Double if double < value => true
       case _ => false
     }
     case ">" => {
-      case int: Int if int > value => true
+      case double: Double if double > value => true
       case _ => false
     }
     case _ => this.errUnexpected(UnexpectedValue, symbol)
@@ -309,15 +321,19 @@ object CustomProfileBuilder {
     result
   }
 
+  def generateSensorCommandsMap(checkAndCommands: (Double => Boolean, Set[Device => Unit])*): Map[Double => Boolean, Set[Device => Unit]] = {
+    checkAndCommands.map(arg => arg._1 -> arg._2).toMap
+  }
+
   def generateFromParams(name: String, description: String,
                          initialRoutine: Set[Device => Unit],
-                         thermometerCheck: Int => Boolean, thermometerNotificationCommands: Set[Device => Unit],
-                         hygrometerCheck: Int => Boolean, hygrometerNotificationCommands: Set[Device => Unit],
-                         photometerCheck: Int => Boolean, photometerNotificationCommands: Set[Device => Unit],
+                         thermometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
+                         hygrometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
+                         photometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
                          motionSensorNotificationCommands: Set[Device => Unit], programmedRoutineCommands: Set[Device => Unit],
                          doProgrammedRoutine: Unit): Profile =  CustomProfile(name, description, initialRoutine,
-                                                                              thermometerCheck, thermometerNotificationCommands,
-                                                                              hygrometerCheck, hygrometerNotificationCommands,
-                                                                              photometerCheck, photometerNotificationCommands,
+                                                                              thermometerNotificationCommands,
+                                                                              hygrometerNotificationCommands,
+                                                                              photometerNotificationCommands,
                                                                               motionSensorNotificationCommands, programmedRoutineCommands, doProgrammedRoutine)
 }

@@ -1,0 +1,5 @@
+package HOME
+
+object Logger {
+
+}

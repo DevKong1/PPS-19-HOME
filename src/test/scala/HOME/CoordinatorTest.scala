@@ -7,6 +7,9 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 
+import scala.collection.immutable.HashMap
+import scala.collection.mutable
+
 class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   Rooms.addRoom("Living room")
 
@@ -132,24 +135,39 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
     val commands: Set[(Device,CommandMsg)] = Set((tv,CommandMsg(cmd = Msg.on)), (tv,CommandMsg(cmd = Msg.mute)))
     val generatedCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(commands)
-    val temperatureCommands: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
-    val generatedTemperatureCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(temperatureCommands)
-    val temperatureCheck = CustomProfileBuilder.generateCheckFunction(">",50)
+
+    val temperatureCheckMoreThan50 = CustomProfileBuilder.generateCheckFunction(">",50)
+    val temperatureCommandsMoreThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
+    val generatedtemperatureCommandsMoreThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsMoreThan50)
+
+    val temperatureCheckLessThan50 = CustomProfileBuilder.generateCheckFunction("<",50)
+    val temperatureCommandsLessThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 30)))
+    val generatedtemperatureCommandsLessThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsLessThan50)
+
+    val generatedTemperatureCommandsMap = CustomProfileBuilder.generateSensorCommandsMap((temperatureCheckMoreThan50, generatedtemperatureCommandsMoreThan50), (temperatureCheckLessThan50, generatedtemperatureCommandsLessThan50))
+
 
     val dummySet: Set[Device => Unit] = Set({_.id})
-    val dummyCheck: Int => Boolean = _ => false
-    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, temperatureCheck, generatedTemperatureCommands, dummyCheck, dummySet,
-      dummyCheck, dummySet, dummySet,dummySet,{})
+    val dummyCheck: Double => Boolean = _ => false
+    val dummyMap: Map[Double => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
+
+    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, generatedTemperatureCommandsMap, dummyMap,
+      dummyMap, dummySet,dummySet,{})
 
     Profile.addProfile(builtProfile)
     assert(Profile.savedProfiles.contains(builtProfile))
 
     Coordinator.setProfile(builtProfile)
+    assert(Coordinator.activeProfile.name == "Custom1")
+
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
     Coordinator.activeProfile.onThermometerNotification(salotto, 51)
     eventually { Thread.sleep(testSleepTime); tv.value should be (100) }
+
+    Coordinator.activeProfile.onThermometerNotification(salotto, 49)
+    eventually { Thread.sleep(testSleepTime); tv.value should be (30) }
 
     Profile.removeProfile("Custom1")
     assert(!Profile.savedProfiles.contains(builtProfile))
