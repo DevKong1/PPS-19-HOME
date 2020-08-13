@@ -3,6 +3,8 @@ package HOME
 import scala.language.postfixOps
 import java.awt.Color
 
+import HOME.Application.devices
+
 import scala.swing._
 import scala.swing.event.{ButtonClicked, MouseClicked, SelectionChanged, ValueChanged}
 import javax.swing.{Box, ImageIcon}
@@ -18,6 +20,7 @@ sealed trait Room {
   var devices : Set[Device]
   def name : String
 }
+
 sealed trait EditableFeature{
   def update(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
     val p = Promise[Unit]
@@ -33,6 +36,7 @@ sealed trait EditableFeature{
 
 class GUIRoom(override val name:String, override var devices:Set[Device] = Set.empty) extends ScrollPane with Room {
   val devicePanel = new BoxPanel(Orientation.Vertical)
+  //devices.map(_.asInstanceOf[AssociableDevice])
   val adDeviceBtn: Button =
     new Button("Add device") {
       reactions += {
@@ -85,10 +89,11 @@ object GUI extends MainFrame {
           last <- getLastIndex()
           name <- getRoomName
         } yield {
-          val newRoom = new GUIRoom(name,Constants.devicesPerRoom(name))
+          val devices = Constants.devicesPerRoom(name)
+          val newRoom = new GUIRoom(name,devices)
+          RegisterDevice(devices.map(_.asInstanceOf[AssociableDevice]))
           val newRoomPane = new TabbedPane.Page(name, newRoom)
           Rooms.addRoom(name)
-          RegisterDevice(Constants.devicesPerRoom(name).map(_.asInstanceOf[AssociableDevice]))
           rooms += newRoom
           tp.selection.page = newRoomPane
           tp.pages.insert(last.index, newRoomPane)
@@ -155,7 +160,7 @@ class AddDeviceDialog extends Dialog {
           reactions += {
             case ButtonClicked(_) =>
               val room = GUI.getCurrentRoom
-              val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get
+              val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
                     case Success(_) => GUI.rooms.find(_.name equals room).get.addDevicePane(PrintDevicePane(dev));repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
@@ -388,6 +393,7 @@ class AddProgrammedStuffDialog extends Dialog {
   }
   open()
 }
+
 object AddProgrammedStuff {
   def apply(): AddProgrammedStuffDialog = {
     new AddProgrammedStuffDialog()
@@ -682,8 +688,7 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
 object Feature{
   def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A,updateType:String): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,updateType)
   /* This second apply is used for simulating sensors: they don't need no updateType since, for simulating purposes, updates are being applied directly
-   * to them without going through Coordinator.
-   */
+   * to them without going through Coordinator.  */
   def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,null)
 }
 
@@ -708,6 +713,7 @@ object PrintDevicePane {
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }
+
 /* SENSOR PANE*/
 private case class HygrometerPane(override val d: SimulatedHygrometer)extends GUIDevice(d){
   require (d.deviceType == HygrometerType)
@@ -842,8 +848,8 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
 }
 //No need to extend EditableFeature since it's a plain button that doesn't need user input.
 case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton with EditableFeature {
-  override def getVal = status
-  override def setVal(v:String) = {}//Do nothing
+  override def getVal: String = status
+  override def setVal(v:String): Unit = {}//Do nothing
   text = toDisplay
   private var status = toDisplay
   reactions += {

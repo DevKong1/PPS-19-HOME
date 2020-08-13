@@ -31,7 +31,7 @@ object DeviceIDGenerator {
   }
 }
 object RegisterDevice {
-  def apply(d : Device): Future[Unit] = {
+  def apply(d : AssociableDevice): Future[Unit] = {
     val p = Promise[Unit]
     val dev = d.asInstanceOf[AssociableDevice]
     startDevice(dev)
