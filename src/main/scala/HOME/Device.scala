@@ -133,6 +133,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
         case m if m == Msg.disconnect => disconnect
         case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
         case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
+        case _ if !isOn => //do nothing
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
       case t if t == broadcastTopic => message match {

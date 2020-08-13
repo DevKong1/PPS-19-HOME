@@ -207,8 +207,8 @@ object Profile {
 
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
       case device: AssociableDevice if value && device.room == room && device.deviceType == LightType =>
-        Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 30))
         Coordinator.publish(device, CommandMsg(cmd = Msg.on))
+        Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 30))
       case _ =>
     }
 
