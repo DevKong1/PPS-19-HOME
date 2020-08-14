@@ -5,7 +5,8 @@ import java.lang.reflect.MalformedParametersException
 import org.scalatest.funsuite.AnyFunSuite
 
 class DeviceTest extends AnyFunSuite with JSONUtils {
-  val room: String = "Salotto"
+  Rooms.addRoom("Living room")
+  val room: String = "Living room"
 
   //Actuators
   val light: SimulatedLight = Light("A", room)
@@ -27,7 +28,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
 
   test("The light is instantiated correctly") {
     assert(light.id == "A")
-    assert(light.room == "Salotto")
+    assert(light.room == "Living room")
     assert(light.deviceType == LightType)
     assert(light.consumption == 5)
 
@@ -213,7 +214,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("Adding and removing rooms") {
-    assert(Rooms.allRooms contains "Salotto")
+    assert(Rooms.allRooms contains "Living room")
     assert(!(Rooms.allRooms contains "Salottino"))
     assertThrows[IllegalArgumentException](Light("A", "Salottino"))
     Rooms.addRoom("Salottino")
@@ -224,8 +225,8 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
   }
 
   test("The publish/subscription topics are created correctly") {
-    assert(light.getPubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Pub")
-    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "Sub")
+    assert(light.getPubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "From")
+    assert(light.getSubTopic == light.room + "/" + light.deviceType + "/" + light.id + "/" + "To")
   }
 
   test("The light connects and disconnects to/from the MQTT broker correctly", BrokerRequired) {
@@ -239,19 +240,19 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
 
   test("The light handles received mock messages correctly", BrokerRequired) {
     assert(light.connect)
-    light.onMessageReceived(light.getSubTopic, getMsg("on", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("0_on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.on), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(cmd = Msg.on), light))
     assert(light.isOn)
-    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.off), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(cmd = Msg.off), light))
     assert(!light.isOn)
-    light.onMessageReceived(light.getSubTopic, getMsg("on", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("0_on", light))
     assert(light.isOn)
-    light.onMessageReceived(light.getSubTopic, getMsg("setIntensity_255", light))
+    light.onMessageReceived(light.getSubTopic, getMsg("0_setIntensity_255", light))
     assert(light.value == 100)
-    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.setIntensity, 35), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.nullCommandId, Msg.setIntensity, 35), light))
     assert(light.value == 35)
-    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(Msg.setIntensity, 30), light))
+    light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(cmd = Msg.setIntensity, value = 30), light))
     assert(light.value == 30)
     assertThrows[MalformedParametersException](light.onMessageReceived(light.getSubTopic,"setIntensity_a22"))
     assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "off"))

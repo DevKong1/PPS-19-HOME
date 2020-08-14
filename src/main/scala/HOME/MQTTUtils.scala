@@ -13,10 +13,11 @@ import scala.util.{Failure, Success, Try}
 trait MQTTUtils extends JSONUtils {
   val retained: Boolean = true
   val topicSeparator: Char = '/'
-  val pubTopicPostFix: String = "Pub"
-  val subTopicPostFix: String = "Sub"
+  val pubTopicPostFix: String = "From"
+  val subTopicPostFix: String = "To"
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
+  val updateTopic: String = "update"  //Topic used by the devices to confirm the update requested
 
   //Quality of Service
   //private val QoS_0: Int = 0
@@ -26,8 +27,11 @@ trait MQTTUtils extends JSONUtils {
   private var sender: JSONSender = _
   private var client: MqttClient = _
 
+  private val mqttUserName: String = "HOME"
+  private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
   private val brokerURL: String = "tcp://localhost:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
+  private val waitAfterPublish: Int = 50
 
   class ConnectionException(message: String) extends Exception(message)
 
@@ -38,6 +42,8 @@ trait MQTTUtils extends JSONUtils {
       val opts = new MqttConnectOptions
       opts.setCleanSession(true)
       opts.setWill(sender.lastWillTopic, getMsg(sender.lastWillMessage, sender).getBytes, QoS_1, !retained)
+      opts.setUserName(mqttUserName)
+      opts.setPassword(mqttPwd.toCharArray)
 
       val callback = new MqttCallback {
         override def deliveryComplete(token: IMqttDeliveryToken): Unit = {
@@ -97,37 +103,43 @@ trait MQTTUtils extends JSONUtils {
       false
     case _ =>
       if (client.isConnected) client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
+      Thread.sleep(waitAfterPublish)
       true
   }
 }
 
 trait CommandMsg {
+  def id: Int
   def command: String
   def value: String
 
-  override def toString: String = command + (if(value != null) messageSeparator + value else "")
+  override def toString: String = id.toString + messageSeparator + command + (if(value != null) messageSeparator + value else "")
 }
 
 object CommandMsg {
-  case class CommandMsgImpl(override val command: String, _value: Any = null) extends CommandMsg {
+  case class CommandMsgImpl(override val id: Int, override val command: String, _value: Any = null) extends CommandMsg {
     override val value: String = if(_value != null) _value.toString else null
   }
 
   private val messageSeparator: Char = '_' //character used to separate data in specific device messages
 
-  def apply(msg: String): CommandMsg = msg.split(messageSeparator).length match {
-    case 1 => CommandMsgImpl(msg)
-    case 2 => CommandMsgImpl(msg.split(messageSeparator)(0), msg.split(messageSeparator)(1))
+  def fromString(msg: String): CommandMsg = msg.split(messageSeparator).length match {
+    case 2 => CommandMsgImpl(msg.split(messageSeparator)(0).toInt, msg.split(messageSeparator)(1))
+    case 3 => CommandMsgImpl(msg.split(messageSeparator)(0).toInt, msg.split(messageSeparator)(1), msg.split(messageSeparator)(2))
     case _ => this.errUnexpected(UnexpectedMessage, msg)
   }
 
-  def apply(msg: String, value: Any): CommandMsg = CommandMsgImpl(msg, value)
+  def apply(id: Int = Msg.nullCommandId, cmd: String, value: Any = null): CommandMsg = CommandMsgImpl(id, cmd, value)
 }
 
 object Msg {
+  val nullCommandId: Int = 0
+
+  val disconnect: String = "disconnect" //Message sent by the coordinator to tell a device to disconnect
   val disconnected: String = "disconnected" //Message sent when the connection is lost
   val register: String = "register" //Message sent by the device to register to the system
   val regSuccess: String = "regSuccess" //Message sent by the coordinator to assert the device has registered successfully
+  val confirmUpdate: String = "success"  //Message sent by the device which has successfully updated its status
 
   //Commands
   val on: String = "on"
