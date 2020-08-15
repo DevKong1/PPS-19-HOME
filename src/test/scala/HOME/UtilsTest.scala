@@ -13,6 +13,18 @@ class UtilsTest extends AnyFunSuite {
     }
 
     test("The logger logs correctly") {
-       assert(Logger.log(id = "AAA",cmd = Msg.on,consumption = 5))
+        Logger.setTestFile()
+
+        assert(Logger.log(id = "AAA",cmd = Msg.on,consumption = 5))
+        assert(Logger.log(id = "AAA",cmd = Msg.off,consumption = 5))
+
+        val fileData = Logger.getLogAsListWithHeader
+        val firstRow = fileData.head
+        val secondRow = fileData(1)
+        assert(firstRow("ID") == "AAA" && firstRow("CMD") == "on" && firstRow("Consumption") == "5")
+        assert(secondRow("ID") == "AAA" && secondRow("CMD") == "off" && secondRow("Consumption") == "5")
+
+        Logger.resetFile()
+        Logger.unsetTestFile()
     }
 }

@@ -1,16 +1,11 @@
 package HOME
 
-import java.io.{File, FileOutputStream}
+import java.io.File
+import java.nio.file.{Files, Paths}
 import java.util.concurrent.TimeUnit
 
 import HOME.MyClass._
-import com.fasterxml.jackson.dataformat.csv.{CsvMapper, CsvSchema}
-import java.io.BufferedOutputStream
-import java.io.OutputStreamWriter
-
-import com.fasterxml.jackson.annotation.JsonPropertyOrder
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.ObjectWriter
+import com.github.tototoshi.csv._
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -32,34 +27,36 @@ object Constants {
   val registrationTimeout = 500
 }
 
-case class Record (
-  id: String,
-  date: String,
-  cmd: String,
-  consumption: Int
-)
-
 object Logger {
-  val fileName: String = "Log.csv"
-  val csvFile: File = new File(fileName)
+  private val fileName: String = "Log.csv"
+  private var csvFile: File = new File(fileName)
+  private val header = List("ID","Date","CMD","Consumption")
 
-  val mapper: CsvMapper = new CsvMapper()
-  mapper.configure(JsonGenerator.Feature.IGNORE_UNKNOWN, true);
+  if(!Files.exists(Paths.get(fileName))) resetFile()
 
-  val schema: CsvSchema = mapper.schemaFor(classOf[Record])
-  schema.withUseHeader(true)
-
-  val writer: ObjectWriter = mapper.writer(schema)
+  def getLogAsListWithHeader : List[Map[String,String]] = CSVReader.open(csvFile).allWithHeaders()
+  def getLogAsStream : Stream[List[String]] = CSVReader.open(csvFile).toStream
 
   def log(id: String, date: org.joda.time.DateTime = org.joda.time.DateTime.now(), cmd: String, consumption: Int): Boolean = {
     try {
-      writer.writeValue(csvFile, Record(id, date.toString(), cmd, consumption))
+      val writer = CSVWriter.open(csvFile, append = true)
+      writer.writeRow(List(id,date.toString(),cmd,consumption))
+      writer.close()
       true
-
     } catch {
       case _: Throwable => false
     }
   }
+
+  def resetFile(): Unit = {
+    val writer = CSVWriter.open(csvFile)
+    writer.writeRow(header)
+    writer.close()
+  }
+
+  //ONLY FOR TESTING
+  def setTestFile() : Unit = {csvFile = new File("test.csv"); resetFile()}
+  def unsetTestFile() : Unit = csvFile = new File(fileName)
 }
 
 object RegisterDevice {
