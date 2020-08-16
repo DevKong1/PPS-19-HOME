@@ -17,7 +17,7 @@ object Constants {
   //Room in every house
   val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
   //Used to generate the set of devices that are in every room
-  def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp",name),Thermometer("Thermometer",name),Hygrometer("Hygrometer",name),MotionSensor("MotionSensor",name))
+  def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp", name), Thermometer("Thermometer", name), Hygrometer("Hygrometer", name), MotionSensor("MotionSensor", name))
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
@@ -37,10 +37,10 @@ object Logger {
   def getLogAsListWithHeader : List[Map[String,String]] = CSVReader.open(csvFile).allWithHeaders()
   def getLogAsStream : Stream[List[String]] = CSVReader.open(csvFile).toStream
 
-  def log(id: String, date: org.joda.time.DateTime = org.joda.time.DateTime.now(), cmd: String, consumption: Int): Boolean = {
+  def log(args: String*): Boolean = {
     try {
       val writer = CSVWriter.open(csvFile, append = true)
-      writer.writeRow(List(id,date.toString(),cmd,consumption))
+      writer.writeRow(args.toList)
       writer.close()
       true
     } catch {

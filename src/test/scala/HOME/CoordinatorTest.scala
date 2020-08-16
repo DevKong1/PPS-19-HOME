@@ -11,13 +11,31 @@ import scala.collection.immutable.HashMap
 import scala.collection.mutable
 
 class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
+
+  def prepareDevices(args: AssociableDevice*): Unit = {
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    for (device <- args){
+      assert(device.connect)
+      assert(device.subscribe)
+      Coordinator.addDevice(device)
+    }
+  }
+
+  def concludeTest(args: AssociableDevice*): Unit = {
+    for (device <- args){
+      device.disconnect
+    }
+    Coordinator.removeAllDevices()
+    Coordinator.disconnect
+  }
+
   Rooms.addRoom("Living room")
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)
     assert(Coordinator.activeProfile.name == Constants.default_profile_name)
   }
-
 
   private val salotto: String = "Living room"
 
@@ -74,23 +92,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assertThrows[MalformedParametersException](Coordinator.onMessageReceived("registration", "off"))
     assertThrows[IllegalArgumentException](Coordinator.onMessageReceived("asd", "off"))
     assert(Coordinator.disconnect)
-  }
-
-  def prepareDevices(args: AssociableDevice*): Unit = {
-    assert(Coordinator.connect)
-    for (device <- args){
-      assert(device.connect)
-      assert(device.subscribe)
-      Coordinator.addDevice(device)
-    }
-  }
-
-  def concludeTest(args: AssociableDevice*): Unit = {
-    for (device <- args){
-      device.disconnect
-    }
-    Coordinator.removeAllDevices()
-    Coordinator.disconnect
   }
 
   test("The coordinator correctly applies the NIGHT profile", BrokerRequired) {
@@ -174,5 +175,18 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
     Coordinator.setProfile(Profile(Constants.default_profile_name))
     concludeTest(tv)
+  }
+
+  test("The Coordinator correctly receives and logs Log messages", BrokerRequired) {
+    val light: SimulatedLight = Light("A","Living room")
+    prepareDevices(light)
+    Coordinator.subscribe
+
+    assert(Coordinator.publish(light, CommandMsg(0, Msg.on)))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
+    assert(Coordinator.publish(light, CommandMsg(0, Msg.off)))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
+
+    concludeTest(light)
   }
 }

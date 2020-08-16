@@ -15,8 +15,8 @@ class UtilsTest extends AnyFunSuite {
     test("The logger logs correctly") {
         Logger.setTestFile()
 
-        assert(Logger.log(id = "AAA",cmd = Msg.on,consumption = 5))
-        assert(Logger.log(id = "AAA",cmd = Msg.off,consumption = 5))
+        assert(Logger.log("AAA", org.joda.time.DateTime.now().toString(), Msg.on, "5"))
+        assert(Logger.log("AAA", org.joda.time.DateTime.now().toString(), Msg.off, "5"))
 
         val fileData = Logger.getLogAsListWithHeader
         val firstRow = fileData.head

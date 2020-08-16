@@ -37,6 +37,8 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def getDevices: Set[Device] = devices
 
+  def hasDevice(device: Device): Boolean = devices.contains(device)
+
   //PROFILES
 
   def getActiveProfile: Profile = activeProfile
@@ -51,7 +53,7 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def connect: Boolean = connect(this, onMessageReceived)
 
-  def subscribe: Boolean = subscribe(regTopic) && subscribe(updateTopic)
+  def subscribe: Boolean = subscribe(regTopic) && subscribe(updateTopic) && subscribe(loggingTopic)
 
   def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, this, !retained)
   def publish(topic: String, message: String): Boolean = publish(topic, message, this)
@@ -59,6 +61,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
     case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(getMessageFromMsg(message)).id)
+    case t if t == loggingTopic => logMessage(message)
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
       val device = getSenderFromMsg[AssociableDevice](message)
@@ -75,6 +78,19 @@ object Coordinator extends JSONSender with MQTTUtils {
   private def isSensorUpdate(topic: String, message: String): Boolean = {
     val split = topic.split(topicSeparator)
     split.length > 1 && DeviceType.isSensor(split(1)) && message.contains(Msg.updateBaseString)
+  }
+
+  private def logMessage(message: String): Unit = {
+    val split = getMessageFromMsg(message).split(logSeparator)
+    val cmd = split(0)
+    val date = split(1)
+    val sender = getSenderFromMsg[Device](message)
+
+    if (hasDevice(sender)) {
+      Logger.log(sender.id, date, cmd, sender.consumption.toString)
+    } else {
+      this.errUnexpected(UnexpectedDevice, sender.id)
+    }
   }
 
   def sendUpdate(devName : String,cmdMsg : String,newValue:String = null) : Future[Unit] = {

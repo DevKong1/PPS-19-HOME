@@ -65,10 +65,7 @@ object Device {
     case _ => None
   }
 
-  def isSensor(device: Device): Boolean = device.deviceType match {
-    case ThermometerType | HygrometerType | PhotometerType | MotionSensorType => true
-    case _ => false
-  }
+  def isSensor(device: Device): Boolean = DeviceType.isSensor(device.deviceType.getSimpleClassName)
 
 }
 
@@ -131,8 +128,14 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       case t if t == subTopic => message match {
         case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
         case m if m == Msg.disconnect => disconnect
-        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
-        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
+        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) {
+          sendConfirmUpdate(message)
+          sendLogMsg(Msg.on)
+        }
+        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) {
+          sendConfirmUpdate(message)
+          sendLogMsg(Msg.off)
+        }
         case _ if !isOn => //do nothing
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
@@ -148,8 +151,11 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
 
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
-  private def sendConfirmUpdate(message: String): Unit ={
+  private def sendConfirmUpdate(message: String): Unit = {
     publish(updateTopic, CommandMsg(CommandMsg.fromString(message).id, Msg.confirmUpdate).toString, this)
+  }
+  private def sendLogMsg(message: String): Unit = {
+    publish(loggingTopic, message + logSeparator + org.joda.time.DateTime.now().toString(), this)
   }
 }
 
