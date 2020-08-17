@@ -1,12 +1,13 @@
 package HOME
 
-import java.io.File
-
 import HOME.CommandMsg.CommandMsgImpl
 import HOME.MyClass._
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Await, Future, Promise}
+import org.joda.time._
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object Coordinator extends JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeCoordinator
@@ -20,6 +21,34 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def getActiveConsumption: Int = getConsumption(getDevices.filter(_.isOn).toList)
   private def getConsumption(seq: Seq[Device]): Int = seq.map(_.consumption).sum
+
+  def getTotalConsumption: Double = {
+    val log = Logger.getLogAsListWithHeader
+    val rows = log.map(_("ID")).distinct
+
+    val tasks: Seq[Future[Double]] = for (i <- rows.indices) yield Future {
+      var totalConsumption: Double = 0 //total consumption (kWh) = number of hours' use * (Watt/1000)
+      var lastDate: org.joda.time.DateTime = null
+
+      val consideredID = rows(i)
+      val myIDS = log.filter(_("ID") == consideredID)
+
+      //ASSUMING THE LOG ON/OFF MESSAGES ARE SORTED
+      for(entry <- myIDS) {
+        entry("CMD") match {
+          case Msg.on => lastDate = Constants.outputDateFormat.parseDateTime(entry("Date"))
+          case Msg.off => totalConsumption += ((Seconds.secondsBetween(lastDate, Constants.outputDateFormat.parseDateTime(entry("Date"))).getSeconds.toDouble / 3600) * (entry("Consumption").toDouble / 1000))
+          case _ =>
+        }
+      }
+      totalConsumption
+    }
+
+    val aggregated: Future[Seq[Double]] = Future.sequence(tasks)
+    val consumptions: Seq[Double] = Await.result(aggregated, Constants.maxWaitTime)
+
+    consumptions.sum
+  }
 
   //DEVICES
   def addDevice(devType: String,name:String,room : String): Option[Device] = {

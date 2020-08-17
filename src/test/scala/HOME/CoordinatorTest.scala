@@ -7,9 +7,6 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 
-import scala.collection.immutable.HashMap
-import scala.collection.mutable
-
 class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
   def prepareDevices(args: AssociableDevice*): Unit = {
@@ -180,13 +177,45 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   test("The Coordinator correctly receives and logs Log messages", BrokerRequired) {
     val light: SimulatedLight = Light("A","Living room")
     prepareDevices(light)
-    Coordinator.subscribe
+
+    Logger.setTestFile()
 
     assert(Coordinator.publish(light, CommandMsg(0, Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     assert(Coordinator.publish(light, CommandMsg(0, Msg.off)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
+    val fileData = Logger.getLogAsListWithHeader
+    val firstRow = fileData.head
+    val secondRow = fileData(1)
+    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5")
+    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5")
 
+    Logger.resetFile()
+    Logger.unsetTestFile()
     concludeTest(light)
+  }
+
+
+  test("The Coordinator correctly calculates last month Consumption", BrokerRequired) {
+    val light: SimulatedLight = Light("A","Living room")
+    val light2: SimulatedLight = Light("B","Living room")
+    prepareDevices(light, light2)
+
+    Logger.setTestFile()
+
+    val now = org.joda.time.DateTime.now()
+    assert(Logger.log("A", Constants.outputDateFormat.print(now), Msg.on, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.off, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.on, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(20)), Msg.off, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now), Msg.on, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.off, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.on, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(20)), Msg.off, "5"))
+
+    assert(Coordinator.getTotalConsumption == 0.003333333333333333)
+
+    Logger.unsetTestFile()
+    concludeTest(light, light2)
   }
 }

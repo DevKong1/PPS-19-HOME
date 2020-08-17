@@ -128,14 +128,8 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       case t if t == subTopic => message match {
         case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
         case m if m == Msg.disconnect => disconnect
-        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) {
-          sendConfirmUpdate(message)
-          sendLogMsg(Msg.on)
-        }
-        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) {
-          sendConfirmUpdate(message)
-          sendLogMsg(Msg.off)
-        }
+        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
+        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
         case _ if !isOn => //do nothing
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
@@ -155,7 +149,19 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     publish(updateTopic, CommandMsg(CommandMsg.fromString(message).id, Msg.confirmUpdate).toString, this)
   }
   private def sendLogMsg(message: String): Unit = {
-    publish(loggingTopic, message + logSeparator + org.joda.time.DateTime.now().toString(), this)
+    publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()), this)
+  }
+
+  override def turnOn(): Boolean = {if(super.turnOn()) {
+    sendLogMsg(Msg.on)
+    true
+  } else false
+  }
+
+  override def turnOff(): Boolean = {if(super.turnOff()) {
+    sendLogMsg(Msg.off)
+    true
+  } else false
   }
 }
 

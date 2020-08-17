@@ -12,6 +12,7 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 object Constants {
   //Room in every house
@@ -25,6 +26,8 @@ object Constants {
   val LoginTextSize = 20
   val AddPane = "+"
   val registrationTimeout = 500
+  val outputDateFormat: org.joda.time.format.DateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("MM/dd/yyyy HH:mm:ss")
+  val maxWaitTime: FiniteDuration = 30.seconds
 }
 
 object Logger {
@@ -56,7 +59,7 @@ object Logger {
 
   //ONLY FOR TESTING
   def setTestFile() : Unit = {csvFile = new File("test.csv"); resetFile()}
-  def unsetTestFile() : Unit = csvFile = new File(fileName)
+  def unsetTestFile() : Unit = {resetFile(); csvFile = new File(fileName)}
 }
 
 object RegisterDevice {
