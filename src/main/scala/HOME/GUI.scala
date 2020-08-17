@@ -240,8 +240,9 @@ class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
   private val onActivationCommands: Set[(Device, CommandMsg)] = Set.empty
-  private val onSensorChangeCommands: Set[(Device, CommandMsg)] = Set.empty
-  private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
+  private val onSensorChangeCommands: Set[Set[(Device, CommandMsg)]] = Set.empty
+  private val sensorRules: List[(String, Double)] = List.empty
+  //private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
   //private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
   //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
   title = "New Profile"
@@ -257,34 +258,42 @@ class CreateProfileDialog extends Dialog {
     }
     contents += new FlowPanel() {
       contents += new Label("On activation: ")
-      contents += new Button("Modify") {
+      contents += new Button("Add rules") {
         reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = false, onActivationCommands)
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, onActivationCommands, null)
         }
       }
     }
     contents += new FlowPanel() {
       contents += new Label("On sensor changed: ")
-      contents += new Button("Add") {
+      contents += new Button("Add rules") {
         reactions += {
           case ButtonClicked(_) =>
-            SensorReaction(onSensorChangeCommands)
+            SensorReaction(onSensorChangeCommands, sensorRules)
         }
       }
     }
-    contents += new FlowPanel() {
-      contents += new Label("Programmed Stuff: ")
-      contents += new Button("Devices") {
-        reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true, programmedStuffCommands)
-        }
-      }
-    }
+    /* contents += new FlowPanel() {
+       contents += new Label("Programmed Stuff: ")
+       contents += new Button("Devices") {
+         reactions += {
+           case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true, programmedStuffCommands)
+         }
+       }
+     }*/
     contents += new FlowPanel() {
       contents += new Button("Confirm") {
         reactions += {
-          case ButtonClicked(_) => println(profileName.text)
+          case ButtonClicked(_) =>
+            println(profileName.text)
             println(description.text)
+            println(onActivationCommands)
+            println(sensorRules)
+            val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
+            val generatedSensorCommandsMap: Map[Double => Boolean, Set[Device => Unit]] = Map.empty
+            for(rules <- sensorRules) {
+              println(""+sensorRules(1))
+            }
         }
       }
       contents += new Button("Cancel") {
@@ -302,8 +311,7 @@ object CreateProfile {
   }
 }
 
-class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dialog {
-  //private val sensors = new ComboBox[Device](Coordinator.getDevices.filter(_.isInstanceOf[SensorAssociableDevice[Any]]) toSeq)
+class SensorReactionDialog(var commands: Set[Set[(Device, CommandMsg)]], var sensorRules: List[(String, Double)]) extends Dialog {
   title = "Sensor Reaction"
   location = new Point(300,0)
   contents = new ScrollPane() {
@@ -317,16 +325,22 @@ class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dial
       devicePanel.peer.add(Box.createVerticalStrut(10))
       devicePanel.border = new LineBorder(Color.BLACK, 2)
       if(Device.isSensor(i)) {
+        val value = new TextField(10)
         devicePanel.contents += new FlowPanel() {
           contents += new Label(i.name)
           contents += new Label("On: ")
           contents += applyComponent(i, this)
-          contents += new TextField(8)
+          contents += value
           contents += new Button("Do") {
             reactions += {
               case ButtonClicked(_) =>
                 for(sym <- devicePanel.contents(1).asInstanceOf[FlowPanel].contents) yield {
-                  if(sym.isInstanceOf[ComboBox[_]]) println(giveSymbol(sym))
+                  if(sym.isInstanceOf[ComboBox[_]]) {
+                    //println(giveSymbol(sym))
+                    //println(value.text)
+                    sensorRules ++= Set((giveSymbol(sym), value.text.toDouble))
+                    println(sensorRules)
+                  }
                 }
                 roomsDevices(i.room)
             }
@@ -351,22 +365,22 @@ class SensorReactionDialog(var commands: Set[(Device, CommandMsg)]) extends Dial
   }
 
   def giveSymbol(x: Any): String = x match {
-    case p: StringComboBox => p.selection.item
+    case p: ComboBox[String] => p.selection.item
     case _ => ""
   }
 
   def roomsDevices(room: String) : Dialog = {
-    AllDevice(Set(room), isRoutine = false, commands)
+    AllDevice(Set(room), null, commands)
   }
   open()
 }
 object SensorReaction {
-  def apply(commands: Set[(Device, CommandMsg)]): SensorReactionDialog = {
-    new SensorReactionDialog(commands)
+  def apply(commands: Set[Set[(Device, CommandMsg)]], sensorRules: List[(String, Double)]): SensorReactionDialog = {
+    new SensorReactionDialog(commands, sensorRules)
   }
 }
 
-class AddProgrammedStuffDialog extends Dialog {
+/*class AddProgrammedStuffDialog extends Dialog {
   title = "Add Programmed Stuff"
   location = new Point(0,250)
 
@@ -397,9 +411,9 @@ object AddProgrammedStuff {
   def apply(): AddProgrammedStuffDialog = {
     new AddProgrammedStuffDialog()
   }
-}
+}*/
 
-class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[(Device, CommandMsg)]) extends Dialog {
+class AllDeviceDialog(rooms: Set[String], var commands: Set[(Device, CommandMsg)], var sensorCommands: Set[Set[(Device, CommandMsg)]]) extends Dialog {
   title = "All Devices"
   location = new Point(300,250)
   preferredSize = new Dimension(1000,500)
@@ -412,7 +426,7 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal)
-      if(!i.isInstanceOf[SensorAssociableDevice[_]] && rooms.contains(i.room)) {
+      if(!Device.isSensor(i) && rooms.contains(i.room)) {
         val applyButton = new Button("Add")
         devPanel.peer.add(Box.createVerticalStrut(10))
         devPanel.border = new LineBorder(Color.BLACK, 2)
@@ -425,12 +439,12 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
               case ButtonClicked(_) => addRule(component, i, a)
             }
           }
-          if(isRoutine) {
+          /*if(isRoutine) {
             contents += new Label("Start at: ")
             contents += new TextField(8)
             contents += new Label("End at: ")
             contents += new TextField(8)
-          }
+          }*/
           contents += applyButton
         }
         panel.contents += devPanel
@@ -438,7 +452,11 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
     }
 
     panel.contents += new FlowPanel() {
-      contents += new Button("Confirm")
+      contents += new Button("Confirm") {
+        reactions += {
+          case ButtonClicked(_) => close()
+        }
+      }
     }
     panel
   }
@@ -509,13 +527,22 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
 
   def addRule(component: Component, device: Device, command: String) : Unit = command match {
     case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute =>
-      //println(commands)
-      commands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-      println(commands)
-    case _ => commands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
+      if (commands != null) {
+        commands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        println(commands)
+      } else {
+        sensorCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        println(sensorCommands)
+      }
+    case _ =>
+      if (commands != null) {
+        commands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        println(commands)
+      } else {
+        sensorCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        println(sensorCommands)
+      }
   }
-
-
 
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField =>  command match {
@@ -527,9 +554,9 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
       case _ => ""
     }
 
-    case p: StringComboBox => command match {
-        case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
-        case _ => ""
+    case p: ComboBox[String] => command match {
+      case Msg.washingType | Msg.RPM | Msg.addExtra | Msg.setMode | Msg.setProgram => p.selection.item
+      case _ => ""
     }
     case _ => ""
   }
@@ -538,8 +565,8 @@ class AllDeviceDialog(rooms: Set[String], isRoutine: Boolean, var commands: Set[
 }
 
 object AllDevice {
-  def apply(rooms: Set[String], isRoutine: Boolean, commands: Set[(Device, CommandMsg)]): AllDeviceDialog = {
-    new AllDeviceDialog(rooms, isRoutine, commands)
+  def apply(rooms: Set[String], commands: Set[(Device, CommandMsg)], sensorCommands: Set[Set[(Device, CommandMsg)]]): AllDeviceDialog = {
+    new AllDeviceDialog(rooms, commands, sensorCommands)
   }
 }
 
@@ -661,8 +688,8 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
               new Label("Set "+featureTitle+": "),
               setterComponent,
               value
-          )
-        },
+            )
+          },
           new FlowPanel() {
             contents ++= Seq(
               new Button("Confirm") {
