@@ -278,17 +278,17 @@ object Profile {
 
 case class CustomProfile(override val name: String, override val description: String,
                          initialRoutineSet: Set[Device => Unit],
-                         thermometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
-                         hygrometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
-                         photometerNotificationCheckAndCommandsSet: Map[Double => Boolean, Set[Device => Unit]],
-                         motionSensorNotificationCommandsSet:Set[Device => Unit],
+                         thermometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         hygrometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         photometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         motionSensorRoom: String, motionSensorNotificationCommandsSet:Set[Device => Unit],
                          programmedRoutineCommandsSet: Set[Device => Unit],
                          override val doProgrammedRoutine: Unit) extends Profile {
 
   val initialRoutine: Set[Device => Unit] = initialRoutineSet
-  def thermometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = thermometerNotificationCheckAndCommandsSet
-  def hygrometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = hygrometerNotificationCheckAndCommandsSet
-  def photometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]] = photometerNotificationCheckAndCommandsSet
+  def thermometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = thermometerNotificationCheckAndCommandsSet
+  def hygrometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = hygrometerNotificationCheckAndCommandsSet
+  def photometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = photometerNotificationCheckAndCommandsSet
   def motionSensorNotificationCommands: Set[Device => Unit] = motionSensorNotificationCommandsSet
 
   val programmedRoutineCommands: Set[Device => Unit] = programmedRoutineCommandsSet
@@ -299,7 +299,7 @@ case class CustomProfile(override val name: String, override val description: St
   override def onThermometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, thermometerNotificationCommands, room)
   override def onHygrometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, hygrometerNotificationCommands, room)
   override def onPhotometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, photometerNotificationCommands, room)
-  override def onMotionSensorNotification(room: String, value: Boolean): Unit = if(value) applySensorCommand(motionSensorNotificationCommands, room)
+  override def onMotionSensorNotification(room: String, value: Boolean): Unit = if(value && motionSensorRoom == room) applyCommand(motionSensorNotificationCommands)
 
   private def applyCommand(commands: Set[Device => Unit], filter: Device => Boolean = _ => true ): Unit = {
     for(device <- Coordinator.getDevices.filter(filter)) {
@@ -309,43 +309,37 @@ case class CustomProfile(override val name: String, override val description: St
     }
   }
 
-  //only on devices in the sensor room
-  private def applySensorCommand(commands: Set[Device => Unit], room: String): Unit = {
-    applyCommand(commands, filter = _.room == room)
-  }
-
-  private def checkAndApplySensorCommand(value: Double, checkAndCommands: Map[Double => Boolean, Set[Device => Unit]], room: String): Unit = {
+  private def checkAndApplySensorCommand(value: Double, checkAndCommands: Map[(String, Double) => Boolean, Set[Device => Unit]], room: String): Unit = {
    for(checkAndCommand <- checkAndCommands) {
-     if (checkAndCommand._1(value)) {
-       applySensorCommand(checkAndCommand._2, room)
+     if (checkAndCommand._1(room, value)) {
+       applyCommand(checkAndCommand._2)
        return
      }
    }
   }
-
 }
 
 object CustomProfileBuilder {
 
-  def generateCheckFunction(symbol: String, value: Double): Double => Boolean = symbol match {
+  def generateCheckFunction(symbol: String, value: Double, consideredRoom: String): (String, Double) => Boolean = symbol match {
     case "=" => {
-      case double: Double if double == value => true
+      case (room, double) if double == value && room == consideredRoom => true
       case _ => false
     }
     case ">=" => {
-      case double: Double if double >= value => true
+      case (room, double) if double >= value && room == consideredRoom => true
       case _ => false
     }
     case "<=" => {
-      case double: Double if double <= value => true
+      case (room, double) if double <= value && room == consideredRoom => true
       case _ => false
     }
     case "<" => {
-      case double: Double if double < value => true
+      case (room, double) if double < value && room == consideredRoom => true
       case _ => false
     }
     case ">" => {
-      case double: Double if double > value => true
+      case (room, double) if double > value && room == consideredRoom => true
       case _ => false
     }
     case _ => this.errUnexpected(UnexpectedValue, symbol)
@@ -369,19 +363,21 @@ object CustomProfileBuilder {
     result
   }
 
-  def generateSensorCommandsMap(checkAndCommands: (Double => Boolean, Set[Device => Unit])*): Map[Double => Boolean, Set[Device => Unit]] = {
+  def generateSensorCommandsMap(checkAndCommands: ((String, Double) => Boolean, Set[Device => Unit])*): Map[(String, Double) => Boolean, Set[Device => Unit]] = {
     checkAndCommands.map(arg => arg._1 -> arg._2).toMap
   }
 
   def generateFromParams(name: String, description: String,
                          initialRoutine: Set[Device => Unit],
-                         thermometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
-                         hygrometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
-                         photometerNotificationCommands: Map[Double => Boolean, Set[Device => Unit]],
-                         motionSensorNotificationCommands: Set[Device => Unit], programmedRoutineCommands: Set[Device => Unit],
-                         doProgrammedRoutine: Unit): Profile =  CustomProfile(name, description, initialRoutine,
+                         thermometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         hygrometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         photometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]],
+                         motionSensorRoom: String, motionSensorNotificationCommands: Set[Device => Unit],
+                         programmedRoutineCommands: Set[Device => Unit], doProgrammedRoutine: Unit): Profile =
+                                                                            CustomProfile(name, description, initialRoutine,
                                                                               thermometerNotificationCommands,
                                                                               hygrometerNotificationCommands,
                                                                               photometerNotificationCommands,
-                                                                              motionSensorNotificationCommands, programmedRoutineCommands, doProgrammedRoutine)
+                                                                              motionSensorRoom, motionSensorNotificationCommands,
+                                                                              programmedRoutineCommands, doProgrammedRoutine)
 }
