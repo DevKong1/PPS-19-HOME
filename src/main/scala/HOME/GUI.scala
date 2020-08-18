@@ -186,7 +186,7 @@ object DeviceDialog {
 
 class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends Dialog {
   private val dimension = WindowSize(WindowSizeType.AddProfile)
-  private val profiles = new ComboBox[Profile](Profile.getProfiles toSeq)
+  private val profiles = new ComboBox[String](Profile.getProfileNames toSeq)
   preferredSize = dimension
   private val dialog = new BoxPanel(Orientation.Vertical) {
     contents += new BoxPanel(Orientation.Horizontal) {

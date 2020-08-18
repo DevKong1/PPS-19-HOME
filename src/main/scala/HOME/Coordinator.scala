@@ -209,6 +209,7 @@ object Profile {
 
   def getProfiles: Set[Profile] = savedProfiles
   def getProfile(name: String): Option[Profile] = savedProfiles.find(_.name == name)
+  def getProfileNames: Set[String] = savedProfiles.map(_.name)
   def addProfile(profile: Profile): Unit = savedProfiles += profile
   def removeProfile(name: String): Unit = savedProfiles -= { getProfile(name) match {
     case Some(value) => value
