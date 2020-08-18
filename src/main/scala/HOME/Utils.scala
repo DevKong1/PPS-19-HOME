@@ -298,6 +298,12 @@ object OvenMode {
 }
 //TODO add a checkAndRemove pimping the Iterable
 
+object DummyUtils {
+  val dummySet: Set[Device => Unit] = Set({_.id})
+  val dummyCheck: Double => Boolean = _ => false
+  val dummyMap: Map[Double => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
+}
+
 //A little object for create a starting demo of the program
 /*object StartingDemo {
 
