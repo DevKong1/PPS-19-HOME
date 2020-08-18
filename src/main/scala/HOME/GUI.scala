@@ -240,8 +240,9 @@ class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
   var onActivationCommands: Set[(Device, CommandMsg)] = Set.empty
-  var onSensorChangeCommands: Set[Set[(Device, CommandMsg)]] = Set.empty
-  var sensorRules: List[(String, Double)] = List.empty
+  //var onSensorChangeCommands: Set[Set[(Device, CommandMsg)]] = Set.empty
+  var sensorRules: List[(String, Double, Device)] = List.empty
+  var onSensorChange: List[(List[(String, Double, Device)], Set[(Device, CommandMsg)])] = List.empty
   //private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
   //private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
   //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
@@ -263,7 +264,7 @@ class CreateProfileDialog extends Dialog {
       contents += new Label("On activation: ")
       contents += new Button("Add rules") {
         reactions += {
-          case ButtonClicked(_) => AllDevice(Rooms.allRooms, newProfileDialog)
+          case ButtonClicked(_) => AllDevice(Rooms.allRooms, newProfileDialog, null)
         }
       }
     }
@@ -292,16 +293,20 @@ class CreateProfileDialog extends Dialog {
             //println(description.text)
             println(onActivationCommands)
             println(sensorRules)
+            //println(onSensorChangeCommands)
             val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
             var generatedSensorCommandsMap: Map[Double => Boolean, Set[Device => Unit]] = Map.empty
-          /*for(rules <- 0 to sensorRules.size) {
-            val rul = CustomProfileBuilder.generateCheckFunction(sensorRules(rules)._1, sensorRules(rules)._2)
-            val commandSet = CustomProfileBuilder.generateCommandSet(onSensorChangeCommands.toSeq(rules))
-            generatedSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
-          }
-          val newProfile = CustomProfileBuilder.generateFromParams(profileName.text, description.text, generatedOnActivationCommand, generatedSensorCommandsMap, DummyUtils.dummyMap,
-            DummyUtils.dummyMap, DummyUtils.dummySet, DummyUtils.dummySet, {})
-          Profile.addProfile(newProfile)*/
+            for(rules <- sensorRules) {
+              val rul = CustomProfileBuilder.generateCheckFunction(rules._1, rules._2)
+              for(command <- onSensorChange.filter(_._1.equals(List(rules)))) {
+                val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
+                generatedSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+              }
+            }
+            val newProfile = CustomProfileBuilder.generateFromParams(profileName.text, description.text, generatedOnActivationCommand, generatedSensorCommandsMap, DummyUtils.dummyMap,
+              DummyUtils.dummyMap, DummyUtils.dummySet, DummyUtils.dummySet, {})
+            Profile.addProfile(newProfile)
+            close()
         }
       }
       contents += new Button("Cancel") {
@@ -327,6 +332,9 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
     contents = applyTemplate
   }
 
+  var key: List[(String, Double, Device)] = List.empty
+  val emptySet: Set[(Device, CommandMsg)] = Set.empty
+
   def applyTemplate : BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
     for(i <- Coordinator.getDevices) {
@@ -347,8 +355,11 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
                   if(sym.isInstanceOf[ComboBox[_]]) {
                     //println(giveSymbol(sym))
                     //println(value.text)
-                    dialog.sensorRules ++= Set((giveSymbol(sym), value.text.toDouble))
+                    key = List((giveSymbol(sym), value.text.toDouble, i))
+                    dialog.sensorRules ++= key
+                    //dialog.sensorRules ++= Set((giveSymbol(sym), value.text.toDouble))
                     println(dialog.sensorRules)
+                    //println(dialog.onSensorChange)
                   }
                 }
                 roomsDevices(i.room)
@@ -379,7 +390,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
   }
 
   def roomsDevices(room: String) : Dialog = {
-    AllDevice(Set(room), dialog)
+    AllDevice(Set(room), dialog, key)
   }
   open()
 }
@@ -422,7 +433,7 @@ object AddProgrammedStuff {
   }
 }*/
 
-class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog) extends Dialog {
+class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, Device)]) extends Dialog {
   modal = true
   title = "All Devices"
   location = new Point(300,250)
@@ -536,22 +547,20 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog) extends D
   }
 
   def addRule(component: Component, device: Device, command: String) : Unit = command match {
-    case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute =>
-      if (!Device.isSensor(device)) {
-        dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-        println(dialog.onActivationCommands)
-      } else {
-        dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-        println(dialog.onActivationCommands)
-      }
-    case _ =>
-      if (!Device.isSensor(device)) {
-        dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-        println(dialog.onActivationCommands)
-      } else {
-        dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-        println(dialog.onSensorChangeCommands)
-      }
+    case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute => sensorRule match {
+      case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+      case _ => dialog.onSensorChange ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+        //List((List((giveSymbol(sym), value.text.toDouble, i)), emptySet))
+        //List(sensorRule -> Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command)))))
+        println(dialog.onSensorChange)
+      //dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+    }
+    case _ => sensorRule match {
+      case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+      case _ => dialog.onSensorChange ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+        println(dialog.onSensorChange)
+      // dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+    }
   }
 
   def getComponentInfo(x: Any, command: String): String = x match {
@@ -575,8 +584,8 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog) extends D
 }
 
 object AllDevice {
-  def apply(rooms: Set[String], dialog: CreateProfileDialog): AllDeviceDialog = {
-    new AllDeviceDialog(rooms, dialog)
+  def apply(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, Device)]): AllDeviceDialog = {
+    new AllDeviceDialog(rooms, dialog, sensorRule)
   }
 }
 
