@@ -71,12 +71,11 @@ object Coordinator extends JSONSender with MQTTUtils {
   //PROFILES
 
   def getActiveProfile: Profile = activeProfile
-  def setProfile(newProfile: Profile): Unit = newProfile match {
-    case profile: Profile if profile != activeProfile =>
-      activeProfile = newProfile
-      activeProfile.onActivation ()
-    case _ =>
+  def setProfile(newProfile: Profile): Unit = if (newProfile != activeProfile) {
+    activeProfile = newProfile
+    activeProfile.onActivation()
   }
+
 
   //MQTT
 
@@ -205,7 +204,7 @@ trait BasicProfile extends Profile {
 }
 
 object Profile {
-  var savedProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT)
+  var savedProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT, DAY)
 
   def getProfiles: Set[Profile] = savedProfiles
   def getProfile(name: String): Option[Profile] = savedProfiles.find(_.name == name)
@@ -233,26 +232,56 @@ object Profile {
     override def doProgrammedRoutine(): Unit = {}
   }
 
+  private case object DAY extends BasicProfile {
+
+    override val name: String = "DAY"
+    override val description: String = "Daylight Profile"
+
+    override val initialRoutine: Device => Unit = {
+      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(cmd = Msg.close)); Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
+      case device: AssociableDevice if device.deviceType == DehumidifierType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setHumidity, 20))
+      case device: AssociableDevice if device.deviceType == BoilerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 35))
+      case device: AssociableDevice => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+    }
+    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = {
+      case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value > 35 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 21))
+      case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value < 21 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 28))
+      case _ =>
+    }
+    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => if (value < Constants.dayLightValue) Coordinator.setProfile(Profile("NIGHT"))
+
+
+    override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
+      case device: AssociableDevice if value && device.room == room && !Coordinator.getDevices.filter(_.room == room).exists(_.deviceType == ShutterType) && device.deviceType == LightType =>
+        Coordinator.publish(device, CommandMsg(cmd = Msg.on))
+        Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 100))
+      case _ =>
+    }
+
+    override val programmedRoutineCommands: Device => Unit = null
+
+    override def doProgrammedRoutine(): Unit = {}
+  }
+
   private case object NIGHT extends BasicProfile  {
 
     override val name: String = "NIGHT"
     override val description: String = "Night Profile"
 
     override val initialRoutine: Device => Unit = {
-      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.close)); Coordinator.publish(device, CommandMsg(cmd = Msg.off))
-      case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 21))
+      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(cmd = Msg.close)); Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
       case device: AssociableDevice if device.deviceType == DehumidifierType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setHumidity, 40))
       case device: AssociableDevice => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
     }
 
-    //TODO REPLACE _.id , SHOULD BE NULL OR SOMETHING
-    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
-    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _.id
-    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = {
-      case device: AssociableDevice if device.room == room && device.deviceType == ShutterType && value > Constants.dayLightValue =>
-        Coordinator.setProfile(Profile(Constants.default_profile_name))
-      case _ =>
-    }
+    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => if (value > Constants.dayLightValue) Coordinator.setProfile(Profile("DAY"))
 
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
       case device: AssociableDevice if value && device.room == room && device.deviceType == LightType =>
@@ -362,7 +391,7 @@ object CustomProfileBuilder {
       result += {
         _.id match {
           case t if t == device.id => Coordinator.publish(device.asInstanceOf[AssociableDevice], message) //TODO asInstanceOf only cause simulated
-          case _ =>
+          case _ => null
         }
       }
     }

@@ -110,7 +110,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
     eventually { Thread.sleep(testSleepTime); ac.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); humid.isOn should be (true) }
-    eventually { Thread.sleep(testSleepTime); ac.getValue should be (21) }
+    eventually { Thread.sleep(testSleepTime); ac.getValue should be (25) }
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
 
     Coordinator.activeProfile.onMotionSensorNotification(salotto, true)
@@ -118,7 +118,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
 
     Coordinator.activeProfile.onPhotometerNotification(salotto, 45)
-    eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile should be (Profile(Constants.default_profile_name)) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile.name should be ("DAY") }
 
     concludeTest(light, shutter, ac, humid)
   }
