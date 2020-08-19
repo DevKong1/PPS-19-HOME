@@ -319,7 +319,7 @@ class CreateProfileDialog extends Dialog {
 
             }
             val newProfile = CustomProfileBuilder.generateFromParams(profileName.text, description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
-              generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, "", generatedMotionSensorCommands, DummyUtils.dummySet, {})
+              generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommands, DummyUtils.dummySet, {})
             Profile.addProfile(newProfile)
             close()
         }
