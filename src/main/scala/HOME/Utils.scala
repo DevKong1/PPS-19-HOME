@@ -300,8 +300,8 @@ object OvenMode {
 
 object DummyUtils {
   val dummySet: Set[Device => Unit] = Set({_.id})
-  val dummyCheck: Double => Boolean = _ => false
-  val dummyMap: Map[Double => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
+  val dummyCheck: (String, Double) => Boolean = (_,_) => false
+  val dummyMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
 }
 
 //A little object for create a starting demo of the program

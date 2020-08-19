@@ -241,8 +241,11 @@ class CreateProfileDialog extends Dialog {
   private val description = new TextField(10)
   var onActivationCommands: Set[(Device, CommandMsg)] = Set.empty
   //var onSensorChangeCommands: Set[Set[(Device, CommandMsg)]] = Set.empty
-  var sensorRules: List[(String, Double, Device)] = List.empty
-  var onSensorChange: List[(List[(String, Double, Device)], Set[(Device, CommandMsg)])] = List.empty
+  var sensorRules: List[(String, Double, String, Device)] = List.empty
+  var thermometerNotificationCommands: List[(List[(String, Double, String, Device)], Set[(Device, CommandMsg)])] = List.empty
+  var hygrometerNotificationCommands: List[(List[(String, Double, String, Device)], Set[(Device, CommandMsg)])] = List.empty
+  var photometerNotificationCommands: List[(List[(String, Double, String, Device)], Set[(Device, CommandMsg)])] = List.empty
+  var motionSensorNotificationCommands: Set[(Device, CommandMsg)] = Set.empty
   //private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
   //private val allRooms = new ComboBox[String](Rooms.allRooms toSeq)
   //private val allDevice = new ComboBox[DeviceType](DeviceType.listTypes toSeq)
@@ -295,16 +298,28 @@ class CreateProfileDialog extends Dialog {
             println(sensorRules)
             //println(onSensorChangeCommands)
             val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
-            var generatedSensorCommandsMap: Map[Double => Boolean, Set[Device => Unit]] = Map.empty
+            var generatedThermometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+            val generatedHygrometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+            val generatedPhotometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+            val generatedMotionSensorCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(motionSensorNotificationCommands)
             for(rules <- sensorRules) {
-              val rul = CustomProfileBuilder.generateCheckFunction(rules._1, rules._2)
-              for(command <- onSensorChange.filter(_._1.equals(List(rules)))) {
+              val rul = CustomProfileBuilder.generateCheckFunction(rules._1, rules._2, rules._3)
+              for(command <- thermometerNotificationCommands.filter(_._1.equals(List(rules)))) {
                 val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
-                generatedSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+                generatedThermometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
               }
+              for(command <- hygrometerNotificationCommands.filter(_._1.equals(List(rules)))) {
+                val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
+                generatedThermometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+              }
+              for(command <- photometerNotificationCommands.filter(_._1.equals(List(rules)))) {
+                val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
+                generatedThermometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+              }
+
             }
-            val newProfile = CustomProfileBuilder.generateFromParams(profileName.text, description.text, generatedOnActivationCommand, generatedSensorCommandsMap, DummyUtils.dummyMap,
-              DummyUtils.dummyMap, DummyUtils.dummySet, DummyUtils.dummySet, {})
+            val newProfile = CustomProfileBuilder.generateFromParams(profileName.text, description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
+              generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, "", generatedMotionSensorCommands, DummyUtils.dummySet, {})
             Profile.addProfile(newProfile)
             close()
         }
@@ -332,7 +347,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
     contents = applyTemplate
   }
 
-  var key: List[(String, Double, Device)] = List.empty
+  var key: List[(String, Double, String, Device)] = List.empty
   val emptySet: Set[(Device, CommandMsg)] = Set.empty
 
   def applyTemplate : BoxPanel = {
@@ -342,27 +357,32 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
       devicePanel.peer.add(Box.createVerticalStrut(10))
       devicePanel.border = new LineBorder(Color.BLACK, 2)
       if(Device.isSensor(i)) {
+        val comboRooms: ComboBox[String] = new ComboBox[String](Rooms.allRooms toSeq)
         val value = new TextField(10)
         devicePanel.contents += new FlowPanel() {
           contents += new Label(i.name)
           contents += new Label("On: ")
           contents += applyComponent(i, this)
           contents += value
+          contents += new Label("Select rooms where yuo want to apply rules")
+          contents += comboRooms
           contents += new Button("Do") {
             reactions += {
               case ButtonClicked(_) =>
                 for(sym <- devicePanel.contents(1).asInstanceOf[FlowPanel].contents) yield {
-                  if(sym.isInstanceOf[ComboBox[_]]) {
-                    //println(giveSymbol(sym))
-                    //println(value.text)
-                    key = List((giveSymbol(sym), value.text.toDouble, i))
-                    dialog.sensorRules ++= key
-                    //dialog.sensorRules ++= Set((giveSymbol(sym), value.text.toDouble))
-                    println(dialog.sensorRules)
+                  sym match {
+                    case x: ComboBox[_] if !x.equals(comboRooms) =>
+                      //println(giveSymbol(sym))
+                      //println(value.text)
+                      key = List((giveSymbol(sym), value.text.toDouble, comboRooms.selection.item, i))
+                      dialog.sensorRules ++= key
+                      //dialog.sensorRules ++= Set((giveSymbol(sym), value.text.toDouble))
+                      println(dialog.sensorRules)
                     //println(dialog.onSensorChange)
+                    case _ =>
                   }
                 }
-                roomsDevices(i.room)
+                roomsDevices(comboRooms.selection.item)
             }
           }
         }
@@ -433,7 +453,7 @@ object AddProgrammedStuff {
   }
 }*/
 
-class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, Device)]) extends Dialog {
+class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]) extends Dialog {
   modal = true
   title = "All Devices"
   location = new Point(300,250)
@@ -549,17 +569,30 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
   def addRule(component: Component, device: Device, command: String) : Unit = command match {
     case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute => sensorRule match {
       case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-      case _ => dialog.onSensorChange ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+      case _ => sensorRule(0)._4.deviceType match {
+        case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+          println(dialog.thermometerNotificationCommands)
+        case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+          println(dialog.photometerNotificationCommands)
+        case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+          println(dialog.hygrometerNotificationCommands)
+        case MotionSensorType => dialog.motionSensorNotificationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        case _ =>
+      }
         //List((List((giveSymbol(sym), value.text.toDouble, i)), emptySet))
         //List(sensorRule -> Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command)))))
-        println(dialog.onSensorChange)
-      //dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+      //println(dialog.thermometerNotificationCommands)
     }
     case _ => sensorRule match {
       case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
-      case _ => dialog.onSensorChange ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
-        println(dialog.onSensorChange)
-      // dialog.onSensorChangeCommands += Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+      case _ => println(sensorRule)
+        sensorRule(0)._4.deviceType match {
+        case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+        case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+        case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))))
+        case MotionSensorType => dialog.motionSensorNotificationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, getComponentInfo(component, command), getComponentInfo(component, command))))
+        case _ =>
+      }
     }
   }
 
@@ -584,7 +617,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
 }
 
 object AllDevice {
-  def apply(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, Device)]): AllDeviceDialog = {
+  def apply(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]): AllDeviceDialog = {
     new AllDeviceDialog(rooms, dialog, sensorRule)
   }
 }
