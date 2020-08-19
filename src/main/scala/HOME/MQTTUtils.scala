@@ -163,4 +163,8 @@ object Msg {
 
   //Sensor values
   val updateBaseString = "sensorUpdate"
+  val temperatureRead: String = "temperatureRead"
+  val humidityRead: String = "humidityRead"
+  val intensityRead: String = "intensityRead"
+  val motionDetected: String = "motionDetected"
 }
