@@ -18,7 +18,7 @@ object Constants {
   //Room in every house
   val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
   //Used to generate the set of devices that are in every room
-  def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp", name), Thermometer("Thermometer", name), Hygrometer("Hygrometer", name), MotionSensor("MotionSensor", name))
+  def devicesPerRoom(name: String) :Set[Device]= Set(Light(DeviceIDGenerator(),name),Thermometer(DeviceIDGenerator(),name),Hygrometer(DeviceIDGenerator(),name),MotionSensor(DeviceIDGenerator(),name))
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
@@ -62,12 +62,18 @@ object Logger {
   def unsetTestFile() : Unit = {resetFile(); csvFile = new File(fileName)}
 }
 
+object DeviceIDGenerator {
+  private var _id = 0
+  def apply(): String = {
+    _id += 1
+    _id.toString
+  }
+}
 object RegisterDevice {
-  def apply(devType:String,name :String, roomName:String): Future[Unit] = {
+  def apply(d : AssociableDevice): Future[Unit] = {
     val p = Promise[Unit]
-    val dev = Device(devType,name,roomName).get.asInstanceOf[AssociableDevice]
-    startDevice(dev)
-    registerDevice(dev,p)
+    startDevice(d)
+    registerDevice(d,p)
     p.future
   }
   def apply(d : Set[AssociableDevice]):Future[Unit] ={

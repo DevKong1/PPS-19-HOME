@@ -19,6 +19,11 @@ object Coordinator extends JSONSender with MQTTUtils {
   var activeProfile: Profile = Profile(Constants.default_profile_name)
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
+  def sendUpdate(devName : String,cmdMsg : String,newValue:String = null) : Future[Unit] = {
+    val p = Promise[Unit]
+    val requestNumber = RequestHandler.addRequest(p)
+    publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
+    p.future
   def getActiveConsumption: Int = getConsumption(getDevices.filter(_.isOn).toList)
   private def getConsumption(seq: Seq[Device]): Int = seq.map(_.consumption).sum
 
@@ -59,6 +64,7 @@ object Coordinator extends JSONSender with MQTTUtils {
     }
     dev
   }
+
   def addDevice(device: Device): Unit = devices += device
 
   def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)
