@@ -167,10 +167,10 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
 }
 
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
-  private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
-  private var _lastVal: Option[A] = None
-
   val DEFAULT_VALUE: A  //Used for simulation purposes
+
+  private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
+  private var _lastVal: Option[A] = Some(DEFAULT_VALUE)
   
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
