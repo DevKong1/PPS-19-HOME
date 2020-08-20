@@ -59,9 +59,13 @@ class GUIRoom(override val name:String, override var devices:Set[Device] = Set.e
   }
 
   def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices)
-  def addDevicePane(dev : GUIDevice): Unit ={
+  private def addDevicePane(dev : GUIDevice): Unit ={
     devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
     devicePanel.contents += dev
+  }
+  def addDevice(dev:GUIDevice): Unit ={
+    addDevicePane(dev)
+    gui_devices+=dev
   }
 
 }
@@ -169,7 +173,7 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevicePane(PrintDevicePane(dev));repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(PrintDevicePane(dev));repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -1015,7 +1019,7 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
 
 case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton with EditableFeature {
   override def getVal: String = status
-  override def setVal(v:String): Unit = {} //Do nothing
+  override def setVal(v:String): Unit = {status = v; text = v}
 
   text = toDisplay
   private var status = toDisplay
