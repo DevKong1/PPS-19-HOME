@@ -188,6 +188,7 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
   private val dimension = WindowSize(WindowSizeType.AddProfile)
   private val profiles = new ComboBox[String](Profile.getProfileNames toSeq)
   preferredSize = dimension
+  modal = true
   private val dialog = new BoxPanel(Orientation.Vertical) {
     contents += new BoxPanel(Orientation.Horizontal) {
       contents += new FlowPanel() {
@@ -641,13 +642,13 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     hGap = 70
     contents += new Label("Date: " + DateTime.getDate)
     contents += new Label("Internal temperature: ")
-    contents += new Label("External temperature: ")
+    //contents += new Label("External temperature: ")
   }
   val humidityPanel: FlowPanel = new FlowPanel() {
     hGap = 70
     contents += new Label("Time: " + DateTime.getCurrentTime)
     contents += new Label("Internal humidity: ")
-    contents += new Label("External humidity: ")
+    //contents += new Label("External humidity: ")
   }
   val alarmPanel: FlowPanel = new FlowPanel() {
     hGap = 70

@@ -71,7 +71,7 @@ object DateTime {
   def getDate : String = {
     val cal = Calendar.getInstance()
     val date = cal.get(Calendar.DATE )
-    val month = cal.get(Calendar.MONTH )
+    val month = cal.get(Calendar.MONTH ) + 1
     val year = cal.get(Calendar.YEAR )
 
     date+"/"+month+"/"+year
