@@ -35,7 +35,7 @@ sealed trait EditableFeature{
 }
 
 class GUIRoom(override val name:String, override var devices:Set[Device] = Set.empty) extends ScrollPane with Room {
-  val gui_devices : Set[GUIDevice] = devices.map(PrintDevicePane(_))
+  var gui_devices : Set[GUIDevice] = devices.map(PrintDevicePane(_))
   val devicePanel = new BoxPanel(Orientation.Vertical)
   //devices.map(_.asInstanceOf[AssociableDevice])
   val adDeviceBtn: Button =
@@ -70,7 +70,7 @@ class GUIRoom(override val name:String, override var devices:Set[Device] = Set.e
 object GUI extends MainFrame {
   var rooms: Set[GUIRoom] = Set.empty
   for(i <- Rooms.allRooms) {
-    rooms += new GUIRoom(i, Coordinator.devices.filter(_.room equals i))
+    rooms += new GUIRoom(i, Coordinator.devices.filter(_.room == i))
   }
 
   var requests : List[Int]  = List()
@@ -80,14 +80,13 @@ object GUI extends MainFrame {
     for(i <- rooms) pages += new TabbedPane.Page(i.name,i)
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
-  //def setRooms(roomList : Set[String]): Unit = roomList foreach( room=> rooms+=new GUIRoom(room,Coordinator.devices.filter(_.room equals room)))
   def top: MainFrame = new MainFrame {
     title = "Home!"
     println("Welcome")
     reactions += {
       case SelectionChanged(_) =>
         for {
-          last <- getLastIndex()
+          last <- getLastIndex
           name <- getRoomName
         } yield {
           val devices = Constants.devicesPerRoom(name)
@@ -105,12 +104,10 @@ object GUI extends MainFrame {
     listenTo(tp.selection)
     size = WindowSize(WindowSizeType.MainW)
 
-    object getLastIndex {
-      def apply(): Option[TabbedPane.Page] = {
-        tp.selection.page.title match {
-          case Constants.AddPane => tp.pages.find(page => page.title equals Constants.AddPane)
-          case _ => None
-        }
+    def getLastIndex: Option[TabbedPane.Page] = {
+      tp.selection.page.title match {
+        case Constants.AddPane => tp.pages.find(page => page.title == Constants.AddPane)
+        case _ => None
       }
     }
     private def getRoomName: Option[String] = {
@@ -122,7 +119,7 @@ object GUI extends MainFrame {
         Swing.EmptyIcon,
         Nil, "")
       /*Saddest input check ever*/
-      if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(Constants.AddPane) && !tp.pages.exists(_.title equals name.get)) {
+      if (name.isDefined && name.get.trim.length > 0 && !(name.get == Constants.AddPane) && !tp.pages.exists(_.title == name.get)) {
         Rooms.addRoom(name.get)
         name
       } else {
@@ -168,7 +165,7 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevicePane(PrintDevicePane(dev));repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.name == room).get.addDevicePane(PrintDevicePane(dev));repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -707,9 +704,9 @@ object PrintDevicePane {
     case StereoSystemType => StereoPane(StereoSystem(device.name,device.room))
     case TvType => TVPane(TV(device.name,device.room))
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
-    case BoilerType => BoilerPane(Boiler(device.name,device.room)) //TODO: CHANGE
+    case BoilerType => BoilerPane(Boiler(device.name,device.room))
 
-      //Sensors
+    //Sensors
     case ThermometerType => ThermometerPane(device.asInstanceOf[SimulatedThermometer])
     case HygrometerType => HygrometerPane(device.asInstanceOf[SimulatedHygrometer])
     case MotionSensorType => MotionSensorPane(device.asInstanceOf[SimulatedMotionSensor])
@@ -730,6 +727,7 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
     }
   })
 }
+
 private case class MotionSensorPane(override val d: SimulatedMotionSensor)extends GUIDevice(d){
   require (d.deviceType == MotionSensorType)
   private val EMPTY = "EMPTY"
@@ -866,7 +864,7 @@ private case class StereoPane(override val d: SimulatedStereoSystem) extends GUI
     muted
   )
   override def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = cmdString match{
-    case Msg.setVolume => d.setValue(newVal toInt); volume.setFeatureValue(newVal) //TODO: FIX SETVAL
+    case Msg.setVolume => d.setValue(newVal toInt); volume.setFeatureValue(newVal)
     case Msg.mute => d.setValue(d.minValue)
     case _ =>this.errUnexpected(UnexpectedMessage,"This device can only receive volume updates")
   }
@@ -882,7 +880,7 @@ private case class TVPane(override val d: SimulatedTV) extends GUIDevice(d){
   )
   override def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = cmdString match{
     case Msg.setVolume => d.setValue(newVal toInt); volume.setFeatureValue(newVal)
-    case Msg.mute => d.setValue(d.minValue)//TODO: FIX SETVAL
+    case Msg.mute => d.setValue(d.minValue)
     case _ =>this.errUnexpected(UnexpectedMessage,"This device can only receive volume updates")
   }
 }
