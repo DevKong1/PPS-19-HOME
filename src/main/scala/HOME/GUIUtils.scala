@@ -103,7 +103,6 @@ object UserHandler{
         if (fileId equals id) return false
       }
     }}
-
     ResourceOpener.open(new FileWriter(Constants.LoginPath,true)) { writer => {
       writer.write(id+SPLIT+SecureHash.createHash(psw)+"\n")
     }}
