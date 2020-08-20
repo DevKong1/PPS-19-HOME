@@ -214,27 +214,27 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
         this.title = "Change Profile"
         new Button("Confirm") {
           reactions += {
-            case ButtonClicked(_) => changeProfile()
+            case ButtonClicked(_) => changeProfile(delete)
           }
         }
       case "Delete profile" =>
         this.title = "Delete Profile"
         new Button("Delete") {
           reactions += {
-            case ButtonClicked(_) => close()
+            case ButtonClicked(_) => changeProfile(delete)
           }
         }
     }
   }
 
-  def changeProfile() : Unit = {
-    var selectedProfile = profiles.selection.item
-    labelProfile.text = "Current active profile: " +  selectedProfile
-    selectedProfile match {
-      case "DEFAULT_PROFILE" => selectedProfile = Constants.default_profile_name
-      case _ =>
+  def changeProfile(name: String): Unit = {
+    val selectedProfile = profiles.selection.item
+    name match {
+      case "Change profile" =>
+        labelProfile.text = "Current active profile: " + selectedProfile
+        Coordinator.setProfile(Profile(selectedProfile))
+      case _ => Profile.removeProfile(selectedProfile)
     }
-    //Coordinator.activeProfile = Profile(selectedProfile)
     close()
   }
 }
