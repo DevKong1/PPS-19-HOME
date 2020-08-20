@@ -663,7 +663,7 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
     contents += new Label("Alarm status")
     contents += new ToggleButton()
   }
-  val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile)
+  val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile.name)
   val profilePanel: FlowPanel = new FlowPanel() {
     hGap = 70
     contents ++= Seq(currentProfile,
