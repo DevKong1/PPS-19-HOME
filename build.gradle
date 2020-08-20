@@ -23,7 +23,7 @@ repositories {
 dependencies {
     // Use Scala 2.12 in our library project
     implementation 'org.scala-lang:scala-library:2.12.10'
-    //Scala swing
+    //Scala swingsda
     implementation 'org.scala-lang.modules:scala-swing_2.12:2.1.1'
     // Use Scalatest for testing our library
     testImplementation 'junit:junit:4.12'
@@ -34,6 +34,8 @@ dependencies {
 	
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
 	implementation 'com.typesafe.play:play-json_2.12:2.9.0'
+    implementation 'io.github.nremond:pbkdf2-scala_2.12:0.6.5'
+
 }
 
 compileScala {

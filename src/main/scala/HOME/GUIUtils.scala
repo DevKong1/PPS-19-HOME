@@ -1,11 +1,13 @@
 package HOME
 
 import java.awt.{Dimension, GraphicsEnvironment}
+import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import io.github.nremond.SecureHash
 
+import scala.io.Source
 import scala.language.postfixOps
-
 import scala.swing.ComboBox
 
 object WindowSize {
@@ -89,6 +91,46 @@ object DateTime {
     val amOrPm = amPmFormat.format(today)
 
     currentHour+":"+currentMinute+" "+ amOrPm
+  }
+}
+object UserHandler{
+  private val SPLIT = " "
+  def register(id:String,psw:String): Boolean = {
+    if (!checkNonNull(id,psw)) return false
+    ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
+      for (entry <- file.getLines) {
+        val fileId = entry.get_id
+        if (fileId equals id) return false
+      }
+    }}
+
+    ResourceOpener.open(new FileWriter(Constants.LoginPath,true)) { writer => {
+      writer.write(id+SPLIT+SecureHash.createHash(psw)+"\n")
+    }}
+    true
+  }
+
+  def login(id:String,psw:String) : Boolean = {
+    if (!checkNonNull(id,psw)) return false
+    ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
+      for (entry <- file.getLines()){
+        val fileId = entry.get_id
+        val filePsw = entry.get_psw
+        if(SecureHash.validatePassword(psw,filePsw) && fileId == id) {
+          return true
+        }
+      }
+    }}
+    false
+  }
+  implicit class LoginHelper(s: String) {
+    private val ID = 0
+    private val PSW = 1
+    def get_id: String = s.split(SPLIT)(ID)
+    def get_psw:String = s.split(SPLIT)(PSW)
+  }
+  def checkNonNull(value:String*):Boolean = {
+    value.map(_.trim.length>0).reduce(_ && _)
   }
 }
 

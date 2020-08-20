@@ -1,5 +1,6 @@
 package HOME
 
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 import HOME.MyClass._
@@ -14,7 +15,7 @@ object Constants {
   //Room in every house
   val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
   //Used to generate the set of devices that are in every room
-  def devicesPerRoom(name: String) :Set[Device]= Set(Light("Lamp",name),Thermometer("Thermometer",name),Hygrometer("Hygrometer",name),MotionSensor("MotionSensor",name))
+  def devicesPerRoom(name: String) :Set[Device]= Set(Light(DeviceIDGenerator(),name),Thermometer(DeviceIDGenerator(),name),Hygrometer(DeviceIDGenerator(),name),MotionSensor(DeviceIDGenerator(),name))
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
@@ -22,6 +23,9 @@ object Constants {
   val LoginTextSize = 20
   val AddPane = "+"
   val registrationTimeout = 500
+  val HomePath: String = System.getProperty("user.home")+File.separatorChar+"HOME"
+  val LoginPath: String = HomePath+File.separatorChar+"login.txt"
+
 }
 object DeviceIDGenerator {
   private var _id = 0
@@ -29,6 +33,19 @@ object DeviceIDGenerator {
     _id += 1
     _id.toString
   }
+}
+object ResourceOpener{
+  /*Loan pattern
+ * Takes an element that implements close() as first parameter and
+ * a function that maps such element in a new type as second.
+ * Used not to have to close streams every time one is opened
+ */
+   def open[A <: { def close(): Unit }, B](file: A)(f: A => B): B =
+    try {
+      f(file)
+    } finally {
+      file.close()
+    }
 }
 object RegisterDevice {
   def apply(d : AssociableDevice): Future[Unit] = {
@@ -78,7 +95,6 @@ case class MyClass(_class: Any) {
 object MyClass{
   implicit def toMyClass(_class: Any): MyClass = MyClass(_class)
 }
-
 //helper object used by various devices to set the output strength
 object ValueChecker {
   def apply(min: Int, max: Int)(value: Int): Int = value match {
@@ -251,6 +267,7 @@ object OvenMode {
     case _ => this.errUnexpected(UnexpectedMessage, ovenMode)
   }
 }
+
 //TODO add a checkAndRemove pimping the Iterable
 
 //A little object for create a starting demo of the program

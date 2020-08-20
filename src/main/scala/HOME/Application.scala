@@ -1,9 +1,12 @@
 package HOME
 
+import java.io.{File, FileWriter}
+
 object Application {
   private var devices: Set[AssociableDevice] = Set.empty  //Internal use for instantiating devices
 
   def main(args: Array[String]): Unit = {
+    checkAndCreateLoginFile(Constants.HomePath)
     Constants.defaultRooms foreach Rooms.addRoom
     //GUI.setRooms(Constants.defaultRooms)
     if (!startCoordinator() || !startDevices()) {
@@ -16,8 +19,8 @@ object Application {
     for (d <- devices.filter(_.isInstanceOf[SensorAssociableDevice[_]])) Coordinator.addDevice(d)
 
     println("Launching GUI")
-    GUI.pack()
-    GUI.top.visible = true
+    LoginPage
+    //GUI.top.visible = true
   }
 
   private def startCoordinator(): Boolean = {
@@ -27,7 +30,18 @@ object Application {
     }
     true
   }
-
+  private def checkAndCreateLoginFile(filePath:String): Unit ={
+    println(filePath)
+    val homeDir = new File(filePath)
+    if(!homeDir.exists()){
+      homeDir.mkdir()
+    }
+    if(!new File(Constants.LoginPath).exists()){
+        ResourceOpener.open(new FileWriter(Constants.LoginPath)) { writer => {
+          writer.write("")
+        }}
+      }
+  }
   private def stopCoordinator(): Unit = {
     Coordinator.disconnect
   }
