@@ -213,39 +213,39 @@ case object LightType extends DeviceType {
 }
 
 case object AirConditionerType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 30
 }
 
 case object DehumidifierType extends DeviceType {
-  override def defaultConsumption: Int = 0
-}
-
-case object ShutterType extends DeviceType {
-  override def defaultConsumption: Int = 0
-}
-
-case object BoilerType extends DeviceType {
   override def defaultConsumption: Int = 10
 }
 
+case object ShutterType extends DeviceType {
+  override def defaultConsumption: Int = 20
+}
+
+case object BoilerType extends DeviceType {
+  override def defaultConsumption: Int = 30
+}
+
 case object TvType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 25
 }
 
 case object WashingMachineType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object DishWasherType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object OvenType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object StereoSystemType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 15
 }
 
 case object ThermometerType extends DeviceType {

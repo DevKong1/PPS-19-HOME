@@ -89,7 +89,12 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(getMessageFromMsg(message)).id)
+    case t if t == updateTopic => {
+      val msg = CommandMsg.fromString(getMessageFromMsg(message))
+      //We consider nullIds as the commands not sent by the User
+      if (msg.id == Msg.nullCommandId) GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
+      RequestHandler.handleRequest(msg.id)
+    }
     case t if t == loggingTopic => logMessage(message)
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
