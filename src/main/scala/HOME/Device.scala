@@ -132,7 +132,6 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
         case m if m == Msg.disconnect => disconnect
         case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
         case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
-        case _ if !isOn => //do nothing
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
       case t if t == broadcastTopic => message match {
@@ -347,8 +346,8 @@ case class SimulatedShutter(override val id: String, override val room: String, 
 
   def isOpen: Boolean = _open
 
-  def open(): Boolean = {_open = true; _open}
-  def close(): Boolean = {_open = false; !_open}
+  def open(): Boolean = {turnOn(); _open = true; turnOff(); true}
+  def close(): Boolean = {turnOn(); _open = false; turnOff(); true}
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
     case Msg.open => open()
