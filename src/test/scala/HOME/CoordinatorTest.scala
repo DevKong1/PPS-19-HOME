@@ -134,11 +134,11 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     val commands: Set[(Device,CommandMsg)] = Set((tv,CommandMsg(cmd = Msg.on)), (tv,CommandMsg(cmd = Msg.mute)))
     val generatedCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(commands)
 
-    val temperatureCheckMoreThan50 = CustomProfileBuilder.generateCheckFunction(">",50)
+    val temperatureCheckMoreThan50 = CustomProfileBuilder.generateCheckFunction(">",50, salotto)
     val temperatureCommandsMoreThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
     val generatedtemperatureCommandsMoreThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsMoreThan50)
 
-    val temperatureCheckLessThan50 = CustomProfileBuilder.generateCheckFunction("<",50)
+    val temperatureCheckLessThan50 = CustomProfileBuilder.generateCheckFunction("<", 50, salotto)
     val temperatureCommandsLessThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 30)))
     val generatedtemperatureCommandsLessThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsLessThan50)
 
@@ -146,11 +146,12 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
 
     val dummySet: Set[Device => Unit] = Set({_.id})
-    val dummyCheck: Double => Boolean = _ => false
-    val dummyMap: Map[Double => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
+    val dummyCheck: (String,Double) => Boolean = (_,_) => false
+    val dummyMap: Map[(String,Double) => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
+    val dummySensorMap: Map[String, Set[Device => Unit]] = Map("" -> dummySet)
 
     val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, generatedTemperatureCommandsMap, dummyMap,
-      dummyMap, dummySet,dummySet,{})
+      dummyMap, dummySensorMap,dummySet,{})
 
     Profile.addProfile(builtProfile)
     assert(Profile.savedProfiles.contains(builtProfile))
