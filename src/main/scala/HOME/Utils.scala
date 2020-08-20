@@ -11,6 +11,8 @@ import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.language.reflectiveCalls
+
 object Constants {
   //Room in every house
   val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
