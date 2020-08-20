@@ -89,12 +89,11 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case t if t == updateTopic => {
+    case t if t == updateTopic =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
       //We consider nullIds as the commands not sent by the User
       if (msg.id == Msg.nullCommandId) GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
       RequestHandler.handleRequest(msg.id)
-    }
     case t if t == loggingTopic => logMessage(message)
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
@@ -248,7 +247,8 @@ object Profile {
       case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
       case device: AssociableDevice if device.deviceType == DehumidifierType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setHumidity, 20))
       case device: AssociableDevice if device.deviceType == BoilerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 35))
-      case device: AssociableDevice => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case device: AssociableDevice if !DeviceType.isSensor(device.deviceType) => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case _ =>
     }
     override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = {
       case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value > 35 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 21))
@@ -281,7 +281,8 @@ object Profile {
       case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(cmd = Msg.close)); Coordinator.publish(device, CommandMsg(cmd = Msg.off))
       case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
       case device: AssociableDevice if device.deviceType == DehumidifierType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setHumidity, 40))
-      case device: AssociableDevice => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case device: AssociableDevice if !DeviceType.isSensor(device.deviceType) => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case _ =>
     }
 
     override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()

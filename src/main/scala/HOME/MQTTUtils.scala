@@ -142,7 +142,6 @@ object Msg {
   val disconnected: String = "disconnected" //Message sent when the connection is lost
   val register: String = "register" //Message sent by the device to register to the system
   val regSuccess: String = "regSuccess" //Message sent by the coordinator to assert the device has registered successfully
-  val confirmUpdate: String = "success"  //Message sent by the device which has successfully updated its status
 
   //Commands
   val on: String = "on"
