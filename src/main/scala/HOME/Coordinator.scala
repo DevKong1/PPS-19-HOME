@@ -369,7 +369,7 @@ object CustomProfileBuilder {
   def generateSensorCommandsMap[A](checkAndCommands: ((String, A) => Boolean, Set[Device => Unit])*): Map[(String, A) => Boolean, Set[Device => Unit]] = {
     checkAndCommands.map(arg => arg._1 -> arg._2).toMap
   }
-  def generateSensorCommandsMap[A](checkAndCommands: (A => Boolean, Set[Device => Unit])*): Map[A => Boolean, Set[Device => Unit]] = {
+  def generateMotionSensorCommandsMap[A](checkAndCommands: (A, Set[Device => Unit])*): Map[A, Set[Device => Unit]] = {
     checkAndCommands.map(arg => arg._1 -> arg._2).toMap
   }
 
