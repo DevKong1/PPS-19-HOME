@@ -15,8 +15,10 @@ object DeviceType {
   def sensorTypes: Set[DeviceType] = Set(ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
   def isSensor(senType: String): Boolean = sensorTypes.findSimpleClassName(senType)
+  def isSensor(deviceType: DeviceType): Boolean = sensorTypes.findSimpleClassName(deviceType.getSimpleClassName)
 
   def isDevice(devType: String): Boolean = listTypes.findSimpleClassName(devType)
+  def isDevice(deviceType: DeviceType): Boolean = listTypes.findSimpleClassName(deviceType.getSimpleClassName)
 
   def apply(devType: String): DeviceType = (listTypes ++ sensorTypes).find(_.getSimpleClassName == devType) match {
     case Some(t) => t
@@ -146,7 +148,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
   private def sendConfirmUpdate(message: String): Unit = {
-    publish(updateTopic, CommandMsg(CommandMsg.fromString(message).id, Msg.confirmUpdate).toString, this)
+    publish(updateTopic, message, this)
   }
   private def sendLogMsg(message: String): Unit = {
     publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()), this)
@@ -186,6 +188,10 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
 }
 
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
+  //always on
+  override def isOn: Boolean = true
+  override def turnOff(): Boolean = false
+
   private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
   private var _lastVal: Option[A] = None  //Stores the last received value
   private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
