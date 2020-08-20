@@ -69,7 +69,7 @@ object GUI extends MainFrame {
   //StartingDemo()
   var rooms: Set[GUIRoom] = Set.empty//Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
   for(i <- Rooms.allRooms) {
-    rooms += new GUIRoom(i, Coordinator.devices.filter(_.room equals i))
+    rooms += new GUIRoom(i, Coordinator.getDevices.filter(_.room equals i))
   }
 
   var requests : List[Int]  = List()

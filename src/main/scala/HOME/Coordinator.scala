@@ -15,8 +15,8 @@ object Coordinator extends JSONSender with MQTTUtils {
   override def lastWillTopic: String = broadcastTopic
   override def lastWillMessage: String = Msg.disconnected
 
-  var devices: Set[Device] = Set.empty
-  var activeProfile: Profile = Profile(Constants.default_profile_name)
+  private var devices: Set[Device] = Set.empty
+  private var activeProfile: Profile = Profile(Constants.default_profile_name)
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
   def getActiveConsumption: Int = getConsumption(getDevices.filter(_.isOn).toList)
@@ -89,7 +89,12 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
-    case t if t == updateTopic => RequestHandler.handleRequest(CommandMsg.fromString(getMessageFromMsg(message)).id)
+    case t if t == updateTopic => {
+      val msg = CommandMsg.fromString(getMessageFromMsg(message))
+      //We consider nullIds as the commands not sent by the User
+      if (msg.id == Msg.nullCommandId) GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
+      RequestHandler.handleRequest(msg.id)
+    }
     case t if t == loggingTopic => logMessage(message)
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))

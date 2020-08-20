@@ -42,13 +42,13 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(light.connect)
     assert(light.subscribe)
     val p = light.register
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
     eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
-    assert(Coordinator.publish(Coordinator.devices.head.asInstanceOf[AssociableDevice].getSubTopic, Msg.disconnect))
+    assert(Coordinator.publish(Coordinator.getDevices.head.asInstanceOf[AssociableDevice].getSubTopic, Msg.disconnect))
     eventually { Thread.sleep(testSleepTime); light.isConnected should be (false) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (false) }
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (0) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (0) }
     assert(Coordinator.disconnect)
   }
 
@@ -58,7 +58,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(thermometer.connect)
     assert(thermometer.subscribe)
     val p = thermometer.register
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
     eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (true) }
     eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
     assert(thermometer.valueChanged(12.5))
@@ -71,7 +71,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers {
     assert(light.connect)
     assert(light.subscribe)
     val p2 = light.register
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (3) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (3) }
     eventually { Thread.sleep(testSleepTime); motionSensor.isRegistered should be (true) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
     eventually { Thread.sleep(testSleepTime); p1.isCompleted should be (true) }
