@@ -96,7 +96,7 @@ object DateTime {
 object UserHandler{
   private val SPLIT = " "
   def register(id:String,psw:String): Boolean = {
-    require(id.trim != "", psw.trim != "")
+    if (!checkNonNull(id,psw)) return false
     ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
       for (entry <- file.getLines) {
         val fileId = entry.get_id
@@ -111,7 +111,7 @@ object UserHandler{
   }
 
   def login(id:String,psw:String) : Boolean = {
-    require(id.trim != "", psw.trim != "")
+    if (!checkNonNull(id,psw)) return false
     ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
       for (entry <- file.getLines()){
         val fileId = entry.get_id
@@ -129,7 +129,9 @@ object UserHandler{
     def get_id: String = s.split(SPLIT)(ID)
     def get_psw:String = s.split(SPLIT)(PSW)
   }
-
+  def checkNonNull(value:String*):Boolean = {
+    value.map(_.trim.length>0).reduce(_ && _)
+  }
 }
 
 case class StringComboBox(items: Seq[String]) extends ComboBox[String](items: Seq[String])
