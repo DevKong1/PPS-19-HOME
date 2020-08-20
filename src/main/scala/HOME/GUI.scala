@@ -18,9 +18,11 @@ sealed trait Room {
   var devices : Set[Device]
   def name : String
 }
-
+/*
+ * Every GUIComponent that represents a device property(es. light intensity for a Lamp) and can accordingly be modified by user via GUI needs to extend this trait.
+ */
 sealed trait EditableFeature{
-  def update(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
+  def userUpdate(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName, cmdMsg, newValue).onComplete {
       case Success(_) => setVal(newValue); p.success(() => Unit);
@@ -66,8 +68,7 @@ class GUIRoom(override val name:String, override var devices:Set[Device] = Set.e
 
 }
 object GUI extends MainFrame {
-  //StartingDemo()
-  var rooms: Set[GUIRoom] = Set.empty//Set(new GUIRoom("Home"), new GUIRoom("Kitchen"), new GUIRoom("Bedroom"))
+  var rooms: Set[GUIRoom] = Set.empty
   for(i <- Rooms.allRooms) {
     rooms += new GUIRoom(i, Coordinator.devices.filter(_.room equals i))
   }
@@ -112,7 +113,6 @@ object GUI extends MainFrame {
         }
       }
     }
-
     private def getRoomName: Option[String] = {
       import Dialog._
       val name = showInput(tp,
@@ -121,8 +121,8 @@ object GUI extends MainFrame {
         Message.Plain,
         Swing.EmptyIcon,
         Nil, "")
-      //TODO: THINK OF A MORE FUNCTIONAL WAY TO IMPLEMENT INPUT CHECK
-      if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(Constants.AddPane) && !tp.pages.exists(page => page.title equals name.get)) {
+      /*Saddest input check ever*/
+      if (name.isDefined && name.get.trim.length > 0 && !name.get.equals(Constants.AddPane) && !tp.pages.exists(_.title equals name.get)) {
         Rooms.addRoom(name.get)
         name
       } else {
@@ -132,8 +132,7 @@ object GUI extends MainFrame {
         None
       }
     }
-
-
+  this.visible = true
   }
   def getCurrentRoom: String = {
     tp.selection.page.title
@@ -153,7 +152,7 @@ object GUI extends MainFrame {
 class AddDeviceDialog extends Dialog {
   private val dimension = WindowSize(WindowSizeType.Dialog)
   //Can't add sensors
-  private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes -- Seq(MotionSensorType,ThermometerType,HygrometerType,PhotometerType) toSeq)
+  private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes -- Seq(MotionSensorType,ThermometerType,HygrometerType) toSeq)
 
   preferredSize = dimension
   title = "Add device"
@@ -619,10 +618,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     new Button("Delete") {
       reactions +={
         case ButtonClicked(_) => Dialog.showConfirmation(message="Are you sure you want to delete this device? There is no coming back",title ="Delete device") match{
-          case Result.Ok =>  Coordinator.sendUpdate(d.name,Msg.disconnect); GUI.removeDevice(d); shutdown()/*.onComplete{
-            case Success(_) => println("OK"); GUI.removeDevice(d); this.visible = false
-            case _ => println("Something wrong") //TODO: Error dialog
-          }*/
+          case Result.Ok =>  Coordinator.sendUpdate(d.name,Msg.disconnect); GUI.removeDevice(d); shutdown()
           case _ => //Do nothing
         }
       }
@@ -644,7 +640,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
   }
-  def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = {/**Sensor don't need this*/}
+  def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = {/*Do nothing since sensors don't need this*/}
 }
 
 class DeviceFeature[A <: Component with EditableFeature](deviceName :String,featureTitle : String, initialValue: String, setterComponent: A ,updateType:String) extends Label {
@@ -668,9 +664,9 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
             contents ++= Seq(
               new Button("Confirm") {
                 reactions += {
-                  case ButtonClicked(_) => setterComponent.update(deviceName,updateType,setterComponent.getVal).onComplete{
+                  case ButtonClicked(_) => setterComponent.userUpdate(deviceName,updateType,setterComponent.getVal).onComplete{
                     case Success(_) => setFeatureValue(setterComponent.getVal); close()
-                    case _ => //TODO: PRINT ERROR DIALOG
+                    case _ => Dialog.showMessage(title = "Update failed",message = "The update requested could not be completed, try again.",messageType = Dialog.Message.Error)
                   }
                 }
               },
@@ -695,8 +691,8 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
 }
 object Feature{
   def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A,updateType:String): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,updateType)
-  /* This second apply is used for simulating sensors: they don't need no updateType since, for simulating purposes, updates are being applied directly
-   * to them without going through Coordinator.  */
+  /* This second apply is used for simulating sensors: they don't need no updateType since,
+  for simulating purposes, GUI holds a direct reference to connected sensors */
   def apply[A<: Component with EditableFeature](devName:String,title:String,text:String,setterComponent:A): DeviceFeature[A] = new DeviceFeature(devName,title,text,setterComponent,null)
 }
 
@@ -728,7 +724,7 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
   private val MAX = 100
   private val MIN = 0
   contents += Feature(d.name,"Humidity",30 toString,new SliderFeature(MIN,MAX){
-    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+    override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
       Promise[Unit].success(() => Unit).future
     }
@@ -740,7 +736,7 @@ private case class MotionSensorPane(override val d: SimulatedMotionSensor)extend
   private val NOT_EMPTY = "NOT EMPTY"
   private var status = EMPTY
   contents += new BinaryFeature(d.name,"Empty",Msg.motionDetected,"NOT EMPTY",Msg.motionDetected){
-    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+    override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       status match {
         case EMPTY =>
           d.valueChanged(currentVal = true)
@@ -759,8 +755,8 @@ private case class PhotometerPane(override val d: SimulatedPhotometer)extends GU
   require (d.deviceType == PhotometerType)
   private val MAX = 100
   private val MIN = 0
-  contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
-    override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+  contents += Feature(d.name,"Luminosity",22 toString,new SliderFeature(MIN,MAX){
+    override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
       Promise[Unit].success(() => Unit).future
     }
@@ -771,7 +767,7 @@ private case class ThermometerPane(override val d: SimulatedThermometer) extends
   private val MAX = 50
   private val MIN = -20
   contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
-     override def update(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
+     override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
        d.valueChanged(newValue toDouble)
        Promise[Unit].success(() => Unit).future
     }
@@ -912,7 +908,6 @@ private case class WashingMachinePane(override val d: SimulatedWashingMachine) e
   }
 }
 
-
 case class SliderFeature(mini : Int, maxi: Int) extends Slider with EditableFeature {
   min = mini
   max = maxi
@@ -923,23 +918,23 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
   override def getVal : String = selection.item
   override def setVal(v: String): Unit = selection.item = v
 }
-
+/* Handled differently from other features, a binary feature doesn't need a particular setter if not itself*/
 case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton with EditableFeature {
   override def getVal: String = status
-  override def setVal(v:String): Unit = {} //Do nothing
+  override def setVal(v:String): Unit = {status = v; text = v}
 
   text = toDisplay
   private var status = toDisplay
   reactions += {
       case ButtonClicked(_) =>
-        status match { case `toDisplay` => update(cmdMsg = cmd1) case _ => update(cmdMsg = cmd2)}
+        status match { case `toDisplay` => userUpdate(cmdMsg = cmd1) case _ => userUpdate(cmdMsg = cmd2)}
   }
 
   val switchStatus: (String => Unit) => String = (c: String => Unit) => {
     c(status)
     status
   }
-  override def update(devName : String = devName,cmdMsg :String, newValue : String = switchStatus{case `toDisplay` => status = other case _ => status = toDisplay}): Future[Unit] ={
+  override def userUpdate(devName : String = devName,cmdMsg :String, newValue : String = switchStatus{case `toDisplay` => status = other case _ => status = toDisplay}): Future[Unit] ={
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName,cmdMsg).onComplete {
       case Success(_) => text = status; p.success(()=>Unit)
@@ -949,11 +944,10 @@ case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : Str
   }
 }
 
-
 object LoginPage{
-  val id : TextField = new TextField(Constants.LoginTextSize)
-  val psw : PasswordField = new PasswordField(Constants.LoginTextSize)
 
+  val idText : TextField = new TextField(Constants.LoginTextSize)
+  val pswText : PasswordField = new PasswordField(Constants.LoginTextSize)
   new Frame(){
     title = "Login to HOME!"
     contents = new BoxPanel(Orientation.Vertical) {
@@ -961,25 +955,40 @@ object LoginPage{
         new FlowPanel() {
           contents ++= Seq(
             new Label("Username:"),
-            id,
+            idText,
           )
         },
         new FlowPanel() {
           contents ++= Seq(
             new Label("Password:"),
-            psw,
+            pswText,
           )},
         new FlowPanel() {
           contents ++= Seq(
-            new Button("Confirm"),
+            new Button("Login"){
+              reactions +={
+                case ButtonClicked(_) =>
+                  if(UserHandler.login(idText.text.trim, pswText.password.mkString("").trim)) {close(); GUI.top;}
+                  else Dialog.showMessage(title="Login failed",message = "Wrong credentials!",messageType = Dialog.Message.Error)
+              }
+            },
+            new Button("Register"){
+              reactions +={
+                case ButtonClicked(_) => if (UserHandler.register(idText.text.trim,pswText.password.mkString("").trim))
+                {Dialog.showMessage(title="Registration completed!",message = "You can now login with your new credentials",messageType = Dialog.Message.Info)}
+                else
+                {Dialog.showMessage(title="Registration failed",message = "Couldn't complete registration",messageType = Dialog.Message.Error)}
+
+              }
+            },
             new Button("Cancel") {
               reactions += {
-                case ButtonClicked(_) => close()
+                case ButtonClicked(_) => close(); Application.closeApplication();
               }
             })
         }
       )
     }
-    this.open()
+    this.visible = true
   }
 }
