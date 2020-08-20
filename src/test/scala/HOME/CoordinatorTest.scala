@@ -31,7 +31,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)
-    assert(Coordinator.activeProfile.name == Constants.default_profile_name)
+    assert(Coordinator.getActiveProfile.name == Constants.default_profile_name)
   }
 
   private val salotto: String = "Living room"
@@ -104,7 +104,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     prepareDevices(light, shutter, ac, humid)
 
     Coordinator.setProfile(Profile("NIGHT"))
-    assert(Coordinator.activeProfile.name == "NIGHT")
+    assert(Coordinator.getActiveProfile.name == "NIGHT")
 
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
@@ -113,11 +113,11 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     eventually { Thread.sleep(testSleepTime); ac.getValue should be (25) }
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
 
-    Coordinator.activeProfile.onMotionSensorNotification(salotto, true)
+    Coordinator.getActiveProfile.onMotionSensorNotification(salotto, true)
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
 
-    Coordinator.activeProfile.onPhotometerNotification(salotto, 45)
+    Coordinator.getActiveProfile.onPhotometerNotification(salotto, 45)
     eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile.name should be ("DAY") }
 
     concludeTest(light, shutter, ac, humid)
@@ -157,15 +157,15 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assert(Profile.savedProfiles.contains(builtProfile))
 
     Coordinator.setProfile(builtProfile)
-    assert(Coordinator.activeProfile.name == "Custom1")
+    assert(Coordinator.getActiveProfile.name == "Custom1")
 
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
-    Coordinator.activeProfile.onThermometerNotification(salotto, 51)
+    Coordinator.getActiveProfile.onThermometerNotification(salotto, 51)
     eventually { Thread.sleep(testSleepTime); tv.value should be (100) }
 
-    Coordinator.activeProfile.onThermometerNotification(salotto, 49)
+    Coordinator.getActiveProfile.onThermometerNotification(salotto, 49)
     eventually { Thread.sleep(testSleepTime); tv.value should be (30) }
 
     Profile.removeProfile("Custom1")
