@@ -295,24 +295,20 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Confirm") {
         reactions += {
           case ButtonClicked(_) =>
-            //println(profileName.text)
-            //println(description.text)
-            //println(onActivationCommands)
-            //println(sensorRules)
             AlertMessage.alertIsCorrectName(profileName.text.map(_.toUpper)) match {
               case false =>
               case _ =>
                 val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
                 var generatedThermometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                val generatedHygrometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                val generatedPhotometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                var generatedMotionSensorCommands: Map[String, Set[Device => Unit]] = Map.empty
+                var generatedHygrometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+                var generatedPhotometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+                var generatedMotionSensorCommandsMap: Map[String, Set[Device => Unit]] = Map.empty
                 for (rules <- sensorRules) {
                   rules._4.deviceType match {
                     case MotionSensorType =>
-                      for (command <- motionSensorNotificationCommands.filter(_._1.equals(List(rules._1, rules._3, rules._4)))) {
+                      for (command <- motionSensorNotificationCommands.filter(_._1.equals(List((rules._1, rules._3, rules._4))))) {
                         val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
-                        generatedMotionSensorCommands ++= CustomProfileBuilder.generateMotionSensorCommandsMap((rules._3, commandSet))
+                        generatedMotionSensorCommandsMap ++= CustomProfileBuilder.generateMotionSensorCommandsMap((rules._3, commandSet))
                       }
                     case _ =>
                       val rul = CustomProfileBuilder.generateCheckFunction(rules._1, rules._2, rules._3)
@@ -322,16 +318,20 @@ class CreateProfileDialog extends Dialog {
                       }
                       for (command <- hygrometerNotificationCommands.filter(_._1.equals(List(rules)))) {
                         val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
-                        generatedThermometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+                        generatedHygrometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
                       }
                       for (command <- photometerNotificationCommands.filter(_._1.equals(List(rules)))) {
                         val commandSet = CustomProfileBuilder.generateCommandSet(command._2)
-                        generatedThermometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
+                        generatedPhotometerSensorCommandsMap ++= CustomProfileBuilder.generateSensorCommandsMap((rul, commandSet))
                       }
                   }
                 }
+                println(generatedMotionSensorCommandsMap)
+                println(generatedThermometerSensorCommandsMap)
+                println(generatedHygrometerSensorCommandsMap)
+                println(generatedPhotometerSensorCommandsMap)
                 val newProfile = CustomProfileBuilder.generateFromParams(profileName.text.map(_.toUpper), description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
-                  generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommands, DummyUtils.dummySet, {})
+                  generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommandsMap, DummyUtils.dummySet, {})
                 Profile.addProfile(newProfile)
                 close()
             }
@@ -622,7 +622,8 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
 
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField => command match {
-      case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => AlertMessage.alertIsCorrectValue(p.text) match {
+      case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
+        /*AlertMessage.alertIsCorrectValue(p.text) match {
         case true => p.text
         case _ => p.text = Dialog.showInput(null,
           "Insert a value: ",
@@ -631,7 +632,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
           Swing.EmptyIcon,
           Nil, "").get
           p.text
-      }
+      }*/
       case _ => ""
     }
     case p: ToggleButton => command match {
