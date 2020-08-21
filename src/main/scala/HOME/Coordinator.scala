@@ -317,24 +317,16 @@ case class CustomProfile(override val name: String, override val description: St
                          thermometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
                          hygrometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
                          photometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
-                         motionSensorNotificationCommandsSet: Map[String, Set[Device => Unit]],
+                         motionSensorNotificationCommands: Map[String, Set[Device => Unit]],
                          programmedRoutineCommandsSet: Set[Device => Unit],
                          override val doProgrammedRoutine: Unit) extends Profile {
 
-  val initialRoutine: Set[Device => Unit] = initialRoutineSet
-  def thermometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = thermometerNotificationCheckAndCommandsSet
-  def hygrometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = hygrometerNotificationCheckAndCommandsSet
-  def photometerNotificationCommands: Map[(String, Double) => Boolean, Set[Device => Unit]] = photometerNotificationCheckAndCommandsSet
-  def motionSensorNotificationCommands: Map[String, Set[Device => Unit]] = motionSensorNotificationCommandsSet
-
-  val programmedRoutineCommands: Set[Device => Unit] = programmedRoutineCommandsSet
-
-  override def onActivation(): Unit = applyCommand(initialRoutine)
+  override def onActivation(): Unit = applyCommand(initialRoutineSet)
 
   //if required condition for value is fulfilled apply the commands in given room
-  override def onThermometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, thermometerNotificationCommands, room)
-  override def onHygrometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, hygrometerNotificationCommands, room)
-  override def onPhotometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, photometerNotificationCommands, room)
+  override def onThermometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, thermometerNotificationCheckAndCommandsSet, room)
+  override def onHygrometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, hygrometerNotificationCheckAndCommandsSet, room)
+  override def onPhotometerNotification(room: String, value: Double): Unit = checkAndApplySensorCommand(value, photometerNotificationCheckAndCommandsSet, room)
   override def onMotionSensorNotification(room: String, value: Boolean): Unit = {
     val command = motionSensorNotificationCommands.get(room)
     if(value && command.isDefined) applyCommand(command.get)
