@@ -106,12 +106,12 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.setProfile(Profile("NIGHT"))
     assert(Coordinator.getActiveProfile.name == "NIGHT")
 
-    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
     eventually { Thread.sleep(testSleepTime); ac.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); humid.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); ac.getValue should be (25) }
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
 
     Coordinator.getActiveProfile.onMotionSensorNotification(salotto, true)
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
