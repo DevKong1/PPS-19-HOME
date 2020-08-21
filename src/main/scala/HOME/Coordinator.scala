@@ -394,7 +394,7 @@ object CustomProfileBuilder {
 
       result += {
         _.id match {
-          case t if t == device.id => Coordinator.publish(device.asInstanceOf[AssociableDevice], message) //TODO asInstanceOf only cause simulated
+          case t if t == device.id => Coordinator.publish(device.asInstanceOf[AssociableDevice], message)
           case _ => null
         }
       }

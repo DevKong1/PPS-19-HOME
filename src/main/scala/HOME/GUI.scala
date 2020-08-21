@@ -33,7 +33,6 @@ sealed trait EditableFeature{
 }
 
 class GUIRoom(override val name:String, override var devices:Set[Device] = Set.empty) extends ScrollPane with Room {
-  devices.map(_.turnOn())
   var gui_devices : Set[GUIDevice] = devices.map(PrintDevicePane(_))
   val devicePanel = new BoxPanel(Orientation.Vertical)
   //devices.map(_.asInstanceOf[AssociableDevice])
