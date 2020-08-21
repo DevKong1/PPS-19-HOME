@@ -5,8 +5,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.language.postfixOps
-
-import scala.swing.ComboBox
+import scala.swing.{ComboBox, Dialog, Swing}
+import scala.util.Try
 
 object WindowSize {
   import WindowSizeType._
@@ -20,13 +20,13 @@ object WindowSize {
 
   def apply(windType : WindowSizeType.Value): Dimension = windType match{
     case MainW => new Dimension(width, height)
-    case Dialog => new Dimension(width*WIN_PROP_W toInt,height*WIN_PROP_H toInt)
+    case DialogInput => new Dimension(width*WIN_PROP_W toInt,height*WIN_PROP_H toInt)
     case AddProfile => new Dimension(width*0.4 toInt, height*0.2 toInt)
   }
 }
 object WindowSizeType extends Enumeration {
   type Type = Value
-  val MainW, Dialog, AddProfile = Value
+  val MainW, DialogInput, AddProfile = Value
 }
 
 object MapDeviceCommands {
@@ -93,3 +93,28 @@ object DateTime {
 }
 
 case class StringComboBox(items: Seq[String]) extends ComboBox[String](items: Seq[String])
+
+object AlertMessage {
+
+  def alertIsCorrectName(x: String): Boolean = x match {
+    case "" => Dialog.showMessage(null, "Insert a valid name", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+      false
+    case _ => Profile.getProfileNames.contains(x) match {
+      case true => Dialog.showMessage(null, "This name already exist", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+        false
+      case _ => true
+    }
+  }
+
+  def alertIsCorrectValue(value: String): Boolean = value match {
+    case "" => Dialog.showMessage(null, "Insert a value", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+      false
+    case _ => isDouble(value) match {
+      case false => Dialog.showMessage(null, "Insert a correct numeric value", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+        false
+      case _ => true
+    }
+  }
+
+  def isDouble(x: String): Boolean = Try(x.toDouble).isSuccess
+}
