@@ -98,11 +98,12 @@ object Coordinator extends JSONSender with MQTTUtils {
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
       val device = getSenderFromMsg[AssociableDevice](message)
+      val value = msg.value
       device.deviceType match {
-        case ThermometerType => Coordinator.activeProfile.onThermometerNotification(device.room, msg.value.toInt)
-        case HygrometerType => Coordinator.activeProfile.onHygrometerNotification(device.room, msg.value.toInt)
-        case PhotometerType => Coordinator.activeProfile.onPhotometerNotification(device.room, msg.value.toInt)
-        case MotionSensorType => Coordinator.activeProfile.onMotionSensorNotification(device.room, msg.value.toBoolean)
+        case ThermometerType => Coordinator.getActiveProfile.onThermometerNotification(device.room, value.toDouble)
+        case HygrometerType => Coordinator.getActiveProfile.onHygrometerNotification(device.room, value.toDouble)
+        case PhotometerType => Coordinator.getActiveProfile.onPhotometerNotification(device.room, value.toDouble)
+        case MotionSensorType => Coordinator.getActiveProfile.onMotionSensorNotification(device.room, value.toBoolean)
         case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.getSimpleClassName)
       }
     case _ => this.errUnexpected(UnexpectedTopic, topic)

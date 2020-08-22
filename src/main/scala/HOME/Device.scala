@@ -198,6 +198,7 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
       if (_lastVariationVal.isEmpty || (currentVal match {
         case _val: Double => Math.abs(1-_val/_lastVariationVal.get.asInstanceOf[Double]) > _minDelta
         case _val: Boolean => _val != _lastVariationVal.get.asInstanceOf[Boolean]
+        case _ => this.errUnexpected(UnexpectedValue, currentVal.toString)
         })) {
         _lastVariationVal = Some(currentVal)
         return publish(CommandMsg(Msg.nullCommandId, message, currentVal))
