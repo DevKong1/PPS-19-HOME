@@ -130,8 +130,8 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
       case t if t == subTopic => message match {
         case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
         case m if m == Msg.disconnect => disconnect
-        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendLogMsg(Msg.on); sendConfirmUpdate(message)
-        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendLogMsg(Msg.off); sendConfirmUpdate(message)
+        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
+        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
       case t if t == broadcastTopic => message match {
@@ -146,12 +146,21 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
 
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
-  private def sendConfirmUpdate(message: String): Unit = {
+  def sendConfirmUpdate(message: String): Unit = {
     publish(updateTopic, message, this)
   }
   private def sendLogMsg(message: String): Unit = {
     publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()), this)
   }
+
+  override def turnOn(): Boolean = if(super.turnOn()) {
+    sendLogMsg(Msg.on)
+    true
+  } else false
+  override def turnOff(): Boolean = if(super.turnOff()) {
+    sendLogMsg(Msg.off)
+    true
+  } else false
 }
 
 sealed trait ChangeableValue extends Device {
@@ -334,12 +343,23 @@ case class SimulatedShutter(override val id: String, override val room: String, 
 
   def isOpen: Boolean = _open
 
-  def open(): Boolean = {turnOn(); _open = true; turnOff(); true}
-  def close(): Boolean = {turnOn(); _open = false; turnOff(); true}
+  private def changeValue(value : Boolean): Boolean = {
+    if(turnOn()) {
+      sendConfirmUpdate(CommandMsg(cmd = Msg.on).toString)
+      _open = value
+      if (turnOff()) {
+        sendConfirmUpdate(CommandMsg(cmd = Msg.off).toString)
+        true
+      } else false
+    } else false
+  }
+
+  def open(): Boolean = changeValue(true)
+  def close(): Boolean = changeValue(false)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
-    case Msg.open => open()
-    case Msg.close => close()
+    case Msg.open => open();
+    case Msg.close => close();
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }

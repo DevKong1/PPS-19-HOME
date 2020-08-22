@@ -746,6 +746,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
   def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = cmdString match {
     case Msg.on => d.turnOn(); status.setVal("ON")
     case Msg.off => d.turnOff(); status.setVal("OFF")
+    case _ =>
   }
 }
 
@@ -1064,7 +1065,7 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
 
 case class BinaryFeature(devName:String,toDisplay:String,cmd1:String,other : String,cmd2:String) extends ToggleButton with EditableFeature {
   override def getVal: String = status
-  override def setVal(v:String): Unit = {if(v != status)this.doClick()}
+  override def setVal(v:String): Unit = {if(v != status) {status = v; this.doClick()}}
 
   text = toDisplay
   private var status = toDisplay
