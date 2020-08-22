@@ -98,7 +98,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     val humid = Dehumidifier("Dehumidifier1",salotto)
 
     light.turnOn()
-    shutter.turnOn()
     shutter.open()
 
     prepareDevices(light, shutter, ac, humid)
