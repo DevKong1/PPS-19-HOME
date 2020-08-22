@@ -347,6 +347,7 @@ case class SimulatedShutter(override val id: String, override val room: String, 
     if(turnOn()) {
       sendConfirmUpdate(CommandMsg(cmd = Msg.on).toString)
       _open = value
+      Thread.sleep(500)
       if (turnOff()) {
         sendConfirmUpdate(CommandMsg(cmd = Msg.off).toString)
         true

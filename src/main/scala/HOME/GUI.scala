@@ -1237,13 +1237,13 @@ case class ListFeature(items: Seq[String]) extends ComboBox(items) with Editable
  */
 case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other : String,otherCmd:String) extends ToggleButton with EditableFeature {
   override def getVal: String = status
-  override def setVal(v:String): Unit = {if(v != status) {status = v; this.doClick()}}
+  override def setVal(v:String): Unit = {if(status!=v)this.doClick()}
 
   text = toDisplay
   private var status = toDisplay
   reactions += {
     case ButtonClicked(_) =>
-      status match { case `toDisplay` => update(cmdMsg = displayCmd) case _ => update(cmdMsg = otherCmd)}
+      status match { case `toDisplay` => update(cmdMsg = otherCmd);status=other case _ => update(cmdMsg = displayCmd);status=toDisplay}
   }
   /** takes a function, applies it to status and returns new status value
    */
@@ -1251,12 +1251,7 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
     c(status)
     status
   }
-  /*  def updateDevice(cmdString: String,newVal:String): Unit = cmdString match {
-    case Msg.on => d.turnOn(); status.setVal("ON")
-    case Msg.off => d.turnOff(); status.setVal("OFF")
-    case _ =>
-  }
-*/
+
   /** sends update requested by user via GUI to [[Coordinator]]
    * @param devName device requiring update
    * @param cmdMsg [[Msg]] update type
