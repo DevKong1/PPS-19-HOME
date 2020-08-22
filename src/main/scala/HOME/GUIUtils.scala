@@ -8,6 +8,9 @@ import scala.language.postfixOps
 import scala.swing.{ComboBox, Dialog, Swing}
 import scala.util.Try
 
+/** Static object used to get size of GUI components
+ *
+ */
 object WindowSize {
   import WindowSizeType._
   private val SCREEN = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
@@ -18,12 +21,21 @@ object WindowSize {
   val height: Int = SCREEN.height * FRAME_PROP toInt
   val width: Int = SCREEN.width * FRAME_PROP toInt
 
+  /**
+   *
+   * @param windType type of window
+   * @return a size based on windType
+   */
   def apply(windType : WindowSizeType.Value): Dimension = windType match{
     case MainW => new Dimension(width, height)
     case DialogInput => new Dimension(width*WIN_PROP_W toInt,height*WIN_PROP_H toInt)
     case AddProfile => new Dimension(width*0.4 toInt, height*0.2 toInt)
   }
 }
+
+/** Enumeration used to bind every Component to its size
+ *
+ */
 object WindowSizeType extends Enumeration {
   type Type = Value
   val MainW, DialogInput, AddProfile = Value
