@@ -146,8 +146,8 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
     val dummySet: Set[Device => Unit] = Set({_.id})
     val dummyCheck: (String,Double) => Boolean = (_,_) => false
-    val dummyMap: Map[(String,Double) => Boolean, Set[Device => Unit]] = Map(dummyCheck -> dummySet)
-    val dummySensorMap: Map[String, Set[Device => Unit]] = Map("" -> dummySet)
+    val dummyMap: Map[(String,Double) => Boolean, Set[Device => Unit]] = Map.empty
+    val dummySensorMap: Map[String, Set[Device => Unit]] = Map.empty
 
     val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, generatedTemperatureCommandsMap, dummyMap,
       dummyMap, dummySensorMap,dummySet,{})
