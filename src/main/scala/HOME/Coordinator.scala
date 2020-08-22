@@ -347,7 +347,6 @@ case class CustomProfile(override val name: String, override val description: St
    for(checkAndCommand <- checkAndCommands) {
      if (checkAndCommand._1(room, value)) {
        applyCommand(checkAndCommand._2)
-       return
      }
    }
   }

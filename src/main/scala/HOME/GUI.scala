@@ -404,22 +404,23 @@ class CreateProfileDialog extends Dialog {
                     val generatedMotionSensorCommands = CustomProfileBuilder.generateCommandSet(motionSensorCommands)
                     generatedMotionSensorCommandsMap = generatedMotionSensorCommandsMap + (rules._1.room -> generatedMotionSensorCommands)
                   } else {
-                    val tuple = rules._2.head
-                    val checkFunction = CustomProfileBuilder.generateCheckFunction(tuple._1, tuple._2, tuple._3)
-                    if(thermometerNotificationCommands.nonEmpty) {
-                      val thermometerCommands = (thermometerNotificationCommands.filter(_._1.head._4 == rules._1).flatMap(_._2)).toSet
-                      val generatedThermometerCommands = CustomProfileBuilder.generateCommandSet(thermometerCommands)
-                      generatedThermometerSensorCommandsMap = generatedThermometerSensorCommandsMap + (checkFunction -> generatedThermometerCommands)
-                    }
-                    if(hygrometerNotificationCommands.nonEmpty) {
-                      val hygrometerCommands = (hygrometerNotificationCommands.filter(_._1.head._4 == rules._1).flatMap(_._2)).toSet
-                      val generatedHygrometerCommands = CustomProfileBuilder.generateCommandSet(hygrometerCommands)
-                      generatedHygrometerSensorCommandsMap = generatedHygrometerSensorCommandsMap + (checkFunction -> generatedHygrometerCommands)
-                    }
-                    if(photometerNotificationCommands.nonEmpty) {
-                      val photometerCommands = (photometerNotificationCommands.filter(_._1.head._4 == rules._1).flatMap(_._2)).toSet
-                      val generatedPhotometerCommands = CustomProfileBuilder.generateCommandSet(photometerCommands)
-                      generatedPhotometerSensorCommandsMap = generatedPhotometerSensorCommandsMap + (checkFunction -> generatedPhotometerCommands)
+                    for(rule <- rules._2) {
+                      val checkFunction = CustomProfileBuilder.generateCheckFunction(rule._1, rule._2, rule._4.room)
+                      if (thermometerNotificationCommands.nonEmpty) {
+                        val thermometerCommands = (thermometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
+                        val generatedThermometerCommands = CustomProfileBuilder.generateCommandSet(thermometerCommands)
+                        generatedThermometerSensorCommandsMap = generatedThermometerSensorCommandsMap + (checkFunction -> generatedThermometerCommands)
+                      }
+                      if (hygrometerNotificationCommands.nonEmpty) {
+                        val hygrometerCommands = (hygrometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
+                        val generatedHygrometerCommands = CustomProfileBuilder.generateCommandSet(hygrometerCommands)
+                        generatedHygrometerSensorCommandsMap = generatedHygrometerSensorCommandsMap + (checkFunction -> generatedHygrometerCommands)
+                      }
+                      if (photometerNotificationCommands.nonEmpty) {
+                        val photometerCommands = (photometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
+                        val generatedPhotometerCommands = CustomProfileBuilder.generateCommandSet(photometerCommands)
+                        generatedPhotometerSensorCommandsMap = generatedPhotometerSensorCommandsMap + (checkFunction -> generatedPhotometerCommands)
+                      }
                     }
                   }
                 }
