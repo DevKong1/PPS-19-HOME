@@ -232,7 +232,7 @@ object GUI extends MainFrame {
       Swing.EmptyIcon,
       Nil, "")
     /*Saddest input check ever*/
-    if (name.isDefined && checkNonNull(name.get) && !(name.get == Constants.AddPane) && !tp.pages.exists(_.title == name.get)) {
+    if (name.isDefined && CheckNonNull(name.get) && !(name.get == Constants.AddPane) && !tp.pages.exists(_.title == name.get)) {
       Rooms.addRoom(name.get)
       name
     } else {
@@ -986,14 +986,12 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
   require (d.deviceType == HygrometerType)
   private val MAX = 100
   private val MIN = 0
-  contents += Feature(d.name,"Humidity",30 toString,new SliderFeature(MIN,MAX){
+  contents += Feature(d.name,"Humidity",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
     override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
       Promise[Unit].success(() => Unit).future
     }
   })
-
-  override def updateDevice( cmdString: String, newVal: String): Unit = {}
 }
 
 private case class MotionSensorPane(override val d: SimulatedMotionSensor)extends GUIDevice(d){
@@ -1022,7 +1020,7 @@ private case class PhotometerPane(override val d: SimulatedPhotometer)extends GU
   require (d.deviceType == PhotometerType)
   private val MAX = 100
   private val MIN = 0
-  contents += Feature(d.name,"Luminosity",22 toString,new SliderFeature(MIN,MAX){
+  contents += Feature(d.name,"Luminosity",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
     override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
       Promise[Unit].success(() => Unit).future
@@ -1034,12 +1032,12 @@ private case class ThermometerPane(override val d: SimulatedThermometer) extends
   require (d.deviceType == ThermometerType)
   private val MAX = 50
   private val MIN = -20
-  contents += Feature(d.name,"Temperature",22 toString,new SliderFeature(MIN,MAX){
+  contents += Feature(d.name,"Temperature",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
      override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
        d.valueChanged(newValue toDouble)
        Promise[Unit].success(() => Unit).future
     }
-  }) //TODO: MAGIC NUMBERS
+  })
   override def updateDevice(cmdString: String, newVal: String): Unit = {}
 }
 
@@ -1249,10 +1247,10 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
     case ButtonClicked(_) =>
       status match { case `toDisplay` => userUpdate(cmdMsg = otherCmd);status=other case _ => userUpdate(cmdMsg = displayCmd);status=toDisplay}
   }
-  /** takes a function, applies it to status and returns new status value
+  /** takes a (String => Unit), applies it to status and returns new status value
    */
-  val switchStatus: (String => Unit) => String = (c: String => Unit) => {
-    c(status)
+  val switchStatus: (String => Unit) => String = (supplier: String => Unit) => {
+    supplier(status)
     status
   }
 

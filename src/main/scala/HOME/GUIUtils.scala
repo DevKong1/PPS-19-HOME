@@ -106,10 +106,26 @@ object DateTime {
     currentHour+":"+currentMinute+" "+ amOrPm
   }
 }
+
+/** Handles user registration and login
+ *
+ * Works with a single login file where a whitespace is the separator between id and password
+ * es: "username password".
+ * Creates a single password file in "User" directory.
+ * Works with pbkdf2 as hash algorithm.
+ * */
 object UserHandler{
   private val SPLIT = " "
+
+  /** Registers a user with a valid id
+   *
+   * @param id to register, must be unique.
+   * @param psw to register
+   * @return registration completed/failed
+   *
+   */
   def register(id:String,psw:String): Boolean = {
-    if (!checkNonNull(id,psw)) return false
+    if (!CheckNonNull(id,psw)) return false
     ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
       for (entry <- file.getLines) {
         val fileId = entry.get_id
@@ -122,8 +138,14 @@ object UserHandler{
     true
   }
 
+  /** Check for credential match in password file.
+   *
+   * @param id to login
+   * @param psw to login
+   * @return whether login is successfull or not
+   */
   def login(id:String,psw:String) : Boolean = {
-    if (!checkNonNull(id,psw)) return false
+    if (!CheckNonNull(id,psw)) return false
     ResourceOpener.open(Source.fromFile(Constants.LoginPath)) { file => {
       for (entry <- file.getLines()){
         val fileId = entry.get_id
@@ -135,6 +157,11 @@ object UserHandler{
     }}
     false
   }
+
+  /** Gets id and password from a "login valid" string, es: "username-password"
+   *
+   * @param s string cointaining id and psw
+   */
   implicit class LoginHelper(s: String) {
     private val ID = 0
     private val PSW = 1
@@ -142,7 +169,16 @@ object UserHandler{
     def get_psw:String = s.split(SPLIT)(PSW)
   }
 }
-object checkNonNull {
+
+/** Checks that a variadic number of [[String]] parameters are not null
+ *
+ */
+object CheckNonNull {
+  /**
+   *
+   * @param value params to check
+   * @return whether all value are not null
+   */
   def apply(value: String*): Boolean = value.map(_.trim.length>0).reduce(_ && _)
 }
 

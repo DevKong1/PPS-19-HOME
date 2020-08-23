@@ -87,12 +87,24 @@ object DeviceIDGenerator {
     _id.toString
   }
 }
-object ResourceOpener{
-  /*Loan pattern
- * Takes an element that implements close() as first parameter and
- * a function that maps such element in a new type as second.
- * Used not to have to close streams every time one is opened
+
+/** Abstracts resource using from opening and closing
+ *
+ * Implements loan pattern
  */
+object ResourceOpener{
+  /** Opens a resource stream and applies a function to it, then closes the stream.
+   *
+   * @param file to open
+   * @param f function to apply to resource stream
+   * @tparam A element that define "close()" method
+   * @tparam B return type
+   * @return an element of type B
+   *
+   * used to open resources, takes an element that defines close() method (usually a file stream) as first parameter and
+   * a supplier function that maps such element in another type as second. Once the function is applied, such stream is closed.
+   *
+   */
    def open[A <: { def close(): Unit }, B](file: A)(f: A => B): B =
     try {
       f(file)
