@@ -28,7 +28,6 @@ sealed trait Room {
  *
  */
 sealed trait EditableFeature{
-  def userUpdate(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
   /** sends device's properties update to coordinator
    *
    * @param devName device updating its feature
@@ -40,6 +39,8 @@ sealed trait EditableFeature{
    * it's feature value and sends a confirm back to [[Coordinator]].
    * Update confirmation leads to feature update in GUI.
    */
+  def userUpdate(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
+
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName, cmdMsg, newValue).onComplete {
       case Success(_) => setVal(newValue); p.success(() => Unit);
@@ -131,7 +132,7 @@ object GUIRoom{
 object GUI extends MainFrame {
   var rooms: Set[GUIRoom] = Set.empty
   for(i <- Rooms.allRooms) {
-    rooms += new GUIRoom(i, Coordinator.devices.filter(_.room == i))
+    rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
   }
   protected val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
@@ -171,42 +172,7 @@ object GUI extends MainFrame {
     listenTo(tp.selection)
     size = WindowSize(WindowSizeType.MainW)
 
-    /** Index of clicked page in [[TabbedPane]]
-     *
-     * @return page clicked
-     */
-    private def getLastIndex: Option[TabbedPane.Page] = {
-        tp.selection.page.title match {
-          case Constants.AddPane => tp.pages.find(page => page.title equals Constants.AddPane)
-          case _ => None
-        }
-    }
-
-    /** Dialog where user can choose new room's name
-     *
-     * @return  [[Some]] new room name if user input is valid, [[None]] otherwise
-     */
-    private def getRoomName: Option[String] = {
-      import Dialog._
-      val name = showInput(tp,
-        "Room name:",
-        "Add room",
-        Message.Plain,
-        Swing.EmptyIcon,
-        Nil, "")
-      /*Saddest input check ever*/
-      if (name.isDefined && name.get.trim.length > 0 && !(name.get == Constants.AddPane) && !tp.pages.exists(_.title == name.get)) {
-        Rooms.addRoom(name.get)
-        name
-      } else {
-        if (name.isDefined) {
-          showMessage(tp, "Room already existing or incorrect room name", Message.Error toString)
-        }
-        None
-      }
-    }
   this.visible = true
-  }
   }
 
   /** Room currently open in GUI
@@ -241,6 +207,40 @@ object GUI extends MainFrame {
   override def closeOperation(): Unit = {
     super.closeOperation()
     Application.closeApplication()
+  }
+  /** Index of clicked page in [[TabbedPane]]
+   *
+   * @return page clicked
+   */
+  private def getLastIndex: Option[TabbedPane.Page] = {
+    tp.selection.page.title match {
+      case Constants.AddPane => tp.pages.find(page => page.title equals Constants.AddPane)
+      case _ => None
+    }
+  }
+
+  /** Dialog where user can choose new room's name
+   *
+   * @return  [[Some]] new room name if user input is valid, [[None]] otherwise
+   */
+  private def getRoomName: Option[String] = {
+    import Dialog._
+    val name = showInput(tp,
+      "Room name:",
+      "Add room",
+      Message.Plain,
+      Swing.EmptyIcon,
+      Nil, "")
+    /*Saddest input check ever*/
+    if (name.isDefined && checkNonNull(name.get) && !(name.get == Constants.AddPane) && !tp.pages.exists(_.title == name.get)) {
+      Rooms.addRoom(name.get)
+      name
+    } else {
+      if (name.isDefined) {
+        showMessage(tp, "Room already existing or incorrect room name", Message.Error toString)
+      }
+      None
+    }
   }
 }
 
@@ -389,51 +389,51 @@ class CreateProfileDialog extends Dialog {
       contents += new Button("Confirm") {
         reactions += {
           case ButtonClicked(_) =>
-            AlertMessage.alertIsCorrectName(profileName.text.map(_.toUpper)) match {
-              case false =>
-              case _ =>
-                val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
-                var generatedThermometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                var generatedHygrometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                var generatedPhotometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
-                var generatedMotionSensorCommandsMap: Map[String, Set[Device => Unit]] = Map.empty
+            if (AlertMessage.alertIsCorrectName(profileName.text.map(_.toUpper))) {
+              val generatedOnActivationCommand: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(onActivationCommands)
+              var generatedThermometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+              var generatedHygrometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+              var generatedPhotometerSensorCommandsMap: Map[(String, Double) => Boolean, Set[Device => Unit]] = Map.empty
+              var generatedMotionSensorCommandsMap: Map[String, Set[Device => Unit]] = Map.empty
 
-                //for each Sensor with attached commands
-                for (rules <- sensorRules.groupBy(_._4)) {
-                  if (rules._1.deviceType == MotionSensorType) {
-                    //get all the commands associated to this Sensor
-                    val motionSensorCommands = (motionSensorNotificationCommands.filter(_._1.head._3 == rules._1).flatMap(_._2)).toSet
-                    val generatedMotionSensorCommands = CustomProfileBuilder.generateCommandSet(motionSensorCommands)
-                    generatedMotionSensorCommandsMap = generatedMotionSensorCommandsMap + (rules._1.room -> generatedMotionSensorCommands)
-                  } else {
-                    for(rule <- rules._2) {
-                      val checkFunction = CustomProfileBuilder.generateCheckFunction(rule._1, rule._2, rule._4.room)
-                      if (thermometerNotificationCommands.nonEmpty) {
-                        val thermometerCommands = (thermometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
-                        val generatedThermometerCommands = CustomProfileBuilder.generateCommandSet(thermometerCommands)
-                        generatedThermometerSensorCommandsMap = generatedThermometerSensorCommandsMap + (checkFunction -> generatedThermometerCommands)
-                      }
-                      if (hygrometerNotificationCommands.nonEmpty) {
-                        val hygrometerCommands = (hygrometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
-                        val generatedHygrometerCommands = CustomProfileBuilder.generateCommandSet(hygrometerCommands)
-                        generatedHygrometerSensorCommandsMap = generatedHygrometerSensorCommandsMap + (checkFunction -> generatedHygrometerCommands)
-                      }
-                      if (photometerNotificationCommands.nonEmpty) {
-                        val photometerCommands = (photometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2)).toSet
-                        val generatedPhotometerCommands = CustomProfileBuilder.generateCommandSet(photometerCommands)
-                        generatedPhotometerSensorCommandsMap = generatedPhotometerSensorCommandsMap + (checkFunction -> generatedPhotometerCommands)
-                      }
+              //for each Sensor with attached commands
+              for (rules <- sensorRules.groupBy(_._4)) {
+                if (rules._1.deviceType == MotionSensorType) {
+                  //get all the commands associated to this Sensor
+                  val motionSensorCommands = motionSensorNotificationCommands.filter(_._1.head._3 == rules._1).flatMap(_._2).toSet
+                  val generatedMotionSensorCommands = CustomProfileBuilder.generateCommandSet(motionSensorCommands)
+                  generatedMotionSensorCommandsMap = generatedMotionSensorCommandsMap + (rules._1.room -> generatedMotionSensorCommands)
+                } else {
+                  for (rule <- rules._2) {
+                    val checkFunction = CustomProfileBuilder.generateCheckFunction(rule._1, rule._2, rule._4.room)
+                    if (thermometerNotificationCommands.nonEmpty) {
+                      val thermometerCommands = thermometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2).toSet
+                      val generatedThermometerCommands = CustomProfileBuilder.generateCommandSet(thermometerCommands)
+                      generatedThermometerSensorCommandsMap = generatedThermometerSensorCommandsMap + (checkFunction -> generatedThermometerCommands)
+                    }
+                    if (hygrometerNotificationCommands.nonEmpty) {
+                      val hygrometerCommands = hygrometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2).toSet
+                      val generatedHygrometerCommands = CustomProfileBuilder.generateCommandSet(hygrometerCommands)
+                      generatedHygrometerSensorCommandsMap = generatedHygrometerSensorCommandsMap + (checkFunction -> generatedHygrometerCommands)
+                    }
+                    if (photometerNotificationCommands.nonEmpty) {
+                      val photometerCommands = photometerNotificationCommands.filter(_._1.head.equals(rule._1, rule._2, rule._3, rule._4)).flatMap(_._2).toSet
+                      val generatedPhotometerCommands = CustomProfileBuilder.generateCommandSet(photometerCommands)
+                      generatedPhotometerSensorCommandsMap = generatedPhotometerSensorCommandsMap + (checkFunction -> generatedPhotometerCommands)
                     }
                   }
                 }
-                println(generatedMotionSensorCommandsMap)
-                println(generatedThermometerSensorCommandsMap)
-                println(generatedHygrometerSensorCommandsMap)
-                println(generatedPhotometerSensorCommandsMap)
-                val newProfile = CustomProfileBuilder.generateFromParams(profileName.text.map(_.toUpper), description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
-                  generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommandsMap, DummyUtils.dummySet, {})
-                Profile.addProfile(newProfile)
-                close()
+              }
+              println(generatedMotionSensorCommandsMap)
+              println(generatedThermometerSensorCommandsMap)
+              println(generatedHygrometerSensorCommandsMap)
+              println(generatedPhotometerSensorCommandsMap)
+              val newProfile = CustomProfileBuilder.generateFromParams(profileName.text.map(_.toUpper), description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
+                generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommandsMap, DummyUtils.dummySet, {})
+              Profile.addProfile(newProfile)
+              close()
+            } else {
+
             }
         }
       }
@@ -489,19 +489,19 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
                     case x: ComboBox[_] if !x.equals(comboRooms) =>
                       i.deviceType match {
                         case MotionSensorType => key = List((giveSymbol(sym), Double.NaN, comboRooms.selection.item, i))
-                        case _ =>AlertMessage.alertIsCorrectValue(value.text) match {
-                          case true => key = List((giveSymbol(sym), value.text.toDouble, comboRooms.selection.item, i))
-                          case _ => key = List.empty
+                        case _ =>if (AlertMessage.alertIsCorrectValue(value.text)) {
+                          key = List((giveSymbol(sym), value.text.toDouble, comboRooms.selection.item, i))
+                        } else {
+                          key = List.empty
                         }
                       }
                     case _ =>
                   }
                 }
-                key.isEmpty match {
-                  case true =>
-                  case _ => dialog.sensorRules ++= key
-                    println(dialog.sensorRules)
-                    roomsDevices(comboRooms.selection.item)
+                if (key.nonEmpty) {
+                  dialog.sensorRules ++= key
+                  println(dialog.sensorRules)
+                  roomsDevices(comboRooms.selection.item)
                 }
             }
           }
@@ -865,11 +865,6 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
-  }
-  def updateDevice(dev: Device, cmdString: String,newVal:String): Unit = cmdString match {
-    case Msg.on => d.turnOn(); status.setVal("ON")
-    case Msg.off => d.turnOff(); status.setVal("OFF")
-    case _ =>
   }
 }
 /** A device feature that can be changed either by user or profile.
@@ -1252,7 +1247,7 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
   private var status = toDisplay
   reactions += {
     case ButtonClicked(_) =>
-      status match { case `toDisplay` => update(cmdMsg = otherCmd);status=other case _ => update(cmdMsg = displayCmd);status=toDisplay}
+      status match { case `toDisplay` => userUpdate(cmdMsg = otherCmd);status=other case _ => userUpdate(cmdMsg = displayCmd);status=toDisplay}
   }
   /** takes a function, applies it to status and returns new status value
    */
@@ -1262,7 +1257,6 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
   }
 
   /** sends update requested by user via GUI to [[Coordinator]]
-   * @param devName device requiring update
    * @param cmdMsg [[Msg]] update type
    * @param newValue new feature value.
    * @return [[Future]] representing when the connected device confirms the update
@@ -1270,7 +1264,7 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
    * Overriding [[EditableFeature]] update since being a two value feature, no setter component is needed
    * and updates are generated whenever a click is performed on this button.
    */
-  override def update(devName : String = devName,cmdMsg :String, newValue : String = switchStatus{case `toDisplay` => status = other case _ => status = toDisplay}): Future[Unit] ={
+  override def userUpdate(devName:String = devName,cmdMsg :String, newValue : String = switchStatus{case `toDisplay` => status = other case _ => status = toDisplay}): Future[Unit] ={
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName,cmdMsg).onComplete {
       case Success(_) => text = status; p.success(()=>Unit)

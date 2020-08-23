@@ -184,6 +184,7 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
 }
 
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
+  val DEFAULT_VALUE: A  //Used for simulation purposes
   //always on
   override def isOn: Boolean = true
   override def turnOff(): Boolean = false

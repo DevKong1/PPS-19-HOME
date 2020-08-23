@@ -141,9 +141,9 @@ object UserHandler{
     def get_id: String = s.split(SPLIT)(ID)
     def get_psw:String = s.split(SPLIT)(PSW)
   }
-  def checkNonNull(value:String*):Boolean = {
-    value.map(_.trim.length>0).reduce(_ && _)
-  }
+}
+object checkNonNull {
+  def apply(value: String*): Boolean = value.map(_.trim.length>0).reduce(_ && _)
 }
 
 case class StringComboBox(items: Seq[String]) extends ComboBox[String](items: Seq[String])
