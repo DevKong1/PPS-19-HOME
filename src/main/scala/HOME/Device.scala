@@ -196,15 +196,15 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   //Used for simulation purposes
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
+      if (_lastVariationVal.isEmpty && currentVal == DEFAULT_VALUE) return false
       if (_lastVariationVal.isEmpty || (currentVal match {
         case _val: Double => Math.abs(1-_val/_lastVariationVal.get.asInstanceOf[Double]) > _minDelta
         case _val: Boolean => _val != _lastVariationVal.get.asInstanceOf[Boolean]
-        case _ => this.errUnexpected(UnexpectedValue, currentVal.toString)
+        case _ => false
         })) {
         _lastVariationVal = Some(currentVal)
-        return publish(CommandMsg(Msg.nullCommandId, message, currentVal))
-      }
-      false
+        publish(CommandMsg(Msg.nullCommandId, Msg.updateBaseString + "." + message, currentVal))
+      } else false
     } finally {
       _lastVal = Some(currentVal)
     }
