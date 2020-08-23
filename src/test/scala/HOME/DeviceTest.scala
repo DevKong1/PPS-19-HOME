@@ -210,9 +210,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(motionSensor.id == "N")
     assert(motionSensor.deviceType == MotionSensorType)
     assert(motionSensor.connect)
-    assert(motionSensor.valueChanged(false))
-    assert(!motionSensor.valueChanged(false))
+    assert(!motionSensor.valueChanged(false))  //this is the default initial value
     assert(motionSensor.valueChanged(true))
+    assert(!motionSensor.valueChanged(true))
     assert(motionSensor.disconnect)
   }
 

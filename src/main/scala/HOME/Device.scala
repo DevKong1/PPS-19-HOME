@@ -524,7 +524,11 @@ case class SimulatedThermometer(override val id: String, override val room: Stri
                                 override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == ThermometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
+  override val DEFAULT_VALUE = 18.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.temperatureRead)
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
 
 //////////////////
@@ -540,7 +544,11 @@ case class SimulatedHygrometer(override val id: String, override val room: Strin
                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == HygrometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
+  override val DEFAULT_VALUE = 40.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.humidityRead)
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
 
 //////////////////
@@ -556,7 +564,11 @@ case class SimulatedPhotometer(override val id: String, override val room: Strin
                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == PhotometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
+  override val DEFAULT_VALUE = 30.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.intensityRead)
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
 
 //////////////////////
@@ -572,5 +584,9 @@ case class SimulatedMotionSensor(override val id: String, override val room: Str
                                  override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Boolean] {
   require(deviceType == MotionSensorType)
 
-  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.updateBaseString)
+  override val DEFAULT_VALUE = false
+
+  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.motionDetected)
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }

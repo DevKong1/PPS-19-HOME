@@ -14,6 +14,8 @@ import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
+import scala.language.reflectiveCalls
+
 object Constants {
   //Room in every house
   val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
@@ -35,6 +37,9 @@ object Constants {
   val registrationTimeout = 500
   val outputDateFormat: org.joda.time.format.DateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("MM/dd/yyyy HH:mm:ss")
   val maxWaitTime: FiniteDuration = 30.seconds
+  val HomePath: String = System.getProperty("user.home")+File.separatorChar+"HOME"
+  val LoginPath: String = HomePath+File.separatorChar+"login.txt"
+
 }
 
 object Logger {
@@ -81,6 +86,19 @@ object DeviceIDGenerator {
     _id += 1
     _id.toString
   }
+}
+object ResourceOpener{
+  /*Loan pattern
+ * Takes an element that implements close() as first parameter and
+ * a function that maps such element in a new type as second.
+ * Used not to have to close streams every time one is opened
+ */
+   def open[A <: { def close(): Unit }, B](file: A)(f: A => B): B =
+    try {
+      f(file)
+    } finally {
+      file.close()
+    }
 }
 
 /** Used to connect devices to Coordinator
@@ -363,6 +381,7 @@ object OvenMode {
     case _ => this.errUnexpected(UnexpectedMessage, ovenMode)
   }
 }
+
 //TODO add a checkAndRemove pimping the Iterable
 
 object DummyUtils {
