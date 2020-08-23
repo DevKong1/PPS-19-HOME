@@ -858,10 +858,11 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
    *
    * Icons are stored under deviceType name.
    */
-  private class DeviceIcon(iconName :String) extends Label{
-    text=iconName
+  private class DeviceIcon(iconName :String) extends Label {
+    text = iconName
     border = new LineBorder(Color.black,1)
-    icon = new ImageIcon(getClass.getClassLoader.getResource(iconName + Constants.IconExt) getPath)
+    val path = getClass.getClassLoader.getResource(iconName + Constants.IconExt)
+    icon = new ImageIcon(path)
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
