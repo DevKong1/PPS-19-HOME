@@ -20,6 +20,8 @@ import scala.util.Success
 sealed trait Room {
   var devices : Set[GUIDevice]
   def roomName : String
+  def addDevice(dev:Device): Unit
+  def removeDevice(dev:Device): Unit
 }
 
 /** Provides an interface for communicating updates to [[Coordinator]]
@@ -78,19 +80,11 @@ class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice])
       },BorderPanel.Position.North)
 
     add(devicePanel, BorderPanel.Position.Center)
-    roomName match {
-      case "Home" =>
-      case _ => add(adDeviceBtn, BorderPanel.Position.South)
-    }
+    add(adDeviceBtn, BorderPanel.Position.South)
   }
   contents = bp
 
-  roomName match {
-    case "Home" => devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
-      devicePanel.contents += GUI.getHomePage
-    case _ => for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
-  }
-
+  for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
 
   /** Adds a GUIDevice to room
    *
@@ -106,7 +100,7 @@ class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice])
    *
    * @param dev device to be added
    */
-  def addDevice(dev:Device): Unit ={
+  override def addDevice(dev:Device): Unit ={
     dev.turnOn()
     val tmp = PrintDevicePane(dev)
     addDevicePane(tmp)
@@ -117,7 +111,7 @@ class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice])
    *
    * @param dev device to be removed
    */
-  def removeDevice(dev:Device):Unit={
+  override def removeDevice(dev:Device):Unit={
     devices -= devices.find(_.name == dev.name).get
   }
 }
@@ -134,19 +128,101 @@ object GUIRoom{
   def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)))
 }
 
+class HomePageLayout(override val roomName:String, override var devices:Set[GUIDevice]) extends BoxPanel(Orientation.Vertical) with Room{
+  val avgTemp = new Label("Internal temperature: ")
+  val externalTemp = new Label("External temperature: ")
+  val avgHum = new Label("Internal humidity: ")
+  val externalHum = new Label("External humidity: ")
+  val actualCons = new Label("Actual consume: ")
+  val totalCons = new Label("Total consume: ")
+  val getCons = new Button("Get consume") {
+    reactions += {
+      case ButtonClicked(_) => actualCons.text = "Actual consume: " + Coordinator.getActiveConsumption
+        totalCons.text = "Total consume: " + Coordinator.getTotalConsumption
+    }
+  }
+  val bp: FlowPanel = new FlowPanel() {
+    border = new TitledBorder("Outdoor sensors")
+    contents ++= devices.filter( dev => Device.isSensor(dev.d))
+  }
+  val welcomePanel: FlowPanel = new FlowPanel() {
+    contents += new Label("Welcome to your HOME") {
+      font = new Font("Arial", 0, 36)
+    }
+  }
+  val datePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(new Label("Date: " + DateTime.getDate), new Label("Time: " + DateTime.getCurrentTime))
+    //contents += new Label("External temperature: ")
+  }
+  val temperaturePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(avgTemp, externalTemp, avgHum)
+    //contents += new Label("External humidity: ")
+  }
+  val humidityPanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(avgHum, externalHum)
+  }
+  val consumePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(getCons, actualCons, totalCons)
+  }
+  /*val alarmPanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(new Label("Alarm status"), new ToggleButton())
+  }*/
+  val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile.name)
+  val profilePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(currentProfile,
+      new Button("Change profile") {
+        reactions += {
+          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
+        }
+      },
+      new Button("Delete profile") {
+        reactions += {
+          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
+        }
+      },
+      new Button("Create profile") {
+        reactions += {
+          case ButtonClicked(_) => CreateProfile()
+        }
+      }
+    )
+  }
+  contents ++= Seq(bp, welcomePanel, datePanel, temperaturePanel, humidityPanel, consumePanel, profilePanel)
+
+  override def addDevice(dev:Device): Unit ={}
+
+  /** removes a device from room
+   *
+   * @param dev device to be removed
+   */
+  override def removeDevice(dev:Device):Unit={}
+
+}
+object HomePage {
+  def apply(roomName:String, devices:Set[Device]): HomePageLayout = new HomePageLayout(roomName, devices.map(PrintDevicePane(_)))
+
+}
+
+
 /** Singleton GUI for HOME system
  *
  * GUI is made by a [[TabbedPane]] where each page is a [[GUIRoom]]
  */
 object GUI extends MainFrame {
   var rooms: Set[GUIRoom] = Set.empty
-  private val home = HomePage()
-  for(i <- Rooms.allRooms.filter(_ != "Home")) rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+  val home: Room = HomePage("Home", Coordinator.getDevices.filter(_.room == "Home"))
+  for(i <- Rooms.allRooms) rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
 
   protected val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
-    pages+= new TabbedPane.Page("Home", GUIRoom("Home", Coordinator.getDevices.filter(_.room == "Home")))
-    for(i <- rooms.filter(_.roomName != "Home")) pages += new TabbedPane.Page(i.roomName,i)
+    pages+= new TabbedPane.Page("Home", home.asInstanceOf[HomePageLayout])
+    for(i <- rooms) pages += new TabbedPane.Page(i.roomName,i.asInstanceOf[GUIRoom])
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
 
@@ -252,7 +328,7 @@ object GUI extends MainFrame {
     }
   }
 
-  def getHomePage: HomePageLayout = home
+  def getHomePage: HomePageLayout = home.asInstanceOf[HomePageLayout]
 }
 
 /** Dialog through which users can add devices to a room
@@ -763,75 +839,6 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
 object AllDevice {
   def apply(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]): AllDeviceDialog = {
     new AllDeviceDialog(rooms, dialog, sensorRule)
-  }
-}
-
-class HomePageLayout extends BoxPanel(Orientation.Vertical) {
-  val avgTemp = new Label("Internal temperature: ")
-  val externalTemp = new Label("External temperature: ")
-  val avgHum = new Label("Internal humidity: ")
-  val externalHum = new Label("External humidity: ")
-  val actualCons = new Label("Actual consume: ")
-  val totalCons = new Label("Total consume: ")
-  val getCons = new Button("Get consume") {
-    reactions += {
-      case ButtonClicked(_) => actualCons.text = "Actual consume: " + Coordinator.getActiveConsumption
-        totalCons.text = "Total consume: " + Coordinator.getTotalConsumption
-    }
-  }
-  val welcomePanel: FlowPanel = new FlowPanel() {
-    contents += new Label("Welcome to your HOME") {
-      font = new Font("Arial", 0, 36)
-    }
-  }
-  val datePanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(new Label("Date: " + DateTime.getDate), new Label("Time: " + DateTime.getCurrentTime))
-    //contents += new Label("External temperature: ")
-  }
-  val temperaturePanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(avgTemp, externalTemp, avgHum)
-    //contents += new Label("External humidity: ")
-  }
-  val humidityPanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(avgHum, externalHum)
-  }
-  val consumePanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(getCons, actualCons, totalCons)
-  }
-  /*val alarmPanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(new Label("Alarm status"), new ToggleButton())
-  }*/
-  val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile.name)
-  val profilePanel: FlowPanel = new FlowPanel() {
-    hGap = 70
-    contents ++= Seq(currentProfile,
-      new Button("Change profile") {
-        reactions += {
-          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
-        }
-      },
-      new Button("Delete profile") {
-        reactions += {
-          case ButtonClicked(_) => ChangeOrDeleteProfile(this.text, currentProfile)
-        }
-      },
-      new Button("Create profile") {
-        reactions += {
-          case ButtonClicked(_) => CreateProfile()
-        }
-      }
-    )
-  }
-  contents ++= Seq(welcomePanel, datePanel, temperaturePanel, humidityPanel, consumePanel, profilePanel)
-}
-object HomePage {
-  def apply(): HomePageLayout = {
-    new HomePageLayout()
   }
 }
 

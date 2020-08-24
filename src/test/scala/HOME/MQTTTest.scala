@@ -93,7 +93,7 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers with BeforeAndA
     assert(motionSensor.valueChanged(true))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
 
-    assert(Coordinator.disconnect)
+    /*assert(Coordinator.disconnect)
     eventually { Thread.sleep(testSleepTime); thermometer.isRegistered should be (false) }
     eventually { Thread.sleep(testSleepTime); motionSensor.isRegistered should be (false) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (false) }
@@ -101,6 +101,6 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers with BeforeAndA
     assert(motionSensor.disconnect)
     assert(light.disconnect)
     Coordinator.removeAllDevices()
-    Coordinator.setProfile(Profile(Constants.default_profile_name))
+    Coordinator.setProfile(Profile(Constants.default_profile_name))*/
   }
 }

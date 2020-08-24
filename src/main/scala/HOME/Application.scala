@@ -141,6 +141,8 @@ object Application {
       devices += motionSensor
       devices += hygrometer
     }
+    devices += externalThermometer
+    devices += externalHygrometer
 
     //Add all devices to Coordinator
     devices += light_kitchen
@@ -176,8 +178,5 @@ object Application {
     devices += tv_bedroom
     devices += airConditioner_bedroom
     devices += stereo_bedroom
-
-    devices += externalThermometer
-    devices += externalHygrometer
   }
 }
