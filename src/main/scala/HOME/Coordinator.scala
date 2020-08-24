@@ -37,7 +37,7 @@ object Coordinator extends JSONSender with MQTTUtils {
       for(entry <- myIDS) {
         entry("CMD") match {
           case Msg.on => lastDate = Constants.outputDateFormat.parseDateTime(entry("Date"))
-          case Msg.off => totalConsumption += ((Seconds.secondsBetween(lastDate, Constants.outputDateFormat.parseDateTime(entry("Date"))).getSeconds.toDouble / 3600) * (entry("Consumption").toDouble / 1000))
+          case Msg.off if lastDate != null => totalConsumption += ((Seconds.secondsBetween(lastDate, Constants.outputDateFormat.parseDateTime(entry("Date"))).getSeconds.toDouble / 3600) * (entry("Consumption").toDouble / 1000))
           case _ =>
         }
       }
