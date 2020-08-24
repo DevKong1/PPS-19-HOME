@@ -61,6 +61,8 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     Coordinator.addDevice(Light2)
     Light2.turnOn()
     assert(Coordinator.getActiveConsumption == 10)
+    Light2.turnOff()
+    assert(Coordinator.getActiveConsumption == 5)
     Coordinator.removeAllDevices()
     assert(Coordinator.getActiveConsumption == 0)
   }

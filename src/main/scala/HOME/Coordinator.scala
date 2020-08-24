@@ -20,7 +20,13 @@ object Coordinator extends JSONSender with MQTTUtils {
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
   def getActiveConsumption: Double = getConsumption(getDevices.filter(_.isOn == true).toList)
-  private def getConsumption(seq: Seq[Device]): Double = seq.map(_.getConsumption).sum
+
+  private def getConsumption(seq: Seq[Device]): Double = {
+    for (device <- seq) {
+      println(device.id + " = " + device.getConsumption)
+    }
+    seq.map(_.getConsumption).sum
+  }
 
   def getTotalConsumption: Double = {
     val log = Logger.getLogAsListWithHeader
@@ -91,6 +97,8 @@ object Coordinator extends JSONSender with MQTTUtils {
     case t if t == regTopic => handleRegMsg(message)
     case t if t == updateTopic =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
+      val sender = getSenderFromMsg[AssociableDevice](message)
+      updateDevice(sender.id, msg)
       //We consider nullIds as the commands not sent by the User
       if (msg.id == Msg.nullCommandId) GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
       RequestHandler.handleRequest(msg.id)
@@ -148,6 +156,19 @@ object Coordinator extends JSONSender with MQTTUtils {
         removeDevice(device.name)
         unsubscribe(device.getPubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)
+    }
+  }
+
+  private def updateDevice(id: String, msg: CommandMsg): Unit = {
+    getDevices.find(_.id == id) match {
+      case Some(d) => {
+        msg.command match {
+          case cmd: String if cmd == Msg.on => d.turnOn()
+          case cmd: String if cmd == Msg.off => d.turnOff()
+          case _ => d.asInstanceOf[AssociableDevice].handleDeviceSpecificMessage(msg)
+        }
+      }
+      case _ => this.errUnexpected(UnexpectedDevice, id)
     }
   }
 }
@@ -260,8 +281,8 @@ object Profile {
 
     override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => if (value < Constants.dayLightValue) Coordinator.setProfile(Profile("NIGHT"))
 
-
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
+      //if room without windows
       case device: AssociableDevice if value && device.room == room && !Coordinator.getDevices.filter(_.room == room).exists(_.deviceType == ShutterType) && device.deviceType == LightType =>
         Coordinator.publish(device, CommandMsg(cmd = Msg.on))
         Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 100))
