@@ -898,7 +898,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
           }
           totalDevices += 1
         }
-        GUI.getHomePage.avgTemp.text = "Internal temperature: " + totalValues/totalDevices
+        GUI.getHomePage.avgTemp.text = "Internal temperature: " + BigDecimal(totalValues/totalDevices).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
       case _ =>
         for(i <- Coordinator.getDevices.filter(_.deviceType == HygrometerType)) {
           i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal match {
@@ -907,7 +907,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
           }
           totalDevices += 1
         }
-        GUI.getHomePage.avgHum.text = "Internal humidity: " + totalValues/totalDevices
+        GUI.getHomePage.avgHum.text = "Internal humidity: " + BigDecimal(totalValues/totalDevices).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
     }
   }
 
