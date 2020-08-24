@@ -19,8 +19,8 @@ object Coordinator extends JSONSender with MQTTUtils {
   private var activeProfile: Profile = Profile(Constants.default_profile_name)
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
-  def getActiveConsumption: Int = getConsumption(getDevices.filter(_.isOn).toList)
-  private def getConsumption(seq: Seq[Device]): Int = seq.map(_.consumption).sum
+  def getActiveConsumption: Double = getConsumption(getDevices.filter(_.isOn == true).toList)
+  private def getConsumption(seq: Seq[Device]): Double = seq.map(_.getConsumption).sum
 
   def getTotalConsumption: Double = {
     val log = Logger.getLogAsListWithHeader
@@ -121,7 +121,7 @@ object Coordinator extends JSONSender with MQTTUtils {
     val sender = getSenderFromMsg[Device](message)
 
     if (hasDevice(sender)) {
-      Logger.log(sender.id, date, cmd, sender.consumption.toString)
+      Logger.log(sender.id, date, cmd, sender.getConsumption.toString)
     } else {
       this.errUnexpected(UnexpectedDevice, sender.id)
     }

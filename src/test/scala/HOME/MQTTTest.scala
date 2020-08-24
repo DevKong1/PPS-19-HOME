@@ -1,11 +1,23 @@
 package HOME
 
 import HOME.ConstantsTest._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-class MQTTTest extends AnyFunSuite with Eventually with Matchers {
+class MQTTTest extends AnyFunSuite with Eventually with Matchers with BeforeAndAfterAll {
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
+  }
+
   Rooms.addRoom("Living room")
   val light: SimulatedLight = Light("A","Living room")
   val thermometer: SimulatedThermometer = Thermometer("T","Living room")

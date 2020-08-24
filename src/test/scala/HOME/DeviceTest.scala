@@ -2,9 +2,21 @@ package HOME
 
 import java.lang.reflect.MalformedParametersException
 
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 
-class DeviceTest extends AnyFunSuite with JSONUtils {
+class DeviceTest extends AnyFunSuite with JSONUtils with BeforeAndAfterAll {
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
+  }
+
   Rooms.addRoom("Living room")
   val room: String = "Living room"
 

@@ -3,11 +3,22 @@ package HOME
 import java.lang.reflect.MalformedParametersException
 
 import HOME.ConstantsTest.testSleepTime
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 
-class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
+class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with BeforeAndAfterAll {
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
+  }
 
   def prepareDevices(args: AssociableDevice*): Unit = {
     assert(Coordinator.connect)
@@ -39,6 +50,9 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   test("Coordinator correctly calculates Consuption"){
     val Light1 = Light("Light1",salotto)
     val Light2 = Light("Light2",salotto)
+
+    Light1.setValue(100)
+    Light2.setValue(100)
 
     assert(Coordinator.getActiveConsumption == 0)
     Coordinator.addDevice(Light1)
@@ -174,10 +188,10 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   }
 
   test("The Coordinator correctly receives and logs Log messages", BrokerRequired) {
+    Logger.resetFile()
+
     val light: SimulatedLight = Light("A","Living room")
     prepareDevices(light)
-
-    Logger.setTestFile()
 
     assert(Coordinator.publish(light, CommandMsg(0, Msg.on)))
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
@@ -186,11 +200,9 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     val fileData = Logger.getLogAsListWithHeader
     val firstRow = fileData.head
     val secondRow = fileData(1)
-    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5")
-    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5")
+    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5.0")
+    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5.0")
 
-    Logger.resetFile()
-    Logger.unsetTestFile()
     concludeTest(light)
   }
 
@@ -198,9 +210,9 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
   test("The Coordinator correctly calculates last month Consumption", BrokerRequired) {
     val light: SimulatedLight = Light("A","Living room")
     val light2: SimulatedLight = Light("B","Living room")
+    light.setValue(100)
+    light2.setValue(100)
     prepareDevices(light, light2)
-
-    Logger.setTestFile()
 
     val now = org.joda.time.DateTime.now()
     assert(Logger.log("A", Constants.outputDateFormat.print(now), Msg.on, "5"))
@@ -214,7 +226,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
     assert(Coordinator.getTotalConsumption == 0.003333333333333333)
 
-    Logger.unsetTestFile()
     concludeTest(light, light2)
   }
 }
