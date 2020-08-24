@@ -63,7 +63,7 @@ sealed trait EditableFeature{
  * @param roomName room name
  * @param devices devices in the room
  */
-class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice], home: HomePageLayout) extends ScrollPane with Room {
+class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice]) extends ScrollPane with Room {
   val devicePanel = new BoxPanel(Orientation.Vertical)
   val adDeviceBtn: Button =
     new Button("Add device") {
@@ -87,7 +87,7 @@ class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice],
 
   roomName match {
     case "Home" => devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
-      devicePanel.contents += home
+      devicePanel.contents += GUI.getHomePage
     case _ => for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
   }
 
@@ -131,7 +131,7 @@ object GUIRoom{
    *
    * provides abstraction between devices and [[GUIDevice]]
    */
-  def apply(roomName: String,devices:Set[Device], home: HomePageLayout): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)), home)
+  def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)))
 }
 
 /** Singleton GUI for HOME system
@@ -141,15 +141,11 @@ object GUIRoom{
 object GUI extends MainFrame {
   var rooms: Set[GUIRoom] = Set.empty
   private val home = HomePage()
-  for(i <- Rooms.allRooms) {
-    i match {
-      case "Home" => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i), home)
-      case _ => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i), null)
-    }
-  }
+  for(i <- Rooms.allRooms.filter(_ != "Home")) rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+
   protected val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
-    pages+= new TabbedPane.Page("Home", rooms.filter(_.roomName == "Home").head)
+    pages+= new TabbedPane.Page("Home", GUIRoom("Home", Coordinator.getDevices.filter(_.room == "Home")))
     for(i <- rooms.filter(_.roomName != "Home")) pages += new TabbedPane.Page(i.roomName,i)
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
@@ -171,7 +167,7 @@ object GUI extends MainFrame {
           name <- getRoomName
         } yield {
           val devices = Constants.devicesPerRoom(name)
-          val newRoom = GUIRoom(name,devices,null)
+          val newRoom = GUIRoom(name,devices)
           RegisterDevice(devices.map(_.asInstanceOf[AssociableDevice]))
           val newRoomPane = new TabbedPane.Page(name, newRoom)
           Rooms.addRoom(name)
