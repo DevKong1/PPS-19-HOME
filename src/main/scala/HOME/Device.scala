@@ -210,6 +210,8 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
     }
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+
+  def getLastVariationVal: Option[A] = _lastVal
 }
 
 case object LightType extends DeviceType {

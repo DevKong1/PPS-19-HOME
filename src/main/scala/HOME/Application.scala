@@ -128,7 +128,10 @@ object Application {
     val tv_bedroom: SimulatedTV = TV("TV_Bedroom", "Bedroom")
     val stereo_bedroom: SimulatedStereoSystem = StereoSystem("Stereo_Bedroom", "Bedroom")
 
-    for(room <- Rooms.allRooms) yield {
+    val externalThermometer: SimulatedThermometer = Thermometer("Thermometer_Home", "Home")
+    val externalHygrometer: SimulatedHygrometer = Hygrometer("Hygrometer_Home", "Home")
+
+    for(room <- Rooms.allRooms.filter(_ != "Home")) yield {
       val thermometer: SimulatedThermometer = Thermometer("Thermometer_"+room, room)
       val photometer: SimulatedPhotometer = Photometer("Photometer_"+room, room)
       val motionSensor: SimulatedMotionSensor = MotionSensor("MotionSensor_"+room, room)
@@ -173,5 +176,8 @@ object Application {
     devices += tv_bedroom
     devices += airConditioner_bedroom
     devices += stereo_bedroom
+
+    devices += externalThermometer
+    devices += externalHygrometer
   }
 }

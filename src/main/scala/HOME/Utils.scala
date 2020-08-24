@@ -18,7 +18,7 @@ import scala.language.reflectiveCalls
 
 object Constants {
   //Room in every house
-  val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
+  val defaultRooms = Set("Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room", "Home")
 
   /** devices always present in every room
    *

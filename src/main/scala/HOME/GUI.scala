@@ -19,7 +19,7 @@ import scala.util.Success
  */
 sealed trait Room {
   var devices : Set[GUIDevice]
-  def name : String
+  def roomName : String
 }
 
 /** Provides an interface for communicating updates to [[Coordinator]]
@@ -60,10 +60,10 @@ sealed trait EditableFeature{
 
 /** Graphical representation of a
  *
- * @param name room name
+ * @param roomName room name
  * @param devices devices in the room
  */
-class GUIRoom(override val name:String, override var devices:Set[GUIDevice]) extends ScrollPane with Room {
+class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice], home: HomePageLayout) extends ScrollPane with Room {
   val devicePanel = new BoxPanel(Orientation.Vertical)
   val adDeviceBtn: Button =
     new Button("Add device") {
@@ -71,17 +71,26 @@ class GUIRoom(override val name:String, override var devices:Set[GUIDevice]) ext
         case ButtonClicked(_) => DeviceDialog()
       }
     }
-    val bp: BorderPanel = new BorderPanel {
-      add(new FlowPanel() {
-          border = new TitledBorder("Sensors")
-          contents ++= devices.filter( dev => Device.isSensor(dev.d))
-        },BorderPanel.Position.North)
+  val bp: BorderPanel = new BorderPanel {
+    add(new FlowPanel() {
+        border = new TitledBorder("Sensors")
+        contents ++= devices.filter( dev => Device.isSensor(dev.d))
+      },BorderPanel.Position.North)
 
-      add(devicePanel, BorderPanel.Position.Center)
-      add(adDeviceBtn, BorderPanel.Position.South)
+    add(devicePanel, BorderPanel.Position.Center)
+    roomName match {
+      case "Home" =>
+      case _ => add(adDeviceBtn, BorderPanel.Position.South)
     }
-    contents = bp
-    for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
+  }
+  contents = bp
+
+  roomName match {
+    case "Home" => devicePanel.peer.add(Box.createVerticalStrut(Constants.GUIDeviceGAP))
+      devicePanel.contents += home
+    case _ => for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
+  }
+
 
   /** Adds a GUIDevice to room
    *
@@ -122,7 +131,7 @@ object GUIRoom{
    *
    * provides abstraction between devices and [[GUIDevice]]
    */
-  def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)))
+  def apply(roomName: String,devices:Set[Device], home: HomePageLayout): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)), home)
 }
 
 /** Singleton GUI for HOME system
@@ -131,13 +140,17 @@ object GUIRoom{
  */
 object GUI extends MainFrame {
   var rooms: Set[GUIRoom] = Set.empty
+  private val home = HomePage()
   for(i <- Rooms.allRooms) {
-    rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+    i match {
+      case "Home" => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i), home)
+      case _ => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i), null)
+    }
   }
   protected val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
-    pages+= new TabbedPane.Page("Home", HomePage())
-    for(i <- rooms) pages += new TabbedPane.Page(i.name,i)
+    pages+= new TabbedPane.Page("Home", rooms.filter(_.roomName == "Home").head)
+    for(i <- rooms.filter(_.roomName != "Home")) pages += new TabbedPane.Page(i.roomName,i)
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
 
@@ -158,7 +171,7 @@ object GUI extends MainFrame {
           name <- getRoomName
         } yield {
           val devices = Constants.devicesPerRoom(name)
-          val newRoom = GUIRoom(name,devices)
+          val newRoom = GUIRoom(name,devices,null)
           RegisterDevice(devices.map(_.asInstanceOf[AssociableDevice]))
           val newRoomPane = new TabbedPane.Page(name, newRoom)
           Rooms.addRoom(name)
@@ -242,6 +255,8 @@ object GUI extends MainFrame {
       None
     }
   }
+
+  def getHomePage: HomePageLayout = home
 }
 
 /** Dialog through which users can add devices to a room
@@ -266,7 +281,7 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev);repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.roomName equals room).get.addDevice(dev);repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -756,25 +771,45 @@ object AllDevice {
 }
 
 class HomePageLayout extends BoxPanel(Orientation.Vertical) {
+  val avgTemp = new Label("Internal temperature: ")
+  val externalTemp = new Label("External temperature: ")
+  val avgHum = new Label("Internal humidity: ")
+  val externalHum = new Label("External humidity: ")
+  val actualCons = new Label("Actual consume: ")
+  val totalCons = new Label("Total consume: ")
+  val getCons = new Button("Get consume") {
+    reactions += {
+      case ButtonClicked(_) => actualCons.text = "Actual consume: " + Coordinator.getActiveConsumption
+        totalCons.text = "Total consume: " + Coordinator.getTotalConsumption
+    }
+  }
   val welcomePanel: FlowPanel = new FlowPanel() {
     contents += new Label("Welcome to your HOME") {
       font = new Font("Arial", 0, 36)
     }
   }
+  val datePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(new Label("Date: " + DateTime.getDate), new Label("Time: " + DateTime.getCurrentTime))
+    //contents += new Label("External temperature: ")
+  }
   val temperaturePanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents ++= Seq(new Label("Date: " + DateTime.getDate), new Label("Internal temperature: "))
-    //contents += new Label("External temperature: ")
+    contents ++= Seq(avgTemp, externalTemp, avgHum)
+    //contents += new Label("External humidity: ")
   }
   val humidityPanel: FlowPanel = new FlowPanel() {
     hGap = 70
-    contents ++= Seq(new Label("Time: " + DateTime.getCurrentTime), new Label("Internal humidity: "))
-    //contents += new Label("External humidity: ")
+    contents ++= Seq(avgHum, externalHum)
   }
-  val alarmPanel: FlowPanel = new FlowPanel() {
+  val consumePanel: FlowPanel = new FlowPanel() {
+    hGap = 70
+    contents ++= Seq(getCons, actualCons, totalCons)
+  }
+  /*val alarmPanel: FlowPanel = new FlowPanel() {
     hGap = 70
     contents ++= Seq(new Label("Alarm status"), new ToggleButton())
-  }
+  }*/
   val currentProfile = new Label("Current active profile: " + Coordinator.getActiveProfile.name)
   val profilePanel: FlowPanel = new FlowPanel() {
     hGap = 70
@@ -796,7 +831,7 @@ class HomePageLayout extends BoxPanel(Orientation.Vertical) {
       }
     )
   }
-  contents ++= Seq(welcomePanel, temperaturePanel, humidityPanel, alarmPanel, profilePanel)
+  contents ++= Seq(welcomePanel, datePanel, temperaturePanel, humidityPanel, consumePanel, profilePanel)
 }
 object HomePage {
   def apply(): HomePageLayout = {
@@ -849,6 +884,31 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     case Msg.on => d.turnOn(); status.setVal("ON")
     case Msg.off => d.turnOff(); status.setVal("OFF")
     case _ =>
+  }
+
+  def getAvg(dev: String): Unit =  {
+    var totalValues: Double = 0
+    var totalDevices: Int = 0
+    dev match {
+      case "Temperature" =>
+        for(i <- Coordinator.getDevices.filter(_.deviceType == ThermometerType)) {
+          i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal match {
+            case None => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].DEFAULT_VALUE
+            case _ => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal.get
+          }
+          totalDevices += 1
+        }
+        GUI.getHomePage.avgTemp.text = "Internal temperature: " + totalValues/totalDevices
+      case _ =>
+        for(i <- Coordinator.getDevices.filter(_.deviceType == HygrometerType)) {
+          i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal match {
+            case None => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].DEFAULT_VALUE
+            case _ => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal.get
+          }
+          totalDevices += 1
+        }
+        GUI.getHomePage.avgHum.text = "Internal humidity: " + totalValues/totalDevices
+    }
   }
 
   /** An icon inside a label.
@@ -922,6 +982,7 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
       open()
     }
   }
+
   listenTo(mouse.clicks)
   this.visible = true
   def setFeatureValue(c :String): Unit = text = c
@@ -990,6 +1051,10 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
   contents += Feature(d.name,"Humidity",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
     override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
+      d.room match {
+        case "Home" => GUI.getHomePage.externalHum.text = "External Humidity: " + newValue.toDouble
+        case _ => getAvg("Humidity")
+      }
       Promise[Unit].success(() => Unit).future
     }
   })
@@ -1036,6 +1101,10 @@ private case class ThermometerPane(override val d: SimulatedThermometer) extends
   contents += Feature(d.name,"Temperature",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
      override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
        d.valueChanged(newValue toDouble)
+       d.room match {
+         case "Home" => GUI.getHomePage.externalTemp.text = "External Temperature: " + newValue.toDouble
+         case _ => getAvg("Temperature")
+       }
        Promise[Unit].success(() => Unit).future
     }
   })
