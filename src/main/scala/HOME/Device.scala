@@ -203,7 +203,7 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
         case _ => false
         })) {
         _lastVariationVal = Some(currentVal)
-        publish(CommandMsg(Msg.nullCommandId, Msg.updateBaseString + "." + message, currentVal))
+        publish(CommandMsg(Msg.nullCommandId, message, currentVal))
       } else false
     } finally {
       _lastVal = Some(currentVal)
@@ -529,7 +529,7 @@ case class SimulatedThermometer(override val id: String, override val room: Stri
 
   override val DEFAULT_VALUE = 18.0
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.temperatureRead)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -549,7 +549,7 @@ case class SimulatedHygrometer(override val id: String, override val room: Strin
 
   override val DEFAULT_VALUE = 40.0
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.humidityRead)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -569,7 +569,7 @@ case class SimulatedPhotometer(override val id: String, override val room: Strin
 
   override val DEFAULT_VALUE = 30.0
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.intensityRead)
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -589,7 +589,7 @@ case class SimulatedMotionSensor(override val id: String, override val room: Str
 
   override val DEFAULT_VALUE = false
 
-  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.motionDetected)
+  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
