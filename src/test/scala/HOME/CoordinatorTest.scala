@@ -202,8 +202,8 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     val fileData = Logger.getLogAsListWithHeader
     val firstRow = fileData.head
     val secondRow = fileData(1)
-    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5.0")
-    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5.0")
+    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5")
+    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5")
 
     concludeTest(light)
   }

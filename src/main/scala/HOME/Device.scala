@@ -35,7 +35,6 @@ sealed trait Device extends JSONSender {
   private var _on: Boolean = false
 
   def isOn: Boolean = _on
-  def getConsumption : Double = consumption
 
   def turnOn(): Boolean = {_on = true; true}
   def turnOff(): Boolean = {_on = false; true}
@@ -278,8 +277,6 @@ case class SimulatedLight(override val id: String, override val room: String, ov
                           override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == LightType)
 
-  override def getConsumption: Double = consumption * (getValue / 100)
-
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
       case Msg.setIntensity => setValue(message.value.toInt)
       case _ => this.errUnexpected(UnexpectedMessage, message.command)
@@ -300,8 +297,6 @@ case class SimulatedAirConditioner(override val id: String, override val room: S
                                    override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == AirConditionerType)
 
-  override def getConsumption: Double = consumption * ((getValue - 10) / 25)
-
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
     case Msg.setTemperature => setValue(message.value.toInt)
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
@@ -321,8 +316,6 @@ case class SimulatedDehumidifier(override val id: String, override val room: Str
                                  override val consumption: Int, override val minValue : Int = 1, override val maxValue: Int = 100,
                                  override var value: Int = 10) extends Device with AssociableDevice with ChangeableValue {
   require(deviceType == DehumidifierType)
-
-  override def getConsumption: Double = consumption * ((getValue-1) / 99)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
     case Msg.setHumidity => setValue(message.value.toInt)
@@ -419,12 +412,6 @@ case class SimulatedWashingMachine(override val id: String, override val room: S
   def getRPM: RPM = _activeRPM
   def setRPM(newRPM: RPM): Boolean = {_activeRPM = newRPM; true}
 
-  override def getConsumption: Double = getRPM match {
-    case RPM.SLOW => consumption * 0.5
-    case RPM.MEDIUM => consumption * 0.75
-    case _ => consumption
-  }
-
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
     case Msg.washingType => setWashingType(WashingType(message.value))
     case Msg.RPM => setRPM(RPM(message.value))
@@ -453,11 +440,6 @@ case class SimulatedDishWasher(override val id: String, override val room: Strin
   def getWashingProgram: DishWasherProgram = _activeWashing
   def setWashingProgram(newWashing: DishWasherProgram): Boolean = {_activeWashing = newWashing; true}
 
-  override def getConsumption: Double = getWashingProgram match {
-    case DishWasherProgram.FRAGILE => consumption * 0.5
-    case _ => consumption
-  }
-
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
     case Msg.setProgram => setWashingProgram(DishWasherProgram(message.value))
     case Msg.addExtra => addExtra(DishWasherExtra(message.value))
@@ -481,8 +463,6 @@ case class SimulatedOven(override val id: String, override val room: String, ove
   require(deviceType == OvenType)
 
   private var _activeMode: OvenMode = OvenMode.CONVENTIONAL
-
-  override def getConsumption: Double = consumption * (getValue / 250)
 
   def getOvenMode: OvenMode = _activeMode
   def setOvenMode(newMode: OvenMode): Boolean = {_activeMode = newMode; true}
