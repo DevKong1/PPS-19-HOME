@@ -137,8 +137,8 @@ class HomePageLayout(override val name:String, override var devices:Set[GUIDevic
   val totalCons = new Label("Total consume: ")
   val getCons: Button = new Button("Get consume") {
     reactions += {
-      case ButtonClicked(_) => actualCons.text = "Actual consume: " + Coordinator.getActiveConsumption
-        totalCons.text = "Total consume: " + Coordinator.getTotalConsumption
+      case ButtonClicked(_) => actualCons.text = "Actual consume: " + BigDecimal(Coordinator.getActiveConsumption).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble+"W"
+        totalCons.text = "Total consume: " + BigDecimal(Coordinator.getTotalConsumption).setScale(5, BigDecimal.RoundingMode.HALF_UP).toDouble+"kW"
     }
   }
   val bp: FlowPanel = new FlowPanel() {
@@ -208,7 +208,6 @@ class HomePageLayout(override val name:String, override var devices:Set[GUIDevic
 }
 object HomePage {
   def apply(roomName:String, devices:Set[Device]): HomePageLayout = new HomePageLayout(roomName, devices.map(PrintDevicePane(_)))
-
 }
 
 
@@ -416,6 +415,7 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
     contents += applyDialog
   }
   contents = dialog
+  this.peer.setLocationRelativeTo(null)
   open()
 
   def applyDialog: Button = {
@@ -554,6 +554,7 @@ class CreateProfileDialog extends Dialog {
       }
     }
   }
+  this.peer.setLocationRelativeTo(null)
   open()
 }
 object CreateProfile {
@@ -647,6 +648,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
   def roomsDevices(room: String) : Dialog = {
     AllDevice(Set(room), dialog, key)
   }
+  this.peer.setLocationRelativeTo(null)
   open()
 }
 object SensorReaction {
@@ -855,7 +857,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     }
     case _ => ""
   }
-
+  this.peer.setLocationRelativeTo(null)
   open()
 }
 
