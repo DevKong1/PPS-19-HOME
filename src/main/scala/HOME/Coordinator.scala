@@ -228,7 +228,7 @@ trait BasicProfile extends Profile {
 }
 
 object Profile {
-  var savedProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT, DAY)
+  var savedProfiles: Set[Profile] = Set(DEFAULT_PROFILE, NIGHT, DAY, ENERGY_SAVING)
 
   def getProfiles: Set[Profile] = savedProfiles
   def getProfile(name: String): Option[Profile] = savedProfiles.find(_.name == name)
@@ -314,6 +314,31 @@ object Profile {
         Coordinator.publish(device, CommandMsg(cmd = Msg.on))
         Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 30))
       case device: AssociableDevice if !value && device.room == room && device.deviceType == LightType =>
+        Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case _ =>
+    }
+
+    override val programmedRoutineCommands: Device => Unit = null
+
+    override def doProgrammedRoutine(): Unit = {}
+  }
+
+  private case object ENERGY_SAVING extends BasicProfile  {
+
+    override val name: String = "ENERGY SAVING"
+    override val description: String = "Energy Saving Profile"
+
+    override val initialRoutine: Device => Unit = {
+      case device: AssociableDevice if !DeviceType.isSensor(device.deviceType) => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
+      case _ =>
+    }
+
+    override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+    override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
+
+    override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
+      case device: AssociableDevice if value && device.room != room =>
         Coordinator.publish(device, CommandMsg(cmd = Msg.off))
       case _ =>
     }
