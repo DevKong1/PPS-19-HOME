@@ -5,7 +5,6 @@ import java.awt.Color
 import HOME.MyClass._
 import javax.swing.border.{LineBorder, TitledBorder}
 import javax.swing.{Box, ImageIcon}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.language.postfixOps
@@ -19,7 +18,7 @@ import scala.util.Success
  */
 sealed trait Room {
   var devices : Set[GUIDevice]
-  def roomName : String
+  def name : String
   def addDevice(dev:Device): Unit
   def removeDevice(dev:Device): Unit
 }
@@ -62,10 +61,10 @@ sealed trait EditableFeature{
 
 /** Graphical representation of a
  *
- * @param roomName room name
+ * @param name room name
  * @param devices devices in the room
  */
-class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice]) extends ScrollPane with Room {
+class GUIRoom(override val name:String, override var devices:Set[GUIDevice]) extends ScrollPane with Room {
   val devicePanel = new BoxPanel(Orientation.Vertical)
   val adDeviceBtn: Button =
     new Button("Add device") {
@@ -75,14 +74,15 @@ class GUIRoom(override val roomName:String, override var devices:Set[GUIDevice])
     }
   val bp: BorderPanel = new BorderPanel {
     add(new FlowPanel() {
-        border = new TitledBorder("Sensors")
-        contents ++= devices.filter( dev => Device.isSensor(dev.d))
-      },BorderPanel.Position.North)
+      border = new TitledBorder("Sensors")
+      contents ++= devices.filter( dev => Device.isSensor(dev.d))
+    },BorderPanel.Position.North)
 
     add(devicePanel, BorderPanel.Position.Center)
     add(adDeviceBtn, BorderPanel.Position.South)
   }
   contents = bp
+  for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
 
   for (i <- devices.filter( dev => !Device.isSensor(dev.d))) addDevicePane(i)
 
@@ -128,14 +128,14 @@ object GUIRoom{
   def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)))
 }
 
-class HomePageLayout(override val roomName:String, override var devices:Set[GUIDevice]) extends BoxPanel(Orientation.Vertical) with Room{
+class HomePageLayout(override val name:String, override var devices:Set[GUIDevice]) extends BoxPanel(Orientation.Vertical) with Room{
   val avgTemp = new Label("Internal temperature: ")
   val externalTemp = new Label("External temperature: ")
   val avgHum = new Label("Internal humidity: ")
   val externalHum = new Label("External humidity: ")
   val actualCons = new Label("Actual consume: ")
   val totalCons = new Label("Total consume: ")
-  val getCons = new Button("Get consume") {
+  val getCons: Button = new Button("Get consume") {
     reactions += {
       case ButtonClicked(_) => actualCons.text = "Actual consume: " + Coordinator.getActiveConsumption
         totalCons.text = "Total consume: " + Coordinator.getTotalConsumption
@@ -202,6 +202,8 @@ class HomePageLayout(override val roomName:String, override var devices:Set[GUID
    * @param dev device to be removed
    */
   override def removeDevice(dev:Device):Unit={}
+  def updateTemp(newVal:Double): Unit = avgTemp.text = "Average temperature: "+newVal.round+"°C"
+  def updateHum(newVal:Double): Unit = avgHum.text = "Average humidity: "+newVal.round+"%"
 
 }
 object HomePage {
@@ -215,14 +217,21 @@ object HomePage {
  * GUI is made by a [[TabbedPane]] where each page is a [[GUIRoom]]
  */
 object GUI extends MainFrame {
-  var rooms: Set[GUIRoom] = Set.empty
-  val home: Room = HomePage("Home", Coordinator.getDevices.filter(_.room == "Home"))
-  for(i <- Rooms.allRooms) rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+  var rooms: Set[Room] = Set.empty
+  println(Coordinator.getDevices.filter(_.room == "Home"))
+  val home: HomePageLayout = HomePage("Home", Coordinator.getDevices.filter(_.room == "Home"))
+  private var avgTemp : Map[String,Double] = Map.empty
+  private var avgHum : Map[String,Double] = Map.empty
 
+  for(i <- Rooms.allRooms) i match {
+    case "Home" =>
+    case _ => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+  }
   protected val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
     pages+= new TabbedPane.Page("Home", home.asInstanceOf[HomePageLayout])
-    for(i <- rooms) pages += new TabbedPane.Page(i.roomName,i.asInstanceOf[GUIRoom])
+    for(i <- rooms) pages += new TabbedPane.Page(i.name,i.asInstanceOf[GUIRoom])
+    rooms+=home
     pages+= new TabbedPane.Page(Constants.AddPane,new BorderPanel())
   }
 
@@ -236,6 +245,8 @@ object GUI extends MainFrame {
       /**
        * Whenever the last [[TabbedPane.Page]] is clicked the procedure
        * for instantiating a new room is started.
+       *
+       * 'for' used as a sequence control
        */
       case SelectionChanged(_) =>
         for {
@@ -256,7 +267,7 @@ object GUI extends MainFrame {
     contents = tp
     listenTo(tp.selection)
     size = WindowSize(WindowSizeType.MainW)
-
+  this.peer.setLocationRelativeTo(null)
   this.visible = true
   }
 
@@ -284,8 +295,21 @@ object GUI extends MainFrame {
    *
    * Called whenever a profile makes a change to a device feature and needs to reflect such change to GUI devices
    */
-  def updateDevice(d: Device,cmdMsg:String,newVal:String):Unit ={
+  def updateDevice(d: Device,cmdMsg:String,newVal:String):Unit =
     rooms.find(_.devices.map(_.name).contains(d.name)).get.devices.find(_.name == d.name).get.updateDevice(cmdMsg,newVal)
+
+
+  def tempAvgUpdate(id:String,newVal:Double): Unit = {
+    if (home != null) {
+      avgTemp += (id->newVal)
+      home.updateTemp(avgTemp.values.sum/avgTemp.size)
+    }
+  }
+  def humAvgUpdate(id:String,newVal:Double):Unit = {
+    if (home != null) {
+      avgHum += (id -> newVal)
+      home.updateHum(avgHum.values.sum/avgHum.size)
+    }
   }
 
   /** Shutdown application */
@@ -327,8 +351,6 @@ object GUI extends MainFrame {
       None
     }
   }
-
-  def getHomePage: HomePageLayout = home.asInstanceOf[HomePageLayout]
 }
 
 /** Dialog through which users can add devices to a room
@@ -353,7 +375,7 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.roomName equals room).get.addDevice(dev);repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev);repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -367,6 +389,7 @@ class AddDeviceDialog extends Dialog {
     }
     contents++= Seq(labels,buttons)
   }
+  this.peer.setLocationRelativeTo(null)
   open()
 }
 
@@ -889,31 +912,6 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
     case _ =>
   }
 
-  def getAvg(dev: String): Unit =  {
-    var totalValues: Double = 0
-    var totalDevices: Int = 0
-    dev match {
-      case "Temperature" =>
-        for(i <- Coordinator.getDevices.filter(_.deviceType == ThermometerType)) {
-          i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal match {
-            case None => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].DEFAULT_VALUE
-            case _ => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal.get
-          }
-          totalDevices += 1
-        }
-        GUI.getHomePage.avgTemp.text = "Internal temperature: " + BigDecimal(totalValues/totalDevices).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-      case _ =>
-        for(i <- Coordinator.getDevices.filter(_.deviceType == HygrometerType)) {
-          i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal match {
-            case None => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].DEFAULT_VALUE
-            case _ => totalValues += i.asInstanceOf[SensorAssociableDevice[Double]].getLastVariationVal.get
-          }
-          totalDevices += 1
-        }
-        GUI.getHomePage.avgHum.text = "Internal humidity: " + BigDecimal(totalValues/totalDevices).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-    }
-  }
-
   /** An icon inside a label.
    *
    * images are stored inside a resource folder and accessed by deviceType.
@@ -924,7 +922,7 @@ abstract class GUIDevice(val d : Device) extends FlowPanel{
   private class DeviceIcon(iconName :String) extends Label {
     text = iconName
     border = new LineBorder(Color.black,1)
-    val path = getClass.getClassLoader.getResource(iconName + Constants.IconExt)
+    private val path = getClass.getClassLoader.getResource(iconName + Constants.IconExt)
     icon = new ImageIcon(path)
 
     horizontalTextPosition = Alignment.Center
@@ -982,6 +980,7 @@ class DeviceFeature[A <: Component with EditableFeature](deviceName :String,feat
         case ValueChanged(_) => value.text = setterComponent.getVal;
       }
       listenTo(setterComponent)
+      this.peer.setLocationRelativeTo(null)
       open()
     }
   }
@@ -1051,13 +1050,12 @@ private case class HygrometerPane(override val d: SimulatedHygrometer)extends GU
   require (d.deviceType == HygrometerType)
   private val MAX = 100
   private val MIN = 0
+  /**Calculating initial avg humidity*/
   contents += Feature(d.name,"Humidity",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
+    GUI.humAvgUpdate(d.id,d.DEFAULT_VALUE)
     override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
       d.valueChanged(newValue toDouble)
-      d.room match {
-        case "Home" => GUI.getHomePage.externalHum.text = "External Humidity: " + newValue.toDouble
-        case _ => getAvg("Humidity")
-      }
+      GUI.humAvgUpdate(d.id,newValue toDouble)
       Promise[Unit].success(() => Unit).future
     }
   })
@@ -1101,13 +1099,12 @@ private case class ThermometerPane(override val d: SimulatedThermometer) extends
   require (d.deviceType == ThermometerType)
   private val MAX = 50
   private val MIN = -20
+  /**Calculating initial avg temp*/
+  GUI.tempAvgUpdate(d.id,d.DEFAULT_VALUE)
   contents += Feature(d.name,"Temperature",d.DEFAULT_VALUE toString,new SliderFeature(MIN,MAX){
      override def userUpdate(devName : String, cmdMsg :String, newValue:String): Future[Unit] ={
        d.valueChanged(newValue toDouble)
-       d.room match {
-         case "Home" => GUI.getHomePage.externalTemp.text = "External Temperature: " + newValue.toDouble
-         case _ => getAvg("Temperature")
-       }
+       GUI.tempAvgUpdate(d.id,newValue toDouble)
        Promise[Unit].success(() => Unit).future
     }
   })
@@ -1393,6 +1390,7 @@ object LoginPage{
         }
       )
     }
+    this.peer.setLocationRelativeTo(null)
     this.visible = true
   }
 }

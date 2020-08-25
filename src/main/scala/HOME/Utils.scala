@@ -18,7 +18,7 @@ import scala.language.reflectiveCalls
 
 object Constants {
   //Room in every house
-  val defaultRooms = Set( "Home", "Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
+  val defaultRooms = Set("Home","Kitchen", "Garage", "Bedroom", "Bathroom", "Living room", "Corridor", "Laundry room")
 
   /** devices always present in every room
    *
@@ -76,15 +76,15 @@ object Logger {
 
 /** Gives unique identifier to devices*/
 object DeviceIDGenerator {
-  private var _id = 0
+  private var id = 0
 
   /** simple counter
    *
    * @return new device ID
    */
   def apply(): String = {
-    _id += 1
-    _id.toString
+    id += 1
+    id.toString
   }
 }
 

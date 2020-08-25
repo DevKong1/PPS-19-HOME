@@ -100,8 +100,11 @@ object Coordinator extends JSONSender with MQTTUtils {
       val sender = getSenderFromMsg[AssociableDevice](message)
       updateDevice(sender.id, msg)
       //We consider nullIds as the commands not sent by the User
-      if (msg.id == Msg.nullCommandId) GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
-      RequestHandler.handleRequest(msg.id)
+      if (msg.id == Msg.nullCommandId)
+        GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
+      else{
+        RequestHandler.handleRequest(msg.id)
+      }
     case t if t == loggingTopic => logMessage(message)
     case _ if isSensorUpdate(topic, message) =>
       val msg = CommandMsg.fromString(getMessageFromMsg(message))
@@ -410,7 +413,7 @@ object CustomProfileBuilder {
       result += {
         _.id match {
           case t if t == device.id => Coordinator.publish(device.asInstanceOf[AssociableDevice], message)
-          case _ => null
+          case _ =>
         }
       }
     }
