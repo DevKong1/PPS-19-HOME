@@ -226,7 +226,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.on, "5"))
     assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(20)), Msg.off, "5"))
 
-    assert(Coordinator.getTotalConsumption == 0.003333333333333333)
+    assert(BigDecimal(Coordinator.getTotalConsumption).setScale(3, BigDecimal.RoundingMode.HALF_UP).toDouble == 0.003)
 
     concludeTest(light, light2)
   }
