@@ -6,14 +6,17 @@ import HOME.MyIterable._
 import scala.concurrent.{Future, Promise}
 
 
+/** Trait used to catalogue the devices in macro Categories **/
 sealed trait DeviceType {
   def defaultConsumption: Int
 }
 
+/** Object of DeviceTypes with Utils and a Factory **/
 object DeviceType {
   def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType)
   def sensorTypes: Set[DeviceType] = Set(ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
+  //an Enum-Like approach to check the name of case objects
   def isSensor(senType: String): Boolean = sensorTypes.findSimpleClassName(senType)
   def isSensor(deviceType: DeviceType): Boolean = sensorTypes.findSimpleClassName(deviceType.getSimpleClassName)
 
@@ -26,6 +29,7 @@ object DeviceType {
   }
 }
 
+/** The standard device Trait **/
 sealed trait Device extends JSONSender {
   def id : String
   def room : String
@@ -45,9 +49,11 @@ sealed trait Device extends JSONSender {
     case _ => false
   }
 
+  //it can't be in a non-existing room
   require(Rooms.allRooms contains room, this.errUnexpected(UnexpectedRoom, room))
 }
 
+/** Factory of Devices **/
 object Device {
 
   def apply(devType: String,name:String,room : String) : Option[Device] = DeviceType(devType) match{
@@ -84,6 +90,7 @@ object AssociableDevice {
   }
 }
 
+/** Represents a devices which is connected via MQTT **/
 sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeDevice
   override def name: String = id
@@ -93,12 +100,12 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   private var _connected: Boolean = false
   private var _registered: Boolean = false
 
-  def isConnected: Boolean = _connected
-  def isRegistered: Boolean = _registered
-  var registrationPromise: Promise[Unit] = _
-
   private val pubTopic: String = getPubTopic //Topic used by sensors to send data
   private val subTopic: String = getSubTopic  //Topic used by actuators to receive orders
+  var registrationPromise: Promise[Unit] = _
+
+  def isConnected: Boolean = _connected
+  def isRegistered: Boolean = _registered
 
   private def getBaseTopic: String = room + topicSeparator + deviceType + topicSeparator + id
   def getPubTopic: String = getBaseTopic + topicSeparator + pubTopicPostFix
@@ -145,6 +152,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     }
   }
 
+  /** Each different device will be able to handle messages designed specifically for him **/
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
   def sendConfirmUpdate(message: String): Unit = {
@@ -156,6 +164,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   }
 }
 
+/** Represents a devices with a changing value **/
 sealed trait ChangeableValue extends Device {
   //min, max value for the intensity
   def minValue : Int
@@ -168,6 +177,7 @@ sealed trait ChangeableValue extends Device {
   def getValue: Int = value
 }
 
+/** Represents a devices with some extra Options which can be activated ex. DishWasher, Washing Machine **/
 sealed trait MutableExtras[A <: GenericExtra] extends Device {
   private var _activeExtras: Set[A] = Set()
 
@@ -176,6 +186,7 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
   def removeExtra(toRemove: A): Boolean = {_activeExtras -= toRemove; true}
 }
 
+/** An associable device which also is a sensor **/
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   val DEFAULT_VALUE: A  //Used for simulation purposes
   //always on
@@ -186,7 +197,7 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   private var _lastVal: Option[A] = None  //Stores the last received value
   private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
 
-  //Used for simulation purposes
+  //We only consider a value which changed by a preterminated % in order to avoid non-influential variations
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
       if (_lastVariationVal.isEmpty && currentVal == DEFAULT_VALUE) return false

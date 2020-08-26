@@ -6,9 +6,9 @@ import HOME.MyClass._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Future, Promise}
 import org.joda.time._
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
+/** Singleton Coordinator for HOME system **/
 object Coordinator extends JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeCoordinator
   override def name: String = "Coordinator"
@@ -19,38 +19,15 @@ object Coordinator extends JSONSender with MQTTUtils {
   private var activeProfile: Profile = Profile(Constants.default_profile_name)
   var subTopics: ListBuffer[String] = new ListBuffer[String]()
 
-  def getActiveConsumption: Double = getConsumption(getDevices.filter(_.isOn == true).toList)
-  private def getConsumption(seq: Seq[Device]): Double = seq.map(_.consumption).sum
-
-  def getTotalConsumption: Double = {
-    val log = Logger.getLogAsListWithHeader
-    val rows = log.map(_("ID")).distinct
-
-    val tasks: Seq[Future[Double]] = for (i <- rows.indices) yield Future {
-      var totalConsumption: Double = 0 //total consumption (kWh) = number of hours' use * (Watt/1000)
-      var lastDate: org.joda.time.DateTime = null
-
-      val consideredID = rows(i)
-      val myIDS = log.filter(_("ID") == consideredID)
-
-      //ASSUMING THE LOG ON/OFF MESSAGES ARE SORTED
-      for(entry <- myIDS) {
-        entry("CMD") match {
-          case Msg.on => lastDate = Constants.outputDateFormat.parseDateTime(entry("Date"))
-          case Msg.off if lastDate != null => totalConsumption += ((Seconds.secondsBetween(lastDate, Constants.outputDateFormat.parseDateTime(entry("Date"))).getSeconds.toDouble / 3600) * (entry("Consumption").toDouble / 1000))
-          case _ =>
-        }
-      }
-      totalConsumption
-    }
-
-    val aggregated: Future[Seq[Double]] = Future.sequence(tasks)
-    val consumptions: Seq[Double] = Await.result(aggregated, Constants.maxWaitTime)
-
-    consumptions.sum
-  }
-
   //DEVICES
+
+  /** Creates and adds a Device to the Coordinator
+   *
+   * @param devType the Type of the Device
+   * @param name the Name of the Device
+   * @param room the Room of the Device
+   * @return  [[Some]] device if user input is valid, [[None]] otherwise
+   */
   def addDevice(devType: String,name:String,room : String): Option[Device] = {
     val dev: Option[Device] = Device(devType, name, room)
     dev match {
@@ -70,16 +47,13 @@ object Coordinator extends JSONSender with MQTTUtils {
   def hasDevice(device: Device): Boolean = devices.exists(_.id == device.id)
 
   //PROFILES
-
   def getActiveProfile: Profile = activeProfile
   def setProfile(newProfile: Profile): Unit = if (newProfile != activeProfile) {
     activeProfile = newProfile
     activeProfile.onActivation()
   }
 
-
   //MQTT
-
   def connect: Boolean = connect(this, onMessageReceived)
 
   def subscribe: Boolean = subscribe(regTopic) && subscribe(updateTopic) && subscribe(loggingTopic)
@@ -87,6 +61,7 @@ object Coordinator extends JSONSender with MQTTUtils {
   def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, this, !retained)
   def publish(topic: String, message: String): Boolean = publish(topic, message, this)
 
+  /** Handle the received message, if it's a sensor update also notifies the active profile **/
   def onMessageReceived(topic: String, message: String): Unit = topic match {
     case t if t == regTopic => handleRegMsg(message)
     case t if t == updateTopic =>
@@ -94,9 +69,9 @@ object Coordinator extends JSONSender with MQTTUtils {
       val sender = getSenderFromMsg[AssociableDevice](message)
       updateDevice(sender.id, msg)
       //We consider nullIds as the commands not sent by the User
-      if (msg.id == Msg.nullCommandId)
+      if (msg.id == Msg.nullCommandId) {
         GUI.updateDevice(getSenderFromMsg(message), msg.command, msg.value)
-      else{
+      } else {
         RequestHandler.handleRequest(msg.id)
       }
     case t if t == loggingTopic => logMessage(message)
@@ -114,11 +89,13 @@ object Coordinator extends JSONSender with MQTTUtils {
     case _ => this.errUnexpected(UnexpectedTopic, topic)
   }
 
+  /** Checks if the message is a sensor update **/
   private def isSensorUpdate(topic: String, message: String): Boolean = {
     val split = topic.split(topicSeparator)
     split.length > 1 && DeviceType.isSensor(split(1)) && message.contains(Msg.updateBaseString)
   }
 
+  /** If the receivde message is a logging message memorizes the content in a .csv file **/
   private def logMessage(message: String): Unit = {
     val split = getMessageFromMsg(message).split(logSeparator)
     val cmd = split(0)
@@ -156,17 +133,54 @@ object Coordinator extends JSONSender with MQTTUtils {
     }
   }
 
+  /** Updates the local information regarding a connected device **/
   private def updateDevice(id: String, msg: CommandMsg): Unit = {
     getDevices.find(_.id == id) match {
-      case Some(d) => {
+      case Some(d) =>
         msg.command match {
           case cmd: String if cmd == Msg.on => d.turnOn()
           case cmd: String if cmd == Msg.off => d.turnOff()
           case _ => d.asInstanceOf[AssociableDevice].handleDeviceSpecificMessage(msg)
         }
-      }
       case _ => this.errUnexpected(UnexpectedDevice, id)
     }
+  }
+
+  //CONSUMPTIONS
+
+  /** Get the consumption of devices which are ON **/
+  def getActiveConsumption: Double = getConsumption(getDevices.filter(_.isOn == true).toList)
+  private def getConsumption(seq: Seq[Device]): Double = seq.map(_.consumption).sum
+
+  /** Method to calculate the total consumption of the system **/
+  def getTotalConsumption: Double = {
+    val log = Logger.getLogAsListWithHeader
+    val rows = log.map(_("ID")).distinct
+
+    //for performance reasons we divide the task in the number of distinct devices
+    val tasks: Seq[Future[Double]] = for (i <- rows.indices) yield Future {
+      var totalConsumption: Double = 0 //total consumption (kWh) = number of hours' use * (Watt/1000)
+      var lastDate: org.joda.time.DateTime = null
+
+      val consideredID = rows(i)
+      val myIDS = log.filter(_("ID") == consideredID)
+
+      //ASSUMING THE LOG ON/OFF MESSAGES ARE SORTED
+      for(entry <- myIDS) {
+        entry("CMD") match {
+          //if the first message for a device is off it will be ignored
+          case Msg.on => lastDate = Constants.outputDateFormat.parseDateTime(entry("Date"))
+          case Msg.off if lastDate != null => totalConsumption += ((Seconds.secondsBetween(lastDate, Constants.outputDateFormat.parseDateTime(entry("Date"))).getSeconds.toDouble / 3600) * (entry("Consumption").toDouble / 1000))
+          case _ =>
+        }
+      }
+      totalConsumption
+    }
+
+    val aggregated: Future[Seq[Double]] = Future.sequence(tasks)
+    val consumptions: Seq[Double] = Await.result(aggregated, Constants.maxWaitTime)
+
+    consumptions.sum
   }
 }
 
@@ -185,13 +199,16 @@ sealed trait Profile {
   val name: String
   val description: String
 
+  /** The instructions to apply when the profie is Activated **/
   def onActivation(): Unit
 
+  /** The instructions to apply in response to a sensor notification **/
   def onThermometerNotification(room: String, value: Double): Unit
   def onHygrometerNotification(room: String, value: Double): Unit
   def onPhotometerNotification(room: String, value: Double): Unit
   def onMotionSensorNotification(room: String, value: Boolean): Unit
 
+  //TODO, scheduled instructions
   def doProgrammedRoutine(): Unit
 
   override def equals(o: Any): Boolean = o match {
@@ -261,14 +278,16 @@ object Profile {
     override val name: String = "DAY"
     override val description: String = "Daylight Profile"
 
+    /** This profile turns off each device but the Air Conditioner, Boiler and Dehumidifier also each Shutter is opened **/
     override val initialRoutine: Device => Unit = {
-      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.close));
+      case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.open));
       case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
       case device: AssociableDevice if device.deviceType == DehumidifierType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setHumidity, 20))
       case device: AssociableDevice if device.deviceType == BoilerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 35))
       case device: AssociableDevice if !DeviceType.isSensor(device.deviceType) => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
       case _ =>
     }
+    /** If the outside temperature is too hot or cold we make the inside a bit more confortable **/
     override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = {
       case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value > 35 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 21))
       case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value < 21 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 28))
@@ -276,10 +295,10 @@ object Profile {
     }
     override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
 
-    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => if (value < Constants.dayLightValue) Coordinator.setProfile(Profile("NIGHT"))
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
 
+    /** If someone enters a room without windows we turn on the lights **/
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
-      //if room without windows
       case device: AssociableDevice if value && device.room == room && !Coordinator.getDevices.filter(_.room == room).exists(_.deviceType == ShutterType) && device.deviceType == LightType =>
         Coordinator.publish(device, CommandMsg(cmd = Msg.on))
         Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setIntensity, 100))
@@ -296,6 +315,7 @@ object Profile {
     override val name: String = "NIGHT"
     override val description: String = "Night Profile"
 
+    /** This profile turns off each device but the Air Conditioner and Dehumidifier, also closes Shutters **/
     override val initialRoutine: Device => Unit = {
       case device: AssociableDevice if device.deviceType == ShutterType => Coordinator.publish(device, CommandMsg(cmd = Msg.close));
       case device: AssociableDevice if device.deviceType == AirConditionerType => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 25))
@@ -307,8 +327,9 @@ object Profile {
     override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
     override def hygrometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
 
-    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => if (value > Constants.dayLightValue) Coordinator.setProfile(Profile("DAY"))
+    override def photometerNotificationCommands(room: String, value: Double): Device => Unit = _ => ()
 
+    /** If someone is walking in the dark we bright it up a little, turns off when everyone leaves **/
     override def motionSensorNotificationCommands(room: String, value: Boolean): Device => Unit = {
       case device: AssociableDevice if value && device.room == room && device.deviceType == LightType =>
         Coordinator.publish(device, CommandMsg(cmd = Msg.on))
@@ -323,6 +344,7 @@ object Profile {
     override def doProgrammedRoutine(): Unit = {}
   }
 
+  /** This profile just turns off any Device in a Room without anyone **/
   private case object ENERGY_SAVING extends BasicProfile  {
 
     override val name: String = "ENERGY SAVING"
@@ -358,6 +380,7 @@ object Profile {
 /// CUSTOM PROFILES ///
 ///////////////////////
 
+/** Run time generated profile by the user **/
 case class CustomProfile(override val name: String, override val description: String,
                          initialRoutineSet: Set[Device => Unit],
                          thermometerNotificationCheckAndCommandsSet: Map[(String, Double) => Boolean, Set[Device => Unit]],
@@ -378,14 +401,16 @@ case class CustomProfile(override val name: String, override val description: St
     if(value && command.isDefined) applyCommand(command.get)
   }
 
-  private def applyCommand(commands: Set[Device => Unit], filter: Device => Boolean = _ => true ): Unit = {
-    for(device <- Coordinator.getDevices.filter(filter)) {
+  /** The set contains match cases checking if the devices is the one chosen by the user, if it is apply the selected instructions */
+  private def applyCommand(commands: Set[Device => Unit]): Unit = {
+    for(device <- Coordinator.getDevices) {
       for(command <- commands) {
         command(device)
       }
     }
   }
 
+  /** If we are checking a value given by a sensor we also have to check if it fullfills the criteria chosen by the user */
   private def checkAndApplySensorCommand[A](value: A, checkAndCommands: Map[(String, A) => Boolean, Set[Device => Unit]], room: String): Unit = {
    for(checkAndCommand <- checkAndCommands) {
      if (checkAndCommand._1(room, value)) {
@@ -395,8 +420,16 @@ case class CustomProfile(override val name: String, override val description: St
   }
 }
 
-object CustomProfileBuilder {
 
+/** Utils to create a Custom Profile **/
+object CustomProfileBuilder {
+  /** Get a Check Function formatted so that the Custom Profile can use it
+   *
+   * @param symbol the symbol which paired with a value will determinate if the user crieria is fullfileed
+   * @param value the numeric value which will be confronted with the value received by the sensors
+   * @param consideredRoom the room from which the sensor sends the update
+   * @return a function with the critieria chosen by the user which will be used by a Custom Profile
+   * */
   def generateCheckFunction(symbol: String, value: Double, consideredRoom: String): (String, Double) => Boolean = symbol match {
     case "=" => {
       case (room, double) if double == value && room == consideredRoom => true
@@ -421,7 +454,11 @@ object CustomProfileBuilder {
     case _ => this.errUnexpected(UnexpectedValue, symbol)
   }
 
-  //Set of device and command
+  /** Get a set of Functions formatted so that the Custom Profile can use it
+   *
+   * @param commands the set of Devices and relative commands to apply
+   * @return a set of functions with the critieria chosen by the user which will be used by a Custom Profile
+   * */
   def generateCommandSet(commands: Set[(Device,CommandMsg)]): Set[Device => Unit] = {
     var result: Set[Device => Unit] = Set.empty
 
@@ -439,6 +476,8 @@ object CustomProfileBuilder {
     result
   }
 
+
+  /** Generates a map which will be used by a Custom Profile **/
   def generateSensorCommandsMap[A](checkAndCommands: ((String, A) => Boolean, Set[Device => Unit])*): Map[(String, A) => Boolean, Set[Device => Unit]] = {
     checkAndCommands.map(arg => arg._1 -> arg._2).toMap
   }

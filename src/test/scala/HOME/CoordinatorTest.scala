@@ -132,9 +132,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
 
-    Coordinator.getActiveProfile.onPhotometerNotification(salotto, 45)
-    eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile.name should be ("DAY") }
-
     concludeTest(light, shutter, ac, humid)
   }
 
