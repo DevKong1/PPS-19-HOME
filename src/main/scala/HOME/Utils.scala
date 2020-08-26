@@ -198,7 +198,7 @@ object RequestHandler {
     updateRequests(id).success(() => Unit); updateRequests -= id}
 }
 
-//pimp mu library
+//pimp my library
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 

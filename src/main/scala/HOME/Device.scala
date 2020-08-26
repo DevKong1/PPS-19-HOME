@@ -274,7 +274,7 @@ object Light {
 
 case class SimulatedLight(override val id: String, override val room: String, override val deviceType: DeviceType,
                           override val consumption: Int, override val minValue : Int = 1, override val maxValue: Int = 100,
-                          override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                          override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == LightType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -294,7 +294,7 @@ object AirConditioner {
 
 case class SimulatedAirConditioner(override val id: String, override val room: String, override val deviceType: DeviceType,
                                    override val consumption: Int, override val minValue : Int = 10, override val maxValue: Int = 35,
-                                   override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
+                                   override var value: Int = 22) extends AssociableDevice with ChangeableValue {
   require(deviceType == AirConditionerType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -314,7 +314,7 @@ object Dehumidifier {
 
 case class SimulatedDehumidifier(override val id: String, override val room: String, override val deviceType: DeviceType,
                                  override val consumption: Int, override val minValue : Int = 1, override val maxValue: Int = 100,
-                                 override var value: Int = 10) extends Device with AssociableDevice with ChangeableValue {
+                                 override var value: Int = 10) extends AssociableDevice with ChangeableValue {
   require(deviceType == DehumidifierType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -333,7 +333,7 @@ object Shutter {
 }
 
 case class SimulatedShutter(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                 override val consumption: Int) extends Device with AssociableDevice {
+                                 override val consumption: Int) extends AssociableDevice {
   require(deviceType == ShutterType)
 
   private var _open = false
@@ -361,7 +361,7 @@ object Boiler {
 
 case class SimulatedBoiler(override val id: String, override val room: String, override val deviceType: DeviceType,
                            override val consumption: Int, override val minValue : Int = 10, override val maxValue: Int = 35,
-                           override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
+                           override var value: Int = 22) extends AssociableDevice with ChangeableValue {
   require(deviceType == BoilerType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -381,7 +381,7 @@ object TV {
 
 case class SimulatedTV(override val id: String, override val room: String, override val deviceType: DeviceType,
                        override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 100,
-                       override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                       override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == TvType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -401,7 +401,7 @@ object WashingMachine {
 }
 
 case class SimulatedWashingMachine(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                   override val consumption: Int) extends Device with AssociableDevice with MutableExtras[WashingMachineExtra] {
+                                   override val consumption: Int) extends AssociableDevice with MutableExtras[WashingMachineExtra] {
   require(deviceType == WashingMachineType)
 
   private var _activeWashing: WashingType = WashingType.MIX
@@ -432,7 +432,7 @@ object DishWasher {
 
 
 case class SimulatedDishWasher(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with MutableExtras[DishWasherExtra] {
+                               override val consumption: Int) extends AssociableDevice with MutableExtras[DishWasherExtra] {
   require(deviceType == DishWasherType)
 
   private var _activeWashing: DishWasherProgram = DishWasherProgram.FAST
@@ -459,7 +459,7 @@ object Oven {
 
 case class SimulatedOven(override val id: String, override val room: String, override val deviceType: DeviceType,
                          override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 250,
-                         override var value: Int = 0) extends Device with AssociableDevice with ChangeableValue {
+                         override var value: Int = 0) extends AssociableDevice with ChangeableValue {
   require(deviceType == OvenType)
 
   private var _activeMode: OvenMode = OvenMode.CONVENTIONAL
@@ -485,7 +485,7 @@ object StereoSystem {
 
 case class SimulatedStereoSystem(override val id: String, override val room: String, override val deviceType: DeviceType,
                                  override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 100,
-                                 override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                                 override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == StereoSystemType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -505,7 +505,7 @@ object Thermometer {
 }
 
 case class SimulatedThermometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                                override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == ThermometerType)
 
   override val DEFAULT_VALUE = 18.0
@@ -525,7 +525,7 @@ object Hygrometer {
 }
 
 case class SimulatedHygrometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                               override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == HygrometerType)
 
   override val DEFAULT_VALUE = 40.0
@@ -545,7 +545,7 @@ object Photometer {
 }
 
 case class SimulatedPhotometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                               override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == PhotometerType)
 
   override val DEFAULT_VALUE = 30.0
@@ -565,7 +565,7 @@ object MotionSensor {
 }
 
 case class SimulatedMotionSensor(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                 override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Boolean] {
+                                 override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Boolean] {
   require(deviceType == MotionSensorType)
 
   override val DEFAULT_VALUE = false
