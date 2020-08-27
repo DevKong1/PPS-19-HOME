@@ -31,15 +31,15 @@ object Constants {
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
+  val resourcePath: String = "src/main/resources/"
   val IconExt = ".jpg"
   val LoginTextSize = 20
   val AddPane = "+"
   val registrationTimeout = 500
   val outputDateFormat: org.joda.time.format.DateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("MM/dd/yyyy HH:mm:ss")
   val maxWaitTime: FiniteDuration = 30.seconds
-  val HomePath: String = System.getProperty("user.home")+File.separatorChar+"HOME"
-  val LoginPath: String = HomePath+File.separatorChar+"login.txt"
-
+  val HomePath: String = System.getProperty("user.home") + File.separatorChar+"HOME"
+  val LoginPath: String = HomePath+File.separatorChar + "login.txt"
 }
 
 /** Logger used to save in a .csv file the date of each on and off of devices **/

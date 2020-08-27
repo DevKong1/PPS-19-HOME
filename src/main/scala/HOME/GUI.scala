@@ -992,8 +992,7 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
   private class DeviceIcon(iconName :String) extends Label {
     text = iconName
     border = new LineBorder(Color.black,1)
-    private val path = getClass.getClassLoader.getResource(iconName + Constants.IconExt)
-    icon = new ImageIcon(path)
+    icon = new ImageIcon(Constants.resourcePath + iconName + Constants.IconExt)
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
