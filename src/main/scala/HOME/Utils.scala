@@ -42,11 +42,11 @@ object Constants {
 
 }
 
+/** Logger used to save in a .csv file the date of each on and off of devices **/
 object Logger {
   private val fileName: String = "Log.csv"
   private var csvFile: File = new File(fileName)
   private val header = List("ID","Date","CMD","Consumption")
-
   if(!Files.exists(Paths.get(fileName))) resetFile()
 
   def getLogAsListWithHeader : List[Map[String,String]] = CSVReader.open(csvFile).allWithHeaders()
@@ -63,6 +63,7 @@ object Logger {
     }
   }
 
+  //re-create and empty the file
   def resetFile(): Unit = {
     val writer = CSVWriter.open(csvFile)
     writer.writeRow(header)
@@ -138,7 +139,7 @@ object RegisterDevice {
    *
    * When all devices successfully connects and notifies [[Coordinator]], this promise is completed
    */
-  def apply(d : Set[AssociableDevice]):Future[Unit] ={
+  def apply(d : Set[AssociableDevice]):Future[Unit] = {
     val p = Promise[Unit]
     d foreach startDevice
     Await.ready(Future.sequence(d.map(_.register)), Duration.Inf).onComplete {
@@ -198,7 +199,12 @@ object RequestHandler {
     updateRequests(id).success(() => Unit); updateRequests -= id}
 }
 
-//pimp my library
+/** Pimping a class to gets its corrected name.
+ *
+ * This is used when we have a decent amount of case objects and want to treat them in a way similar to Java Enums.
+ *
+ * @param _class
+ */
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
 
@@ -210,6 +216,12 @@ object MyClass{
   implicit def toMyClass(_class: Any): MyClass = MyClass(_class)
 }
 
+/** Pimping an iterable to find an item given its class name
+ *
+ * This is used when we have a decent amount of case objects and want to treat them in a way similar to Java Enums.
+ *
+ * @param _iterable
+ */
 case class MyIterable[A](_iterable: Iterable[A]) {
   def findSimpleClassName(item: String): Boolean = _iterable.find(_.getSimpleClassName == item) match {
     case Some(_) => true
@@ -221,7 +233,7 @@ object MyIterable{
   implicit def toMyIterable[A](_iterable: Iterable[A]): MyIterable[A] = MyIterable(_iterable)
 }
 
-//helper object used by various devices to set the output strength
+/** Helper object used by various devices to map its value. **/
 object ValueChecker {
   def apply(min: Int, max: Int)(value: Int): Int = value match {
     case x if x > max => max
@@ -229,6 +241,7 @@ object ValueChecker {
     case _ => value
   }
 }
+
 sealed trait Unexpected {
   var item: String
 }
@@ -273,7 +286,6 @@ object WashingType {
 }
 trait UpdateDevice
 object UpdateDevice {
-
   case object INTENSITY extends UpdateDevice
   case object WORK_MODE extends UpdateDevice
   case object VOLUME extends UpdateDevice
@@ -286,7 +298,7 @@ object UpdateDevice {
   case object HUM extends UpdateDevice
   case object TEMP extends UpdateDevice
 
-  def apply(devType: String): UpdateDevice = devType match{
+  def apply(devType: String): UpdateDevice = devType match {
     case "INTENSITY" => INTENSITY
     case "WORK_MODE" => WORK_MODE
     case "VOLUME" => VOLUME
@@ -301,25 +313,16 @@ object UpdateDevice {
     case _ => this.errUnexpected(UnexpectedMessage, devType)
   }
 }
-object Updater {
 
-
-  def update(device : Device)(value:Int)(updateInfo: UpdateDevice)(implicit updateTypes: UpdateTypes[Device]): Unit ={
-    updateTypes.update(device)(value)(updateInfo)
-  }
-}
-abstract class UpdateTypes [A <: Device] {
-  def update(device: A)(value:Int)( deviceType: UpdateDevice)
-}
+/** Enume-Likes used by various devices **/
 
 trait RPM
 object RPM {
-
   case object SLOW extends RPM
   case object MEDIUM extends RPM
   case object FAST extends RPM
 
-  def apply(rpm: String): RPM = rpm match{
+  def apply(rpm: String): RPM = rpm match {
     case "SLOW" => SLOW
     case "MEDIUM" => MEDIUM
     case "FAST" => FAST
@@ -328,14 +331,13 @@ object RPM {
 }
 
 trait GenericExtra
-
 trait WashingMachineExtra extends GenericExtra
 object WashingMachineExtra {
   case object SuperDry extends WashingMachineExtra
   case object SuperDirty extends WashingMachineExtra
   case object SpecialColors extends WashingMachineExtra
 
-  def apply(extra: String): WashingMachineExtra = extra match{
+  def apply(extra: String): WashingMachineExtra = extra match {
     case "SuperDry" => SuperDry
     case "SuperDirty" => SuperDirty
     case "SpecialColors" => SpecialColors
@@ -345,12 +347,11 @@ object WashingMachineExtra {
 
 trait DishWasherProgram
 object DishWasherProgram {
-
   case object FAST extends DishWasherProgram
   case object DIRTY extends DishWasherProgram
   case object FRAGILE extends DishWasherProgram
 
-  def apply(dishWasherProgram: String): DishWasherProgram = dishWasherProgram match{
+  def apply(dishWasherProgram: String): DishWasherProgram = dishWasherProgram match {
     case "FAST" => FAST
     case "DIRTY" => DIRTY
     case "FRAGILE" => FRAGILE
@@ -360,12 +361,11 @@ object DishWasherProgram {
 
 trait DishWasherExtra extends GenericExtra
 object DishWasherExtra {
-
   case object SuperSteam extends DishWasherExtra
   case object SuperDirty extends DishWasherExtra
   case object SuperHygiene extends DishWasherExtra
 
-  def apply(dishWasherExtra: String): DishWasherExtra = dishWasherExtra match{
+  def apply(dishWasherExtra: String): DishWasherExtra = dishWasherExtra match {
     case "SuperSteam" => SuperSteam
     case "SuperDirty" => SuperDirty
     case "SuperHygiene" => SuperHygiene
@@ -375,7 +375,6 @@ object DishWasherExtra {
 
 trait OvenMode
 object OvenMode {
-
   case object CONVENTIONAL extends OvenMode
   case object UPPER extends OvenMode
   case object LOWER extends OvenMode
@@ -394,7 +393,15 @@ object OvenMode {
   }
 }
 
-//TODO add a checkAndRemove pimping the Iterable
+object Updater {
+  def update(device : Device)(value:Int)(updateInfo: UpdateDevice)(implicit updateTypes: UpdateTypes[Device]): Unit ={
+    updateTypes.update(device)(value)(updateInfo)
+  }
+}
+
+abstract class UpdateTypes [A <: Device] {
+  def update(device: A)(value:Int)( deviceType: UpdateDevice)
+}
 
 object DummyUtils {
   val dummySet: Set[Device => Unit] = Set({_.id})
