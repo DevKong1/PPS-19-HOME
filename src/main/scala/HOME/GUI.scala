@@ -434,6 +434,11 @@ object DeviceDialog {
   }
 }
 
+/** Dialog through users can change an active profile or delete a profile
+ *
+ * @param delete use to create dialog
+ * @param labelProfile use to change active profile
+ */
 class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends Dialog {
   private val dimension = WindowSize(WindowSizeType.AddProfile)
   private val profiles = new ComboBox[String](Profile.getProfileNames toSeq)
@@ -481,12 +486,19 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
     close()
   }
 }
+
+/** Factory for [[ChangeOrDeleteProfileDialog]]
+ *
+ */
 object ChangeOrDeleteProfile {
   def apply(delete: String, labelProfile: Label): ChangeOrDeleteProfileDialog = {
     new ChangeOrDeleteProfileDialog(delete, labelProfile)
   }
 }
 
+/** Use to create a custom profile
+ *
+ */
 class CreateProfileDialog extends Dialog {
   private val profileName = new TextField(10)
   private val description = new TextField(10)
@@ -520,14 +532,6 @@ class CreateProfileDialog extends Dialog {
         reactions += { case ButtonClicked(_) => SensorReaction(newProfileDialog)}}
       )
     }
-    /* contents += new FlowPanel() {
-       contents += new Label("Programmed Stuff: ")
-       contents += new Button("Devices") {
-         reactions += {
-           case ButtonClicked(_) => AllDevice(Rooms.allRooms, isRoutine = true, programmedStuffCommands)
-         }
-       }
-     }*/
     contents += new FlowPanel() {
       contents += new Button("Confirm") {
         reactions += {
@@ -567,10 +571,6 @@ class CreateProfileDialog extends Dialog {
                   }
                 }
               }
-              println(generatedMotionSensorCommandsMap)
-              println(generatedThermometerSensorCommandsMap)
-              println(generatedHygrometerSensorCommandsMap)
-              println(generatedPhotometerSensorCommandsMap)
               //instantiate the new Custom Profile
               val newProfile = CustomProfileBuilder.generateFromParams(profileName.text.map(_.toUpper), description.text, generatedOnActivationCommand, generatedThermometerSensorCommandsMap,
                 generatedHygrometerSensorCommandsMap, generatedPhotometerSensorCommandsMap, generatedMotionSensorCommandsMap, DummyUtils.dummySet, {})
@@ -591,12 +591,20 @@ class CreateProfileDialog extends Dialog {
   this.peer.setLocationRelativeTo(null)
   open()
 }
+
+/** Factory for [[CreateProfileDialog]]
+ *
+ */
 object CreateProfile {
   def apply(): CreateProfileDialog = {
     new CreateProfileDialog()
   }
 }
 
+/** Dialog used to add sensor's rule on profile activation
+ *
+ * @param dialog instance to add sensor's rules
+ */
 class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
   modal = true
   title = "Sensor Reaction"
@@ -685,46 +693,22 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
   this.peer.setLocationRelativeTo(null)
   open()
 }
+
+/** Factory for [[SensorReactionDialog]]
+ *
+ */
 object SensorReaction {
   def apply(dialog: CreateProfileDialog): SensorReactionDialog = {
     new SensorReactionDialog(dialog)
   }
 }
 
-/*class AddProgrammedStuffDialog extends Dialog {
-  title = "Add Programmed Stuff"
-  location = new Point(0,250)
-
-  contents = new ScrollPane() {
-    contents = applyTemplate
-  }
-
-  def applyTemplate : BoxPanel = {
-    val panel = new BoxPanel(Orientation.Vertical)
-    for(i <- Coordinator.devices) {
-      val devPanel = new BoxPanel(Orientation.Horizontal) {
-        contents += new FlowPanel() {
-          contents += new Label(i.name+""+i.room)
-          contents += new BoxPanel(Orientation.Vertical) {
-            contents += new TextField(8)
-            contents += new TextField(8)
-          }
-          contents += new Button("Add")
-        }
-      }
-      panel.contents += devPanel
-    }
-    panel
-  }
-  open()
-}
-
-object AddProgrammedStuff {
-  def apply(): AddProgrammedStuffDialog = {
-    new AddProgrammedStuffDialog()
-  }
-}*/
-
+/** Dialog to get all Home's devices
+ *
+ * @param rooms where you want to add rules
+ * @param dialog instance to add commands
+ * @param sensorRule list of sensor's rules
+ */
 class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]) extends Dialog {
   modal = true
   title = "All Devices"
@@ -752,12 +736,6 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
               case ButtonClicked(_) => addRule(component, i, switchStatus(a))
             }
           }
-          /*if(isRoutine) {
-            contents += new Label("Start at: ")
-            contents += new TextField(8)
-            contents += new Label("End at: ")
-            contents += new TextField(8)
-          }*/
           contents += applyButton
         }
         panel.contents += devPanel
@@ -869,16 +847,6 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField => command match {
       case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
-        /*AlertMessage.alertIsCorrectValue(p.text) match {
-        case true => p.text
-        case _ => p.text = Dialog.showInput(null,
-          "Insert a value: ",
-          "Insert a correct value",
-          Message.Plain,
-          Swing.EmptyIcon,
-          Nil, "").get
-          p.text
-      }*/
       case _ => ""
     }
     case p: ToggleButton => command match {
@@ -895,6 +863,9 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
   open()
 }
 
+/** Factory for [[AllDeviceDialog]]
+ *
+ */
 object AllDevice {
   def apply(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]): AllDeviceDialog = {
     new AllDeviceDialog(rooms, dialog, sensorRule)
