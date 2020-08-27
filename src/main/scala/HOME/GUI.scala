@@ -152,6 +152,11 @@ object GUIRoom{
   def apply(roomName: String,devices:Set[Device]): GUIRoom = new GUIRoom(roomName,devices.map(PrintDevicePane(_)))
 }
 
+/** Layout of Home's page
+ *
+ * @param name name of the Home
+ * @param devices list of home's device
+ */
 class HomePageLayout(override val name:String, override var devices:Set[Updatable]) extends BoxPanel(Orientation.Vertical) with Room{
   val avgTemp = new Label("Internal temperature: ")
   val avgHum = new Label("Internal humidity: ")
@@ -175,12 +180,10 @@ class HomePageLayout(override val name:String, override var devices:Set[Updatabl
   val datePanel: FlowPanel = new FlowPanel() {
     hGap = 70
     contents ++= Seq(new Label("Date: " + DateTime.getDate), new Label("Time: " + DateTime.getCurrentTime))
-    //contents += new Label("External temperature: ")
   }
   val temperaturePanel: FlowPanel = new FlowPanel() {
     hGap = 70
     contents += avgTemp
-    //contents += new Label("External humidity: ")
   }
   val humidityPanel: FlowPanel = new FlowPanel() {
     hGap = 70
@@ -228,6 +231,10 @@ class HomePageLayout(override val name:String, override var devices:Set[Updatabl
   def updateHum(newVal:Double): Unit = avgHum.text = "Average humidity: "+newVal.round+"%"
 
 }
+
+/** Factory for [[HomePageLayout]]
+ *
+ */
 object HomePage {
   def apply(roomName:String, devices:Set[Device]): HomePageLayout = new HomePageLayout(roomName, devices.map(PrintDevicePane(_)))
 }
@@ -456,6 +463,10 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
   this.peer.setLocationRelativeTo(null)
   open()
 
+  /** Apply correct dialog matching with Button's name
+   *
+   * @return
+   */
   def applyDialog: Button = {
     delete match {
       case "Change profile" =>
@@ -475,6 +486,10 @@ class ChangeOrDeleteProfileDialog(delete: String, labelProfile: Label) extends D
     }
   }
 
+  /** Used to active a profile or delete a profile
+   *
+   * @param name Profile's name
+   */
   def changeProfile(name: String): Unit = {
     val selectedProfile = profiles.selection.item
     name match {
@@ -670,6 +685,12 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
     panel
   }
 
+  /** Used to create correct Component matching device's type
+   *
+   * @param dev instance of Device
+   * @param panel instance of Panel
+   * @return the correct Component
+   */
   def applyComponent(dev: Device, panel: FlowPanel) : Component = dev.deviceType match {
     case MotionSensorType => panel.contents+=new Label("Motion ")
       StringComboBox(Set("Detecting") toSeq)
@@ -682,11 +703,21 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
     case _ => this.errUnexpected(UnexpectedDeviceType, dev.deviceType.toString)
   }
 
+  /** Give symbol of selected item
+   *
+   * @param x used to match the Component
+   * @return Give the correct item
+   */
   def giveSymbol(x: Any): String = x match {
     case p: StringComboBox => p.selection.item
     case _ => ""
   }
 
+  /** Used to Create a dialog with all room's devices
+   *
+   * @param room Roomwhere you want all devices
+   * @return a Dialog with all room's devices
+   */
   def roomsDevices(room: String) : Dialog = {
     AllDevice(Set(room), dialog, key)
   }
@@ -705,7 +736,7 @@ object SensorReaction {
 
 /** Dialog to get all Home's devices
  *
- * @param rooms where you want to add rules
+ * @param rooms Rooms you want to add rules
  * @param dialog instance to add commands
  * @param sensorRule list of sensor's rules
  */
@@ -752,6 +783,13 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     panel
   }
 
+  /** Give the correct Component matching command
+   *
+   * @param command command used to match
+   * @param device instance of Device
+   * @param panel instance of Panel
+   * @return the correct Component to add
+   */
   def applyComponent(command: String, device: Device, panel: FlowPanel): Component = command match {
     case Msg.washingType => device.deviceType match {
       case WashingMachineType =>
@@ -807,6 +845,11 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
       component
   }
 
+  /** Used to switch ToggleButton text
+   *
+   * @param status status used to match
+   * @return A status who corresponding the opposite to initial status
+   */
   def switchStatus(status: String) : String = status match {
     case "on" => "off"
     case "off" => "on"
@@ -815,19 +858,21 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     case _ => status
   }
 
+  /** Used to add rule when a profile will be active
+   *
+   * @param component component where you want to get rule
+   * @param device device where you want to apply the rule
+   * @param command command to apply
+   */
   def addRule(component: Component, device: Device, command: String) : Unit = command match {
     case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute => sensorRule match {
       case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
       case _ => sensorRule.head._4.deviceType match {
         case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-          println(dialog.thermometerNotificationCommands)
         case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-          println(dialog.photometerNotificationCommands)
         case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-          println(dialog.hygrometerNotificationCommands)
         case MotionSensorType => dialog.motionSensorNotificationCommands ++= List((List((sensorRule.head._1, sensorRule.head._3, sensorRule.head._4)),
           Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-          println(dialog.motionSensorNotificationCommands)
         case _ =>
       }
     }
@@ -844,6 +889,12 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     }
   }
 
+  /** Return correct Component'svalue
+   *
+   * @param x Component used to match
+   * @param command Command used to match
+   * @return the correct value
+   */
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField => command match {
       case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
