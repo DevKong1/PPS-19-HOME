@@ -523,7 +523,6 @@ class CreateProfileDialog extends Dialog {
   var hygrometerNotificationCommands: List[(List[(String, Double, String, Device)], Set[(Device, CommandMsg)])] = List.empty
   var photometerNotificationCommands: List[(List[(String, Double, String, Device)], Set[(Device, CommandMsg)])] = List.empty
   var motionSensorNotificationCommands: List[(List[(String, String, Device)], Set[(Device, CommandMsg)])] = List.empty
-  //private val programmedStuffCommands: Set[(Device, CommandMsg)] = Set.empty
   title = "New Profile"
   modal = true
 
