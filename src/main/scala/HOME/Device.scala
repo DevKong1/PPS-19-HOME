@@ -133,7 +133,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   }
 
   def onMessageReceived(topic: String, msg: String): Unit = {
-    def message: String = getMessageFromMsg(msg)
+    lazy val message: String = getMessageFromMsg(msg)
     topic match {
       case t if t == subTopic => message match {
         case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
@@ -197,7 +197,7 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   private var _lastVal: Option[A] = None  //Stores the last received value
   private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
 
-  //We only consider a value which changed by a preterminated % in order to avoid non-influential variations
+  //We only consider a value which changed by a predeterminated % in order to avoid non-influential variations
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
       if (_lastVariationVal.isEmpty && currentVal == DEFAULT_VALUE) return false

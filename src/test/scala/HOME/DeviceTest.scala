@@ -270,7 +270,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils with BeforeAndAfterAll {
     light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(cmd = Msg.setIntensity, value = 30), light))
     assert(light.value == 30)
     assertThrows[MalformedParametersException](light.onMessageReceived(light.getSubTopic,"setIntensity_a22"))
-    assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "off"))
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "0_off"))
     assert(light.value == 30)
     assert(light.disconnect)
   }

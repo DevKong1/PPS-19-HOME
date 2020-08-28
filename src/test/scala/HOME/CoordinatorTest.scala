@@ -31,9 +31,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
   }
 
   def concludeTest(args: AssociableDevice*): Unit = {
-    for (device <- args){
-      device.disconnect
-    }
     Coordinator.removeAllDevices()
     Coordinator.disconnect
   }

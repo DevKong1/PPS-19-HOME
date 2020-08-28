@@ -12,9 +12,6 @@ plugins {
 
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
-
-    //JAR
-    id 'com.github.johnrengelman.shadow' version '6.0.0'
 }
 
 repositories {
@@ -43,18 +40,6 @@ dependencies {
 
 compileScala {
     scalaCompileOptions.additionalParameters = ["-feature"]
-}
-
-jar {
-    manifest {
-        attributes 'Main-Class': 'HOME.Application'
-    }
-}
-shadowJar {
-    baseName = "HOME"
-    manifest {
-        attributes 'Main-Class': 'HOME.Application'
-    }
 }
 task spec(dependsOn: ['testClasses'], type: JavaExec) {
   main = 'org.scalatest.tools.Runner'

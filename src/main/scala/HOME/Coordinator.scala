@@ -40,7 +40,9 @@ object Coordinator extends JSONSender with MQTTUtils {
   def addDevice(device: Device): Unit = devices += device
 
   def removeDevice(device: String): Unit = getDevices.find(_.id == device) match {
-    case Some(dev) => publish(dev.asInstanceOf[AssociableDevice],CommandMsg(cmd = Msg.disconnect))
+    case Some(dev) =>
+      publish(dev.asInstanceOf[AssociableDevice].getSubTopic,Msg.disconnect)
+      devices -= dev
     case _ => this.errUnexpected(UnexpectedDevice, device)
   }
   def removeAllDevices(): Unit = {
@@ -134,7 +136,7 @@ object Coordinator extends JSONSender with MQTTUtils {
         subscribe(device.getPubTopic)
         publish(device.getSubTopic, Msg.regSuccess)
       case m if m == Msg.disconnected =>
-        devices --= devices.find(_.id == device.name)
+        removeDevice(device.id)
         unsubscribe(device.getPubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)
     }
@@ -206,7 +208,7 @@ sealed trait Profile {
   val name: String
   val description: String
 
-  /** The instructions to apply when the profie is Activated **/
+  /** The instructions to apply when the profile is Activated **/
   def onActivation(): Unit
 
   /** The instructions to apply in response to a sensor notification **/
@@ -294,7 +296,7 @@ object Profile {
       case device: AssociableDevice if !DeviceType.isSensor(device.deviceType) => Coordinator.publish(device, CommandMsg(cmd = Msg.off))
       case _ =>
     }
-    /** If the outside temperature is too hot or cold we make the inside a bit more confortable **/
+    /** If the outside temperature is too hot or cold we make the inside a bit more comfortable **/
     override def thermometerNotificationCommands(room: String, value: Double): Device => Unit = {
       case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value > 35 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 21))
       case device: AssociableDevice if device.room == room && device.deviceType == AirConditionerType && value < 21 => Coordinator.publish(device, CommandMsg(cmd = Msg.on)); Coordinator.publish(device, CommandMsg(Msg.nullCommandId, Msg.setTemperature, 28))
@@ -417,7 +419,7 @@ case class CustomProfile(override val name: String, override val description: St
     }
   }
 
-  /** If we are checking a value given by a sensor we also have to check if it fullfills the criteria chosen by the user */
+  /** If we are checking a value given by a sensor we also have to check if it fulfills the criteria chosen by the user */
   private def checkAndApplySensorCommand[A](value: A, checkAndCommands: Map[(String, A) => Boolean, Set[Device => Unit]], room: String): Unit = {
    for(checkAndCommand <- checkAndCommands) {
      if (checkAndCommand._1(room, value)) {
@@ -432,10 +434,10 @@ case class CustomProfile(override val name: String, override val description: St
 object CustomProfileBuilder {
   /** Get a Check Function formatted so that the Custom Profile can use it
    *
-   * @param symbol the symbol which paired with a value will determinate if the user crieria is fullfileed
+   * @param symbol the symbol which paired with a value will determinate if the user criteria is fulfilled
    * @param value the numeric value which will be confronted with the value received by the sensors
    * @param consideredRoom the room from which the sensor sends the update
-   * @return a function with the critieria chosen by the user which will be used by a Custom Profile
+   * @return a function with the criteria chosen by the user which will be used by a Custom Profile
    * */
   def generateCheckFunction(symbol: String, value: Double, consideredRoom: String): (String, Double) => Boolean = symbol match {
     case "=" => {
@@ -464,7 +466,7 @@ object CustomProfileBuilder {
   /** Get a set of Functions formatted so that the Custom Profile can use it
    *
    * @param commands the set of Devices and relative commands to apply
-   * @return a set of functions with the critieria chosen by the user which will be used by a Custom Profile
+   * @return a set of functions with the criteria chosen by the user which will be used by a Custom Profile
    * */
   def generateCommandSet(commands: Set[(Device,CommandMsg)]): Set[Device => Unit] = {
     var result: Set[Device => Unit] = Set.empty

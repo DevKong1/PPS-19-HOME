@@ -43,6 +43,8 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
       d.subscribe
       Coordinator.addDevice(d)
     }
+
+    assert(Coordinator.getDevices.size == 5)
   }
 
 
@@ -69,14 +71,14 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
   test("Updatable devices do actually update",BrokerRequired){
     assert(Coordinator.publish(light.getSubTopic, "0_on"))
     eventually {
-      Thread.sleep(testSleepTime);
-      light.isOn should be (true);
+      Thread.sleep(testSleepTime)
+      light.isOn should be (true)
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(true)
     }
 
     assert(Coordinator.publish(light, CommandMsg(cmd = Msg.off)))
     eventually {
-      Thread.sleep(testSleepTime);
+      Thread.sleep(testSleepTime)
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(false)
     }
 
