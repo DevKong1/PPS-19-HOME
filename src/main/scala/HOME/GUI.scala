@@ -108,7 +108,6 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
   contents = bp
   for (i <- devices.filter( dev => !Device.isSensor(dev.device))) addDevicePane(i.printPane())
 
-  for (i <- devices.filter( dev => !Device.isSensor(dev.device))) addDevicePane(i.printPane())
 
   /** Adds a GUIDevice to room
    *
@@ -125,10 +124,10 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
    * @param dev device to be added
    */
   override def addDevice(dev:Device): Unit ={
-    dev.turnOn()
     val tmp = PrintDevicePane(dev)
     addDevicePane(tmp)
     devices+=tmp
+    this.repaint()
   }
 
   /** removes a device from room
@@ -137,6 +136,7 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
    */
   override def removeDevice(dev:Device):Unit={
     devices -= devices.find(_.device.name == dev.name).get
+
   }
 }
 /**Factory for [[GUIRoom]]*/
@@ -246,14 +246,14 @@ object HomePage {
  */
 object GUI extends MainFrame {
   var rooms: Set[Room] = Set.empty
-  println(Coordinator.getDevices.filter(_.room == "Home"))
   val home: HomePageLayout = HomePage("Home", Coordinator.getDevices.filter(_.room == "Home"))
   private var avgTemp : Map[String,Double] = Map.empty
   private var avgHum : Map[String,Double] = Map.empty
 
-  for(i <- Rooms.allRooms) i match {
+  for(room <- Rooms.allRooms) room match {
     case "Home" =>
-    case _ => rooms += GUIRoom(i, Coordinator.getDevices.filter(_.room == i))
+    case _ => rooms += GUIRoom(room, Coordinator.getDevices.filter(_.room == room))
+      println(Coordinator.getDevices.filter(_.room == room))
   }
   private val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
@@ -313,6 +313,7 @@ object GUI extends MainFrame {
    */
   def removeDevice(device:Device) : Unit = {
     rooms.find(_.devices.map(_.device.name) contains device.name).get.removeDevice(device)
+    Coordinator.removeDevice(device.name)
   }
 
   /** Updates a device's feature
@@ -323,7 +324,7 @@ object GUI extends MainFrame {
    *
    * Called whenever a profile makes a change to a device feature and needs to reflect such change to GUI devices
    */
-  def updateDevice(d: Device,cmdMsg:String,newVal:String):Unit =
+   def updateDevice(d: Device,cmdMsg:String,newVal:String):Unit =
     rooms.find(_.devices.map(_.device.name).contains(d.name)).get.devices.find(_.device.name == d.name).get.updateDevice(cmdMsg,newVal)
 
   /** Updates average temperature in home
@@ -414,7 +415,7 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev);repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev); repaint(); close()
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -962,7 +963,7 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
    * Provides the two basic commands every device needs to respond to;
    * called whenever a profile needs to update a device.
    */
-  def updateDevice(cmdString: String,newVal:String): Unit = cmdString match {
+  override def updateDevice(cmdString: String,newVal:String): Unit = cmdString match {
     case Msg.on => device.turnOn(); status.setVal("ON")
     case Msg.off => device.turnOff(); status.setVal("OFF")
     case _ =>
