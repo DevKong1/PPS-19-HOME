@@ -253,7 +253,6 @@ object GUI extends MainFrame {
   for(room <- Rooms.allRooms) room match {
     case "Home" =>
     case _ => rooms += GUIRoom(room, Coordinator.getDevices.filter(_.room == room))
-      println(Coordinator.getDevices.filter(_.room == room))
   }
   private val tp: TabbedPane = new TabbedPane {
     //Initializing basic rooms
@@ -313,7 +312,6 @@ object GUI extends MainFrame {
    */
   def removeDevice(device:Device) : Unit = {
     rooms.find(_.devices.map(_.device.name) contains device.name).get.removeDevice(device)
-    Coordinator.removeDevice(device.name)
   }
 
   /** Updates a device's feature
@@ -945,7 +943,7 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
     new Button("Delete") {
       reactions +={
         case ButtonClicked(_) => Dialog.showConfirmation(message="Are you sure you want to delete this device? There is no coming back",title ="Delete device") match{
-          case Result.Ok =>  Coordinator.sendUpdate(device.name,Msg.disconnect); GUI.removeDevice(device); close
+          case Result.Ok =>  Coordinator.removeDevice(device.name); GUI.removeDevice(device); close
           case _ => //Do nothing
         }
       }

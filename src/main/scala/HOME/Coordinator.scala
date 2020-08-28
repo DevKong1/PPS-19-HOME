@@ -39,8 +39,15 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def addDevice(device: Device): Unit = devices += device
 
-  def removeDevice(device: String): Unit = devices --= devices.filter(_.name == device)
-  def removeAllDevices(): Unit = devices = Set.empty
+  def removeDevice(device: String): Unit = getDevices.find(_.id == device) match {
+    case Some(dev) => publish(dev.asInstanceOf[AssociableDevice],CommandMsg(cmd = Msg.disconnect))
+    case _ => this.errUnexpected(UnexpectedDevice, device)
+  }
+  def removeAllDevices(): Unit = {
+    for(device <- getDevices) {
+      removeDevice(device.id)
+    }
+  }
 
   def getDevices: Set[Device] = devices
 
@@ -95,7 +102,7 @@ object Coordinator extends JSONSender with MQTTUtils {
     split.length > 1 && DeviceType.isSensor(split(1)) && message.contains(Msg.updateBaseString)
   }
 
-  /** If the receivde message is a logging message memorizes the content in a .csv file **/
+  /** If the received message is a logging message memorizes the content in a .csv file **/
   private def logMessage(message: String): Unit = {
     val split = getMessageFromMsg(message).split(logSeparator)
     val cmd = split(0)
@@ -127,7 +134,7 @@ object Coordinator extends JSONSender with MQTTUtils {
         subscribe(device.getPubTopic)
         publish(device.getSubTopic, Msg.regSuccess)
       case m if m == Msg.disconnected =>
-        removeDevice(device.name)
+        devices --= devices.find(_.id == device.name)
         unsubscribe(device.getPubTopic)
       case m => this.errUnexpected(UnexpectedMessage, m)
     }
