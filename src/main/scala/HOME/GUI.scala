@@ -641,7 +641,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
         val comboRooms: StringComboBox = StringComboBox(Rooms.allRooms toSeq)
         val value = new TextField(10)
         devicePanel.contents += new FlowPanel() {
-          contents += new Label(i.name + ": ")
+          contents += new Label(i.deviceType+"_"+i.room+": ")
           contents += applyComponent(i, this)
           if(i.deviceType != MotionSensorType) {
             contents += value
@@ -758,7 +758,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
         devPanel.peer.add(Box.createVerticalStrut(10))
         devPanel.border = new LineBorder(Color.BLACK, 2)
         devPanel.contents += new FlowPanel() {
-          contents += new Label(i.name)
+          contents += new Label(i.deviceType+"_"+i.room)
           MapDeviceCommands.apply(i)
           for(a <- MapDeviceCommands.getCommands) {
             val component = applyComponent(a,i,this)
