@@ -13,11 +13,14 @@ import scala.util.{Failure, Success, Try}
 trait MQTTUtils extends JSONUtils {
   val retained: Boolean = true
   val topicSeparator: Char = '/'
+  val logSeparator: Char = '_'
   val pubTopicPostFix: String = "From"
   val subTopicPostFix: String = "To"
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
   val updateTopic: String = "update"  //Topic used by the devices to confirm the update requested
+  val sensorUpdateTopic: String = "sensorUpdate"  //Topic used by the sensors to send updates
+  val loggingTopic: String = "log"  //Topic used by the sensors to send updates
 
   //Quality of Service
   //private val QoS_0: Int = 0
@@ -31,6 +34,7 @@ trait MQTTUtils extends JSONUtils {
   private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
   private val brokerURL: String = "tcp://mosquitto-service:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
+  private val waitAfterPublish: Int = 50
 
   class ConnectionException(message: String) extends Exception(message)
 
@@ -102,6 +106,7 @@ trait MQTTUtils extends JSONUtils {
       false
     case _ =>
       if (client.isConnected) client.getTopic(pubTopic).publish(getMsg(message, sender).getBytes, QoS_1, retained)
+      Thread.sleep(waitAfterPublish)
       true
   }
 }
@@ -133,10 +138,10 @@ object CommandMsg {
 object Msg {
   val nullCommandId: Int = 0
 
+  val disconnect: String = "disconnect" //Message sent by the coordinator to tell a device to disconnect
   val disconnected: String = "disconnected" //Message sent when the connection is lost
   val register: String = "register" //Message sent by the device to register to the system
   val regSuccess: String = "regSuccess" //Message sent by the coordinator to assert the device has registered successfully
-  val confirmUpdate: String = "success"  //Message sent by the device which has successfully updated its status
 
   //Commands
   val on: String = "on"
@@ -156,6 +161,7 @@ object Msg {
   val setMode: String = "setMode"
 
   //Sensor values
+  val updateBaseString = "sensorUpdate"
   val temperatureRead: String = "temperatureRead"
   val humidityRead: String = "humidityRead"
   val intensityRead: String = "intensityRead"
