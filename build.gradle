@@ -45,7 +45,7 @@ dependencies {
 
 application {
 	// Define the main class for the application.
-	mainClassName = "HOME.GUI"
+	mainClassName = "HOME.Application"
 }
 
 compileScala {
