@@ -1,6 +1,7 @@
 package HOME
 
-import java.awt.Color
+import java.awt.{Color, Toolkit}
+import java.net.URL
 
 import HOME.MyClass._
 import javax.swing.border.{LineBorder, TitledBorder}
@@ -646,7 +647,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
           if(i.deviceType != MotionSensorType) {
             contents += value
           }
-          contents += new Label("Select rooms where yuo want to apply rules")
+          contents += new Label("Select rooms where you want to apply rules")
           contents += comboRooms
           contents += new Button("Do") {
             reactions += {
@@ -992,7 +993,11 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
   private class DeviceIcon(iconName :String) extends Label {
     text = iconName
     border = new LineBorder(Color.black,1)
-    icon = new ImageIcon(Constants.resourcePath + iconName + Constants.IconExt)
+
+    val iconUrl :URL = this.getClass().getResource("/" + iconName + Constants.IconExt)
+    val tk :Toolkit = Toolkit.getDefaultToolkit
+    val someimgicon = tk.getImage(iconUrl)
+    icon = new ImageIcon(someimgicon)
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
