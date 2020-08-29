@@ -31,7 +31,7 @@ object Constants {
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
-  val resourcePath: String = "src/main/resources/"
+  val resourcePath: String = "src"+File.separator+"main"+File.separator+"resources"+File.separator
   val IconExt = ".jpg"
   val LoginTextSize = 20
   val AddPane = "+"
