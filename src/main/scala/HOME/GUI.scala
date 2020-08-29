@@ -3,6 +3,7 @@ package HOME
 import java.awt.Color
 
 import HOME.MyClass._
+import javax.imageio.ImageIO
 import javax.swing.border.{LineBorder, TitledBorder}
 import javax.swing.{Box, ImageIcon}
 
@@ -992,7 +993,8 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
   private class DeviceIcon(iconName :String) extends Label {
     text = iconName
     border = new LineBorder(Color.black,1)
-    icon = new ImageIcon(Constants.resourcePath + iconName + Constants.IconExt)
+    private val path = getClass.getClassLoader.getResourceAsStream(iconName + Constants.IconExt)
+    icon = new ImageIcon(ImageIO.read(path))
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom
