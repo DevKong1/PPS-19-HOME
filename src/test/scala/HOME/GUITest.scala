@@ -1,13 +1,12 @@
 package HOME
 
-import HOME.ConstantsTest._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAfterAll{
-
+/*
   override def beforeAll(): Unit = {
     Logger.setTestFile()
     super.beforeAll()
@@ -88,5 +87,5 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
       light.value should be (15)
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.asInstanceOf[SimulatedLight].value should be(15)
     }
-  }
+  }*/
 }

@@ -4,6 +4,7 @@ import java.awt.{Dimension, GraphicsEnvironment}
 import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Calendar
+
 import io.github.nremond.SecureHash
 
 import scala.io.Source
@@ -142,7 +143,7 @@ object UserHandler{
    *
    * @param id to login
    * @param psw to login
-   * @return whether login is successfull or not
+   * @return whether login is successful or not
    */
   def login(id:String,psw:String) : Boolean = {
     if (!CheckNonNull(id,psw)) return false
@@ -160,7 +161,7 @@ object UserHandler{
 
   /** Gets id and password from a "login valid" string, es: "username-password"
    *
-   * @param s string cointaining id and psw
+   * @param s string containing id and psw
    */
   implicit class LoginHelper(s: String) {
     private val ID = 0
@@ -189,20 +190,22 @@ object AlertMessage {
   def alertIsCorrectName(x: String): Boolean = x match {
     case "" => Dialog.showMessage(null, "Insert a valid name", "Error", Dialog.Message.Error, Swing.EmptyIcon)
       false
-    case _ => Profile.getProfileNames.contains(x) match {
-      case true => Dialog.showMessage(null, "This name already exist", "Error", Dialog.Message.Error, Swing.EmptyIcon)
-        false
-      case _ => true
+    case _ => if (Profile.getProfileNames.contains(x)) {
+      Dialog.showMessage(null, "This name already exist", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+      false
+    } else {
+      true
     }
   }
 
   def alertIsCorrectValue(value: String): Boolean = value match {
     case "" => Dialog.showMessage(null, "Insert a value", "Error", Dialog.Message.Error, Swing.EmptyIcon)
       false
-    case _ => isDouble(value) match {
-      case false => Dialog.showMessage(null, "Insert a correct numeric value", "Error", Dialog.Message.Error, Swing.EmptyIcon)
-        false
-      case _ => true
+    case _ => if (isDouble(value)) {
+      true
+    } else {
+      Dialog.showMessage(null, "Insert a correct numeric value", "Error", Dialog.Message.Error, Swing.EmptyIcon)
+      false
     }
   }
 

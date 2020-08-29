@@ -197,7 +197,7 @@ sealed trait SensorAssociableDevice[A] extends AssociableDevice {
   private var _lastVal: Option[A] = None  //Stores the last received value
   private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
 
-  //We only consider a value which changed by a predeterminated % in order to avoid non-influential variations
+  //We only consider a value which changed by a predetermined % in order to avoid non-influential variations
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
       if (_lastVariationVal.isEmpty && currentVal == DEFAULT_VALUE) return false

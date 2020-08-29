@@ -30,7 +30,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     }
   }
 
-  def concludeTest(args: AssociableDevice*): Unit = {
+  def concludeTest(): Unit = {
     Coordinator.removeAllDevices()
     Coordinator.disconnect
   }
@@ -44,7 +44,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
 
   private val salotto: String = "Living room"
 
-  test("Coordinator correctly calculates Consuption"){
+  test("Coordinator correctly calculates Consumption"){
     val Light1 = Light("Light1",salotto)
     val Light2 = Light("Light2",salotto)
 
@@ -125,11 +125,11 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
     eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
 
-    Coordinator.getActiveProfile.onMotionSensorNotification(salotto, true)
+    Coordinator.getActiveProfile.onMotionSensorNotification(salotto, value = true)
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
 
-    concludeTest(light, shutter, ac, humid)
+    concludeTest()
   }
 
   test("The custom profile builder builds and Saves a Set of instructions correctly", BrokerRequired) {
@@ -145,13 +145,13 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
 
     val temperatureCheckMoreThan50 = CustomProfileBuilder.generateCheckFunction(">",50, salotto)
     val temperatureCommandsMoreThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
-    val generatedtemperatureCommandsMoreThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsMoreThan50)
+    val generatedTemperatureCommandsMoreThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsMoreThan50)
 
     val temperatureCheckLessThan50 = CustomProfileBuilder.generateCheckFunction("<", 50, salotto)
     val temperatureCommandsLessThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 30)))
-    val generatedtemperatureCommandsLessThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsLessThan50)
+    val generatedTemperatureCommandsLessThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsLessThan50)
 
-    val generatedTemperatureCommandsMap = CustomProfileBuilder.generateSensorCommandsMap((temperatureCheckMoreThan50, generatedtemperatureCommandsMoreThan50), (temperatureCheckLessThan50, generatedtemperatureCommandsLessThan50))
+    val generatedTemperatureCommandsMap = CustomProfileBuilder.generateSensorCommandsMap((temperatureCheckMoreThan50, generatedTemperatureCommandsMoreThan50), (temperatureCheckLessThan50, generatedTemperatureCommandsLessThan50))
 
 
     val dummySet: Set[Device => Unit] = Set({_.id})
@@ -180,7 +180,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     assert(!Profile.savedProfiles.contains(builtProfile))
 
     Coordinator.setProfile(Profile(Constants.default_profile_name))
-    concludeTest(tv)
+    concludeTest()
   }
 
   test("The Coordinator correctly receives and logs Log messages", BrokerRequired) {
@@ -199,7 +199,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     assert(firstRow("ID") == "A" && firstRow("Consumption") == "5")
     assert(secondRow("ID") == "A" && secondRow("Consumption") == "5")
 
-    concludeTest(light)
+    concludeTest()
   }
 
 
@@ -222,6 +222,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
 
     assert(BigDecimal(Coordinator.getTotalConsumption).setScale(3, BigDecimal.RoundingMode.HALF_UP).toDouble == 0.003)
 
-    concludeTest(light, light2)
+    concludeTest()
   }
 }

@@ -5,6 +5,7 @@ import java.awt.Color
 import HOME.MyClass._
 import javax.swing.border.{LineBorder, TitledBorder}
 import javax.swing.{Box, ImageIcon}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.language.postfixOps
@@ -58,7 +59,7 @@ sealed trait EditableFeature{
    * @param devName device updating its feature
    * @param cmdMsg [[Msg]] type of update
    * @param newValue new feature value
-   * @return future stating wheter the connected device updated its value
+   * @return future stating whether the connected device updated its value
    *
    * Such return promise will be completed only when the physically connected device updates
    * it's feature value and sends a confirm back to [[Coordinator]].
@@ -145,7 +146,7 @@ object GUIRoom{
    *
    * @param roomName room name
    * @param devices devices in room
-   * @return a new istance of [[GUIRoom]]
+   * @return a new instance of [[GUIRoom]]
    *
    * provides abstraction between devices and [[GUIDevice]]
    */
@@ -349,7 +350,7 @@ object GUI extends MainFrame {
     }
   }
 
-  /** Shutsdown application */
+  /** Shutdown application */
   override def closeOperation(): Unit = {
     super.closeOperation()
     Application.closeApplication()
@@ -713,7 +714,7 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
 
   /** Used to Create a dialog with all room's devices
    *
-   * @param room Roomwhere you want all devices
+   * @param room Room where you want all devices
    * @return a Dialog with all room's devices
    */
   def roomsDevices(room: String) : Dialog = {
@@ -1015,6 +1016,7 @@ case class DeviceFeature[A<: Component { def setVal(v:String): Unit; def getVal:
   reactions+={
     case MouseClicked(_,_,_,_,_) => new Dialog(){
       title = featureTitle
+      import scala.language.reflectiveCalls
       private val value : Label = new Label(setterComponent.getVal)
 
       contents = new BoxPanel(Orientation.Vertical) {
@@ -1111,7 +1113,7 @@ case class BinaryFeature(devName:String,toDisplay:String,displayCmd:String,other
   }
 }
 
-/** Factory for [[DeviceFeature]] istances.
+/** Factory for [[DeviceFeature]] instances.
  *
  */
 object Feature{
@@ -1130,7 +1132,7 @@ object Feature{
 }
 
 /**
- * Factory for [[GUIDevice]] instancies.
+ * Factory for [[GUIDevice]] instances.
  *
  * Given a device, returns its graphical representation
  */
@@ -1325,7 +1327,7 @@ private case class ShutterPane(override val device: SimulatedShutter) extends GU
 private case class StereoPane(override val device: SimulatedStereoSystem) extends GUIDevice(device){
   private val volume = DeviceFeature(device.name,"Volume",device.value toString,SliderSetter(device.minValue,device.maxValue),Msg.setVolume)
   private val muted = BinaryFeature(device.name,"NOT MUTED",Msg.mute,"MUTED",Msg.mute)
-  addFeatures(("Volume:",volume),("Stero status:",muted))
+  addFeatures(("Volume:",volume),("Stereo status:",muted))
   override def updateDevice(cmdString: String,newVal:String): Unit = {
     super.updateDevice(cmdString, newVal)
     cmdString match {

@@ -25,7 +25,7 @@ object Constants {
    * @param name room name
    * @return set of devices in given room
    *
-   * Generates dinamically a set of devices.
+   * Generates dynamically a set of devices.
    */
   def devicesPerRoom(name: String) :Set[Device]= Set(Light(DeviceIDGenerator(),name),Thermometer(DeviceIDGenerator(),name),Hygrometer(DeviceIDGenerator(),name),MotionSensor(DeviceIDGenerator(),name))
   def default_profile_name: String = "DEFAULT"
@@ -183,7 +183,7 @@ object RequestHandler {
 
   /** adds a new request
    *
-   * @param newRequest promise to fullfill
+   * @param newRequest promise to fulfill
    * @return a new request ID.
    */
   def addRequest(newRequest :Promise[Unit]): Int = {
@@ -203,7 +203,6 @@ object RequestHandler {
  *
  * This is used when we have a decent amount of case objects and want to treat them in a way similar to Java Enums.
  *
- * @param _class
  */
 case class MyClass(_class: Any) {
   def getSimpleClassName: String = _class.getClass.getSimpleName.split("\\$").last
@@ -220,7 +219,6 @@ object MyClass{
  *
  * This is used when we have a decent amount of case objects and want to treat them in a way similar to Java Enums.
  *
- * @param _iterable
  */
 case class MyIterable[A](_iterable: Iterable[A]) {
   def findSimpleClassName(item: String): Boolean = _iterable.find(_.getSimpleClassName == item) match {
@@ -314,7 +312,7 @@ object UpdateDevice {
   }
 }
 
-/** Enume-Likes used by various devices **/
+/** Enum-Likes used by various devices **/
 
 trait RPM
 object RPM {
