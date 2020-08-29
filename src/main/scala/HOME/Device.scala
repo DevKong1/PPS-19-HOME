@@ -117,6 +117,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   }
 
   override def disconnect: Boolean = {
+    if(isOn && turnOff()) sendLogMsg(Msg.off)
     _connected = !super.disconnect
     if (_registered && !_connected) _registered = false
     !_connected

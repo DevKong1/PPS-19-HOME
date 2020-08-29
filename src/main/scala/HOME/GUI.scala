@@ -889,7 +889,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     }
   }
 
-  /** Return correct Component'svalue
+  /** Return correct Components value
    *
    * @param x Component used to match
    * @param command Command used to match
@@ -994,9 +994,9 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
     text = iconName
     border = new LineBorder(Color.black,1)
 
-    val iconUrl :URL = this.getClass().getResource("/" + iconName + Constants.IconExt)
+    val iconUrl :URL = this.getClass.getResource("/" + iconName + Constants.IconExt)
     val tk :Toolkit = Toolkit.getDefaultToolkit
-    val someimgicon = tk.getImage(iconUrl)
+    val someimgicon: Image = tk.getImage(iconUrl)
     icon = new ImageIcon(someimgicon)
 
     horizontalTextPosition = Alignment.Center
