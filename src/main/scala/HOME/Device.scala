@@ -90,7 +90,7 @@ object AssociableDevice {
   }
 }
 
-/** Represents a devices which is connected via MQTT **/
+/** Represents a device which is connected via MQTT **/
 sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeDevice
   override def name: String = id
@@ -101,7 +101,7 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   private var _registered: Boolean = false
 
   private val pubTopic: String = getPubTopic //Topic used by sensors to send data
-  private val subTopic: String = getSubTopic  //Topic used by actuators to receive orders
+  private val subTopic: String = getSubTopic //Topic used by actuators to receive orders
   var registrationPromise: Promise[Unit] = _
 
   def isConnected: Boolean = _connected
@@ -111,11 +111,13 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   def getPubTopic: String = getBaseTopic + topicSeparator + pubTopicPostFix
   def getSubTopic: String = getBaseTopic + topicSeparator + subTopicPostFix
 
+  /** Connects to the broker **/
   def connect: Boolean = {
     _connected = connect(this, onMessageReceived)
     _connected
   }
 
+  /** Disconnects from the broker **/
   override def disconnect: Boolean = {
     if(isOn && turnOff()) sendLogMsg(Msg.off)
     _connected = !super.disconnect
@@ -123,16 +125,27 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     !_connected
   }
 
+  /** Subscribes to its default topics **/
   def subscribe: Boolean = subscribe(subTopic) && subscribe(broadcastTopic)
 
-  def publish(message: CommandMsg): Boolean = publish(pubTopic, message, this, retained)
+  /** Publishes a command message to its default publish topic **/
+  def publish(message: CommandMsg): Boolean = publish(pubTopic, message, retained)
 
+  /** Registers to the System sending a register message.
+   *
+   * @return  [[Future]] to be completed when the Coordinator sends back a confirmation message
+   */
   def register: Future[Unit] = {
     registrationPromise = Promise[Unit]
-    publish(regTopic, Msg.register, this)
+    publish(regTopic, Msg.register)
     registrationPromise.future
   }
 
+  /** Handles the received messages
+   *
+   * @param topic the topic the message arrived on
+   * @param msg the message itself
+   */
   def onMessageReceived(topic: String, msg: String): Unit = {
     lazy val message: String = getMessageFromMsg(msg)
     topic match {
@@ -153,15 +166,17 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     }
   }
 
-  /** Each different device will be able to handle messages designed specifically for him **/
+  /** Each different device is able to handle messages designed specifically for him **/
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
-  def sendConfirmUpdate(message: String): Unit = {
-    publish(updateTopic, message, this)
+  /** Sends a confirmation message that will be collected by the Coordinator **/
+  private def sendConfirmUpdate(message: String): Unit = {
+    publish(updateTopic, message)
   }
 
+  /** Sends a log message that will be collected by the Coordinator **/
   private def sendLogMsg(message: String): Unit = {
-    publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()), this)
+    publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()))
   }
 }
 

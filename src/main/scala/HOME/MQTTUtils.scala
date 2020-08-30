@@ -10,6 +10,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
+/** Trait used for connection purposes **/
 trait MQTTUtils extends JSONUtils {
   val retained: Boolean = true
   val topicSeparator: Char = '/'
@@ -19,8 +20,8 @@ trait MQTTUtils extends JSONUtils {
   val broadcastTopic: String = "broadcast" //Topic the devices listen to for general messages
   val regTopic: String = "registration" //Topic used by the devices to register/disconnect to/from the system
   val updateTopic: String = "update"  //Topic used by the devices to confirm the update requested
-  val sensorUpdateTopic: String = "sensorUpdate"  //Topic used by the sensors to send updates
-  val loggingTopic: String = "log"  //Topic used by the sensors to send updates
+  val sensorUpdateTopic: String = "sensorUpdate"  //Topic used by the sensors to send update messages
+  val loggingTopic: String = "log"  //Topic used by the sensors to send log messages
 
   //Quality of Service
   //private val QoS_0: Int = 0
@@ -36,8 +37,15 @@ trait MQTTUtils extends JSONUtils {
   private val persistence: MemoryPersistence = new MemoryPersistence
   private val waitAfterPublish: Int = 50
 
-  class ConnectionException(message: String) extends Exception(message)
+  /** Exception class used internally **/
+  private class ConnectionException(message: String) extends Exception(message)
 
+  /** Connects the requestor to the broker
+   *
+   * @param _sender the requestor the wants to connect
+   * @param onMessageReceived the method to call when the requestor receives a message
+   * @return  [[Boolean]] whether the connection completed successfully
+   */
   def connect(_sender: JSONSender, onMessageReceived: (String,String) => Unit): Boolean = client match {
     case null => Try {
       sender = _sender
@@ -57,6 +65,7 @@ trait MQTTUtils extends JSONUtils {
           client.connect(opts) //Auto reconnects
         }
 
+        /** The incoming message is handled by the onMessageReceived method on a dedicated Thread **/
         override def messageArrived(topic: String, message: MqttMessage): Unit = {
           implicit val context: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
           Future {onMessageReceived(topic, new String(message.getPayload))}
@@ -75,15 +84,24 @@ trait MQTTUtils extends JSONUtils {
     case _ => false
   }
 
+  /** Disconnect from the broker after sending the last will message
+   *
+   * @return [[Boolean]] whether the disconnection completed successfully
+   */
   def disconnect: Boolean = client match {
     case null => true
     case _ =>
-      publish(sender.lastWillTopic, sender.lastWillMessage, sender)
+      publish(sender.lastWillTopic, sender.lastWillMessage)
       client.disconnect()
       client = null
       true
   }
 
+  /** Subscribes to the specified topic
+   *
+   * @param topic the topic to subscribe to
+   * @return [[Boolean]] whether the subscription completed successfully
+   */
   def subscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
@@ -91,6 +109,11 @@ trait MQTTUtils extends JSONUtils {
       true
   }
 
+  /** Unsubscribes from the specified topic
+   *
+   * @param topic the topic to unsubscribe from
+   * @return [[Boolean]] whether the unsubscription completed successfully
+   */
   def unsubscribe(topic: String): Boolean = client match {
     case null => false
     case _ =>
@@ -98,10 +121,18 @@ trait MQTTUtils extends JSONUtils {
       true
   }
 
-  def publish(pubTopic:String, message: CommandMsg, sender: JSONSender, retained: Boolean): Boolean =
-    publish(pubTopic, message.toString, sender, retained)
+  /** Publishes a command message to the specified topic **/
+  def publish(pubTopic:String, message: CommandMsg, retained: Boolean): Boolean =
+    publish(pubTopic, message.toString, retained)
 
-  def publish(pubTopic:String, message: String, sender: JSONSender, retained: Boolean = !retained): Boolean = client match {
+  /** Publishes a message to the specified topic
+   *
+   * @param pubTopic the topic to publish the message to
+   * @param message the message to publish
+   * @param retained whether the published message should be retained
+   * @return [[Boolean]] whether the publish completed successfully
+   */
+  def publish(pubTopic:String, message: String, retained: Boolean = !retained): Boolean = client match {
     case null =>
       false
     case _ =>
@@ -111,6 +142,7 @@ trait MQTTUtils extends JSONUtils {
   }
 }
 
+/** Trait for a command message: each command message has an id, a command and a possible related value **/
 trait CommandMsg {
   def id: Int
   def command: String
@@ -135,6 +167,7 @@ object CommandMsg {
   def apply(id: Int = Msg.nullCommandId, cmd: String, value: Any = null): CommandMsg = CommandMsgImpl(id, cmd, value)
 }
 
+/** Messages sent by Devices and Coordinator **/
 object Msg {
   val nullCommandId: Int = 0
 

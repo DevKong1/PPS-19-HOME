@@ -994,10 +994,8 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
     text = iconName
     border = new LineBorder(Color.black,1)
 
-    val iconUrl :URL = this.getClass.getResource("/" + iconName + Constants.IconExt)
-    val tk :Toolkit = Toolkit.getDefaultToolkit
-    val someimgicon: Image = tk.getImage(iconUrl)
-    icon = new ImageIcon(someimgicon)
+    private val iconUrl :URL = this.getClass.getResource("/" + iconName + Constants.IconExt)
+    icon = new ImageIcon(Toolkit.getDefaultToolkit.getImage(iconUrl))
 
     horizontalTextPosition = Alignment.Center
     verticalTextPosition = Alignment.Bottom

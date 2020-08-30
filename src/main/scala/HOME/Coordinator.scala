@@ -39,12 +39,20 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def addDevice(device: Device): Unit = devices += device
 
+  /** Removes a Device identified by its id and sends a disconnect message to it if
+   * it's not local and is instance of AssociableDevice
+   *
+   * @param device the device id
+   * @param local tells if the removal triggers a publish to the device
+   */
   def removeDevice(device: String, local: Boolean = false): Unit = getDevices.find(_.id == device) match {
     case Some(dev) =>
-      if (!local) publish(dev.asInstanceOf[AssociableDevice].getSubTopic,Msg.disconnect)
+      if (!local && dev.isInstanceOf[AssociableDevice])
+        publish(dev.asInstanceOf[AssociableDevice].getSubTopic,Msg.disconnect)
       devices -= dev
     case _ => this.errUnexpected(UnexpectedDevice, device)
   }
+
   def removeAllDevices(): Unit = {
     for(device <- getDevices) {
       removeDevice(device.id)
@@ -67,8 +75,8 @@ object Coordinator extends JSONSender with MQTTUtils {
 
   def subscribe: Boolean = subscribe(regTopic) && subscribe(updateTopic) && subscribe(loggingTopic)
 
-  def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, this, !retained)
-  def publish(topic: String, message: String): Boolean = publish(topic, message, this)
+  def publish(device: AssociableDevice, message: CommandMsg): Boolean = publish(device.getSubTopic, message, !retained)
+  def publish(topic: String, message: String): Boolean = super.publish(topic, message)
 
   /** Handle the received message, if it's a sensor update also notifies the active profile **/
   def onMessageReceived(topic: String, message: String): Unit = topic match {
@@ -118,7 +126,14 @@ object Coordinator extends JSONSender with MQTTUtils {
     }
   }
 
-  def sendUpdate(devName : String,cmdMsg : String,newValue:String = null) : Future[Unit] = {
+  /** Creates a CommandMessage and sends it to the device
+   *
+   * @param devName the device identified by its name
+   * @param cmdMsg the command Message to be sent
+   * @param newValue represents the value of the command, if used
+   * @return  [[Future]] to be completed when the Coordinator receives a confirmation message
+   */
+  def sendUpdate(devName :String, cmdMsg :String, newValue :String = null) :Future[Unit] = {
     val p = Promise[Unit]
     val requestNumber = RequestHandler.addRequest(p)
     publish(devices.find(_.name equals devName).get.asInstanceOf[AssociableDevice],CommandMsgImpl(requestNumber, cmdMsg, newValue))
@@ -126,7 +141,8 @@ object Coordinator extends JSONSender with MQTTUtils {
     p.future
   }
 
-  def handleRegMsg(msg: String): Unit = {
+  /** If the received message is on the registration topic it registers/disconnect the device accordingly **/
+  private def handleRegMsg(msg: String): Unit = {
     val device: AssociableDevice = getSenderFromMsg[AssociableDevice](msg)
     if (device == null) this.errUnexpected(UnexpectedDevice, null)
 
@@ -197,7 +213,7 @@ object Rooms {
   private var _allRooms: Set[String] = Set.empty
 
   def addRoom(room: String): Unit = _allRooms += room
-  def removeRoom(room: String): Unit = _allRooms -= room  //TODO remove all devices in the room
+  def removeRoom(room: String): Unit = _allRooms -= room
   def allRooms: Set[String] = _allRooms
 }
 ////////////////
@@ -217,7 +233,7 @@ sealed trait Profile {
   def onPhotometerNotification(room: String, value: Double): Unit
   def onMotionSensorNotification(room: String, value: Boolean): Unit
 
-  //TODO, scheduled instructions
+  /** Scheduled instructions **/
   def doProgrammedRoutine(): Unit
 
   override def equals(o: Any): Boolean = o match {
