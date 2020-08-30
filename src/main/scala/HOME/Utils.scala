@@ -27,7 +27,7 @@ object Constants {
    *
    * Generates dynamically a set of devices.
    */
-  def devicesPerRoom(name: String) :Set[Device]= Set(Light(DeviceIDGenerator(),name),Thermometer(DeviceIDGenerator(),name),Hygrometer(DeviceIDGenerator(),name),MotionSensor(DeviceIDGenerator(),name))
+  def devicesPerRoom(name: String) :Set[Device]= Set(Light(DeviceIDGenerator(),name),Thermometer(DeviceIDGenerator(),name),Hygrometer(DeviceIDGenerator(),name),MotionSensor(DeviceIDGenerator(),name), Photometer(DeviceIDGenerator(), name))
   def default_profile_name: String = "DEFAULT"
   def dayLightValue: Int = 40
   val GUIDeviceGAP = 5
