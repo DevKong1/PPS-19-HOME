@@ -5,7 +5,7 @@ import java.net.URL
 
 import HOME.MyClass._
 import javax.swing.border.{LineBorder, TitledBorder}
-import javax.swing.{Box, ImageIcon}
+import javax.swing.{Box, ImageIcon, SwingUtilities}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -95,7 +95,7 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
   val adDeviceBtn: Button =
     new Button("Add device") {
       reactions += {
-        case ButtonClicked(_) => DeviceDialog()
+        case ButtonClicked(_) => DeviceDialog(devicePanel)
       }
     }
   val bp: BorderPanel = new BorderPanel {
@@ -396,7 +396,7 @@ object GUI extends MainFrame {
 /** Dialog through which users can add devices to a room
  *
  */
-class AddDeviceDialog extends Dialog {
+class AddDeviceDialog(devicePanel: BoxPanel) extends Dialog {
   private val dimension = WindowSize(WindowSizeType.DialogInput)
   //Can't add sensors
   private val deviceType = new ComboBox[DeviceType](DeviceType.listTypes -- Seq(MotionSensorType,ThermometerType,HygrometerType) toSeq)
@@ -415,7 +415,12 @@ class AddDeviceDialog extends Dialog {
               val room = GUI.getCurrentRoom
               val dev = Device(deviceType.selection.item.toString,DeviceIDGenerator(),room).get.asInstanceOf[AssociableDevice]
               RegisterDevice(dev).onComplete {
-                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev); repaint(); close()
+                    case Success(_) => GUI.rooms.find(_.name equals room).get.addDevice(dev)
+                      SwingUtilities.invokeLater(() => {
+                        devicePanel.validate()
+                        devicePanel.repaint()
+                      })
+                      close
                     case _ => Dialog.showMessage(message = "Couldn't add device, try again", messageType = Dialog.Message.Error)
                 }
           }
@@ -437,8 +442,8 @@ class AddDeviceDialog extends Dialog {
  *
  */
 object DeviceDialog {
-  def apply(): AddDeviceDialog = {
-    new AddDeviceDialog()
+  def apply(devicePanel: BoxPanel): AddDeviceDialog = {
+    new AddDeviceDialog(devicePanel)
   }
 }
 
@@ -1427,6 +1432,11 @@ object LoginPage{
   val idText : TextField = new TextField(Constants.LoginTextSize)
   val pswText : PasswordField = new PasswordField(Constants.LoginTextSize)
   new Frame(){
+    override def closeOperation(): Unit = {
+      super.closeOperation()
+      Application.closeApplication()
+    }
+
     title = "Login to HOME!"
     contents = new BoxPanel(Orientation.Vertical) {
       contents ++= Seq(

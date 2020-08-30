@@ -7,7 +7,7 @@ import HOME.ConstantsTest._
 
 class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
   Rooms.addRoom("Living room")
-  val light: SimulatedHygrometer = Hygrometer("A","Living room")
+  val light: SimulatedLight = Light("A","Living room")
 
   test("The message + device/coordinator is encoded/decoded via JSON correctly") {
     val msgD: String = getMsg("testMsgD", light)

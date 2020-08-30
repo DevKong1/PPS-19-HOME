@@ -2,11 +2,17 @@ package HOME
 
 import java.io.{File, FileWriter}
 
+import scala.swing.Dialog
+import scala.swing.Dialog.Message
+import scala.util.{Failure, Try}
+
 object Application {
   private var devices: Set[AssociableDevice] = Set.empty  //Internal use for instantiating devices
 
   /** Starts the GUI application **/
   def main(args: Array[String]): Unit = {
+    Dialog.showMessage(null, "Application Starting...", "Info", Message.Info)
+
     checkAndCreateLoginFile(Constants.HomePath)
     Constants.defaultRooms foreach Rooms.addRoom
     if (!startCoordinator() || !startDevices()) {
@@ -23,9 +29,16 @@ object Application {
   }
 
   private def startCoordinator(): Boolean = {
-    if (!(Coordinator.connect && Coordinator.subscribe)) {
-      println("ERR, can't start Coordinator")
-      return false
+    Try {
+      if (!(Coordinator.connect && Coordinator.subscribe)) {
+        println("ERR, can't start Coordinator")
+        return false
+      }
+    } match {
+      case Failure(_) =>
+        Dialog.showMessage(null, "No MQTT Broker found, can't start the application!", "Error", Message.Error)
+        closeApplication()
+      case _ =>
     }
     true
   }
