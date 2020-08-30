@@ -5,10 +5,10 @@ import java.io.{File, FileWriter}
 object Application {
   private var devices: Set[AssociableDevice] = Set.empty  //Internal use for instantiating devices
 
+  /** Starts the GUI application **/
   def main(args: Array[String]): Unit = {
     checkAndCreateLoginFile(Constants.HomePath)
     Constants.defaultRooms foreach Rooms.addRoom
-    //GUI.setRooms(Constants.defaultRooms)
     if (!startCoordinator() || !startDevices()) {
       return
     }
@@ -20,7 +20,6 @@ object Application {
 
     println("Launching GUI")
     LoginPage
-    //GUI.top.visible = true
   }
 
   private def startCoordinator(): Boolean = {
@@ -30,6 +29,7 @@ object Application {
     }
     true
   }
+
   private def checkAndCreateLoginFile(filePath:String): Unit ={
     println(filePath)
     val homeDir = new File(filePath)
@@ -42,18 +42,12 @@ object Application {
         }}
       }
   }
+
   private def stopCoordinator(): Unit = {
     Coordinator.disconnect
   }
 
   private def startDevices(): Boolean = {
-    /*Rooms.allRooms foreach { d =>
-      devices += Light(DeviceIDGenerator(), d)
-      devices += Thermometer(DeviceIDGenerator(), d)
-      devices += Hygrometer(DeviceIDGenerator(), d)
-      devices += MotionSensor(DeviceIDGenerator(), d)
-    }*/
-
     instanceDevice()
 
     devices foreach { d =>
@@ -71,13 +65,6 @@ object Application {
       case _ => //Do nothing
     }
   }
-
-  /*private def registerDevices(): Unit = {
-    Await.ready(Future.sequence(devices.map(_.register)), Duration.Inf).onComplete {
-      case Failure(exception) => println("ERR, can't register device, " + exception); closeApplication()
-      case Success(_) =>
-    }
-  }*/
 
   def closeApplication(): Unit = {
     stopCoordinator()
@@ -168,7 +155,6 @@ object Application {
 
     devices += light_garage
     devices += shutter_garage
-    //Coordinator.addDevice(boiler)
 
     devices += light_corridor
     devices += shutter_corridor

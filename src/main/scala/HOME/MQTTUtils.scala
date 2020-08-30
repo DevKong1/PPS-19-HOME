@@ -45,6 +45,7 @@ trait MQTTUtils extends JSONUtils {
    *
    * @param _sender the requestor the wants to connect
    * @param onMessageReceived the method to call when the requestor receives a message
+   * @param brokerURL the address of the broker to connect to
    * @return  [[Boolean]] whether the connection completed successfully
    */
   def connect(_sender: JSONSender, onMessageReceived: (String,String) => Unit, brokerURL: String = brokerURLDocker): Boolean = client match {

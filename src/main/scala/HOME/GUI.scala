@@ -1158,11 +1158,38 @@ object PrintDevicePane {
     case WashingMachineType => WashingMachinePane(WashingMachine(device.name,device.room))
     case BoilerType => BoilerPane(Boiler(device.name,device.room))
 
-    //Sensors
-    case ThermometerType => ThermometerPane(device.asInstanceOf[SimulatedThermometer])
-    case HygrometerType => HygrometerPane(device.asInstanceOf[SimulatedHygrometer])
-    case MotionSensorType => MotionSensorPane(device.asInstanceOf[SimulatedMotionSensor])
-    case PhotometerType => PhotometerPane(device.asInstanceOf[SimulatedPhotometer])
+    /*Sensors
+      The else branch is used only by tests: when the application starts sensors copies are replaced with
+      real sensors for simulation purposes
+     */
+    case ThermometerType =>
+      device match {
+        case thermometer: SimulatedThermometer =>
+          ThermometerPane(thermometer)
+        case _ =>
+          ThermometerPane(Thermometer(device.name, device.room))
+      }
+    case HygrometerType =>
+      device match {
+        case hygrometer: SimulatedHygrometer =>
+          HygrometerPane(hygrometer)
+        case _ =>
+          HygrometerPane(Hygrometer(device.name, device.room))
+      }
+    case MotionSensorType =>
+      device match {
+        case sensor: SimulatedMotionSensor =>
+          MotionSensorPane(sensor)
+        case _ =>
+          MotionSensorPane(MotionSensor(device.name, device.room))
+      }
+    case PhotometerType =>
+      device match {
+        case photometer: SimulatedPhotometer =>
+          PhotometerPane(photometer)
+        case _ =>
+          PhotometerPane(Photometer(device.name, device.room))
+      }
     case _ => this.errUnexpected(UnexpectedDeviceType, device.deviceType.toString)
   }
 }
