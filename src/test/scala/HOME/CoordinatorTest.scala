@@ -75,9 +75,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     Coordinator.addDevice(Light("Light2","Salottino"))
     assert(Coordinator.getDevices.size == 2)
     Rooms.removeRoom("Salottino")
-    Coordinator.removeDevice("Light2")
-    assert(Coordinator.getDevices.size == 1)
-    Coordinator.removeDevice("Light1")
     assert(Coordinator.getDevices.isEmpty)
   }
 

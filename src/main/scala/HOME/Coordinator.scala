@@ -213,7 +213,15 @@ object Rooms {
   private var _allRooms: Set[String] = Set.empty
 
   def addRoom(room: String): Unit = _allRooms += room
-  def removeRoom(room: String): Unit = _allRooms -= room
+  def removeRoom(room: String): Unit = {
+    if(_allRooms.contains(room)){
+      for(device <- Coordinator.getDevices) {
+        Coordinator.removeDevice(device.id)
+      }
+      _allRooms -= room
+    }
+  }
+
   def allRooms: Set[String] = _allRooms
 }
 ////////////////
