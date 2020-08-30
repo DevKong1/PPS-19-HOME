@@ -737,32 +737,32 @@ object SensorReaction {
 /** Dialog to get all Home's devices
  *
  * @param rooms Rooms you want to add rules
- * @param dialog instance to add commands
+ * @param dialog Dialog instance to add commands
  * @param sensorRule list of sensor's rules
  */
 class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRule: List[(String, Double, String, Device)]) extends Dialog {
   modal = true
   title = "All Devices"
-  location = new Point(300,250)
-  preferredSize = new Dimension(1000,500)
+  location = new Point(300, 250)
+  preferredSize = new Dimension(1000, 500)
 
   contents = new ScrollPane() {
     contents = applyTemplate
   }
 
-  def applyTemplate : BoxPanel = {
+  def applyTemplate: BoxPanel = {
     val panel = new BoxPanel(Orientation.Vertical)
-    for(i <- Coordinator.getDevices) {
+    for (i <- Coordinator.getDevices) {
       val devPanel = new BoxPanel(Orientation.Horizontal)
-      if(!Device.isSensor(i) && rooms.contains(i.room)) {
+      if (!Device.isSensor(i) && rooms.contains(i.room)) {
         val applyButton = new Button("Add")
         devPanel.peer.add(Box.createVerticalStrut(10))
         devPanel.border = new LineBorder(Color.BLACK, 2)
         devPanel.contents += new FlowPanel() {
-          contents += new Label(i.deviceType+"_"+i.room)
+          contents += new Label(i.deviceType + "_" + i.room)
           MapDeviceCommands.apply(i)
-          for(a <- MapDeviceCommands.getCommands) {
-            val component = applyComponent(a,i,this)
+          for (a <- MapDeviceCommands.getCommands) {
+            val component = applyComponent(a, i, this)
             applyButton.reactions += {
               case ButtonClicked(_) => addRule(component, i, switchStatus(a))
             }
@@ -786,39 +786,39 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
   /** Give the correct Component matching command
    *
    * @param command command used to match
-   * @param device instance of Device
-   * @param panel instance of Panel
+   * @param device  instance of Device
+   * @param panel   instance of Panel
    * @return the correct Component to add
    */
   def applyComponent(command: String, device: Device, panel: FlowPanel): Component = command match {
     case Msg.washingType => device.deviceType match {
       case WashingMachineType =>
-        val component = StringComboBox(Seq(WashingType.MIX, WashingType.RAPID, WashingType.WOOL)map(_.toString))
+        val component = StringComboBox(Seq(WashingType.MIX, WashingType.RAPID, WashingType.WOOL) map (_.toString))
         panel.contents ++= Seq(new Label("Washing type: "), component)
         component
       case _ => null
     }
     case Msg.setProgram => device.deviceType match {
       case DishWasherType =>
-        val component = StringComboBox(Seq(DishWasherProgram.DIRTY, DishWasherProgram.FAST, DishWasherProgram.FRAGILE)map(_.toString))
+        val component = StringComboBox(Seq(DishWasherProgram.DIRTY, DishWasherProgram.FAST, DishWasherProgram.FRAGILE) map (_.toString))
         panel.contents ++= Seq(new Label("Program type: "), component)
         component
       case _ => null
     }
     case Msg.RPM => device.deviceType match {
       case WashingMachineType | DishWasherType =>
-        val component = StringComboBox(Seq(RPM.SLOW, RPM.MEDIUM, RPM.FAST)map(_.toString))
+        val component = StringComboBox(Seq(RPM.SLOW, RPM.MEDIUM, RPM.FAST) map (_.toString))
         panel.contents ++= Seq(new Label("RPM: "), component)
         component
       case _ => null
     }
     case Msg.addExtra => device.deviceType match {
       case WashingMachineType =>
-        val component = StringComboBox(Seq(WashingMachineExtra.SpecialColors, WashingMachineExtra.SuperDirty, WashingMachineExtra.SuperDry)map(_.toString))
+        val component = StringComboBox(Seq(WashingMachineExtra.SpecialColors, WashingMachineExtra.SuperDirty, WashingMachineExtra.SuperDry) map (_.toString))
         panel.contents ++= Seq(new Label("Extras: "), component)
         component
       case DishWasherType =>
-        val component = StringComboBox(Seq(DishWasherExtra.SuperDirty, DishWasherExtra.SuperHygiene, DishWasherExtra.SuperSteam)map(_.toString))
+        val component = StringComboBox(Seq(DishWasherExtra.SuperDirty, DishWasherExtra.SuperHygiene, DishWasherExtra.SuperSteam) map (_.toString))
         panel.contents ++= Seq(new Label("Extras: "), component)
         component
       case _ => null
@@ -826,7 +826,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     case Msg.setMode => device.deviceType match {
       case OvenType =>
         val component = StringComboBox(Seq(OvenMode.CONVENTIONAL, OvenMode.DEFROSTING, OvenMode.GRILL, OvenMode.LOWER,
-          OvenMode.UPPER, OvenMode.VENTILATED)map(_.toString))
+          OvenMode.UPPER, OvenMode.VENTILATED) map (_.toString))
         panel.contents ++= Seq(new Label("Working mode: "), component)
         component
       case _ => null
@@ -834,7 +834,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
     case Msg.close | Msg.mute | Msg.off =>
       val component = new ToggleButton(command) {
         reactions += {
-          case ButtonClicked(_) => this.text=switchStatus(this.text)
+          case ButtonClicked(_) => this.text = switchStatus(this.text)
         }
       }
       panel.contents ++= Seq(component)
@@ -850,7 +850,7 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
    * @param status status used to match
    * @return A status who corresponding the opposite to initial status
    */
-  def switchStatus(status: String) : String = status match {
+  def switchStatus(status: String): String = status match {
     case "on" => "off"
     case "off" => "on"
     case "close" => "open"
@@ -861,33 +861,28 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
   /** Used to add rule when a profile will be active
    *
    * @param component component where you want to get rule
-   * @param device device where you want to apply the rule
-   * @param command command to apply
+   * @param device    device where you want to apply the rule
+   * @param command   command to apply
    */
-  def addRule(component: Component, device: Device, command: String) : Unit = command match {
-    case Msg.on | Msg.off | Msg.open | Msg.close | Msg.mute => sensorRule match {
-      case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
-      case _ => sensorRule.head._4.deviceType match {
-        case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case MotionSensorType => dialog.motionSensorNotificationCommands ++= List((List((sensorRule.head._1, sensorRule.head._3, sensorRule.head._4)),
-          Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case _ =>
-      }
-    }
-    case _ => sensorRule match {
-      case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))
-      case _ => sensorRule.head._4.deviceType match {
-        case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case MotionSensorType => dialog.motionSensorNotificationCommands ++= List((List((sensorRule.head._1, sensorRule.head._3, sensorRule.head._4)),
-          Set((device, CommandMsg(Msg.nullCommandId, command, getComponentInfo(component, command))))))
-        case _ =>
+  def addRule(component: Component, device: Device, command: String): Unit = {
+    val componentValue = getComponentInfo(component, command)
+    componentValue match {
+      case "" =>
+      case _ => sensorRule match {
+        case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))
+          println(dialog.onActivationCommands)
+        case _ => sensorRule.head._4.deviceType match {
+          case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
+          case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
+          case HygrometerType => dialog.hygrometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
+          case MotionSensorType => dialog.motionSensorNotificationCommands ++= List((List((sensorRule.head._1, sensorRule.head._3, sensorRule.head._4)),
+            Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
+          case _ =>
+        }
       }
     }
   }
+
 
   /** Return correct Components value
    *
@@ -897,11 +892,11 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
    */
   def getComponentInfo(x: Any, command: String): String = x match {
     case p: TextField => command match {
-      case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => p.text
+      case Msg.setIntensity | Msg.setTemperature | Msg.setHumidity | Msg.setVolume => if(!p.text.isEmpty) p.text else ""
       case _ => ""
     }
     case p: ToggleButton => command match {
-      case Msg.on | Msg.off | Msg.close | Msg.open | Msg.mute => p.text
+      case Msg.on | Msg.off | Msg.close | Msg.open | Msg.mute => if(p.selected) p.text else ""
       case _ => ""
     }
     case p: StringComboBox => command match {
