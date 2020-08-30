@@ -3,8 +3,10 @@ scala:
   - 2.12.2
 jdk:
   - openjdk8
+dist: xenial
 services:
   - docker
+  - xvfb
 before_install:
   - docker pull eclipse-mosquitto
   - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
