@@ -10,7 +10,7 @@ before_install:
   - docker run -d -p 1883:1883 -p 9001:9001 --name=mosquitto eclipse-mosquitto
   - chmod +x gradlew
 script:
-  - ./gradlew clean -x test -x spec build testNoBroker
+  - ./gradlew clean build
 after_success:
   - docker-compose build
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin

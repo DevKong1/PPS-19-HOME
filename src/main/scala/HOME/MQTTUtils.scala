@@ -33,7 +33,8 @@ trait MQTTUtils extends JSONUtils {
 
   private val mqttUserName: String = "HOME"
   private val mqttPwd: String = "7DGbTpxRFvHm9xk2"
-  private val brokerURL: String = "tcp://mosquitto-service:1883"
+  private val brokerURLDocker: String = "tcp://mosquitto-service:1883"
+  private val brokerURLLocal: String = "tcp://localhost:1883"
   private val persistence: MemoryPersistence = new MemoryPersistence
   private val waitAfterPublish: Int = 50
 
@@ -46,7 +47,7 @@ trait MQTTUtils extends JSONUtils {
    * @param onMessageReceived the method to call when the requestor receives a message
    * @return  [[Boolean]] whether the connection completed successfully
    */
-  def connect(_sender: JSONSender, onMessageReceived: (String,String) => Unit): Boolean = client match {
+  def connect(_sender: JSONSender, onMessageReceived: (String,String) => Unit, brokerURL: String = brokerURLDocker): Boolean = client match {
     case null => Try {
       sender = _sender
       client = new MqttClient(brokerURL, sender.name, persistence)
@@ -76,7 +77,12 @@ trait MQTTUtils extends JSONUtils {
     } match {
       case Failure(exception) =>
         client = null
-        throw new ConnectionException(s"ERROR : $exception + ${exception.getCause}")
+        //In case of failure, it tries to connect to the local broker
+        if (brokerURL == brokerURLDocker) {
+          connect(sender, onMessageReceived, brokerURLLocal)
+        } else {
+          throw new ConnectionException(s"ERROR : $exception + ${exception.getCause}")
+        }
       case Success(_) => true
       case _ => throw new ConnectionException("Unexpected connection result")
     }
