@@ -44,7 +44,6 @@ object Application {
   }
 
   private def checkAndCreateLoginFile(filePath:String): Unit ={
-    println(filePath)
     val homeDir = new File(filePath)
     if(!homeDir.exists()){
       homeDir.mkdir()

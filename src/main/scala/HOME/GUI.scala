@@ -67,7 +67,6 @@ sealed trait EditableFeature{
    * Update confirmation leads to feature update in GUI.
    */
   def userUpdate(devName : String,cmdMsg :String,newValue:String): Future[Unit] = {
-  println("Calling this")
     val p = Promise[Unit]
     Coordinator.sendUpdate(devName, cmdMsg, newValue).onComplete {
       case Success(_) => setVal(newValue); p.success(() => Unit);
@@ -673,7 +672,6 @@ class SensorReactionDialog(dialog: CreateProfileDialog) extends Dialog {
                 }
                 if (key.nonEmpty) {
                   dialog.sensorRules ++= key
-                  println(dialog.sensorRules)
                   roomsDevices(comboRooms.selection.item)
                 }
             }
@@ -875,7 +873,6 @@ class AllDeviceDialog(rooms: Set[String], dialog: CreateProfileDialog, sensorRul
       case "" =>
       case _ => sensorRule match {
         case null => dialog.onActivationCommands ++= Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))
-          println(dialog.onActivationCommands)
         case _ => sensorRule.head._4.deviceType match {
           case ThermometerType => dialog.thermometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
           case PhotometerType => dialog.photometerNotificationCommands ++= List((sensorRule, Set((device, CommandMsg(Msg.nullCommandId, command, componentValue)))))
