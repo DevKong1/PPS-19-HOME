@@ -1,57 +1,121 @@
 package HOME
 
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
+import HOME.ConstantsTest.testSleepTime
 
-class GUITest extends AnyFunSuite {
-/*
-  val gui: GUI.type = GUI
-  val home = new GUIRoom("Home")
-  val bedroom = new GUIRoom("Bedroom")
-  val kitchen = new GUIRoom("Kitchen")
-  val homePanel: HomePageLayout = HomePage()
-  val deviceDialog: AddDeviceDialog = DeviceDialog()
+class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAfterAll{
 
-  test("FailTest") {
-    assert(!gui.tp.pages.contains("Bathroom"))
-    //TODO: Need to refactor GUI to let this test work
-    //assert(!home.devices.contains(Light("Lamp", home.name)))
-    //assert(!home.devices.contains(AirConditioner("AirConditioner", home.name)))
-    //assert(!home.devices.contains(Dehumidifier("Dehumidifier", home.name)))
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
   }
 
-  test("RoomsTest") {
-    assert(gui.tp.pages.contains(home))
-    assert(gui.tp.pages.contains(bedroom))
-    assert(gui.tp.pages.contains(kitchen))
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
   }
 
-  test("HomePageTest") {
-    //assert(home.bp.contents.contains(home.devicePanel))
-    assert(homePanel.contents.contains(homePanel.welcomePanel))
-    assert(homePanel.contents.contains(homePanel.temperaturePanel))
-    assert(homePanel.contents.contains(homePanel.humidityPanel))
-    assert(homePanel.contents.contains(homePanel.alarmPanel))
-    assert(homePanel.contents.contains(homePanel.profilePanel))
+  val room = "Living room"
+  val kitchen = "Kitchen"
+  Rooms.addRoom(kitchen)
+  Rooms.addRoom(room)
+
+  val light: SimulatedLight = Light("A", room)
+  val dehumidifier: SimulatedDehumidifier = Dehumidifier("C", room)
+
+  val thermometerH: SimulatedThermometer = Thermometer("T",kitchen)
+  val hygrometerH: SimulatedHygrometer = Hygrometer("H",kitchen)
+
+  val devices:Seq[AssociableDevice] = Seq(light,dehumidifier)
+
+
+  test("GUIRoom works correctly",BrokerRequired){
+    start()
+
+    eventually {
+      Thread.sleep(testSleepTime)
+      GUI.rooms.size should be (3)
+      GUI.rooms.toList.map(_.devices.size).sum should be (4)
+    }
+
+    GUI.removeDevice(dehumidifier)
+    eventually {
+      Thread.sleep(testSleepTime)
+      GUI.rooms.find(_.name == kitchen).get.devices.size should be (2)
+      GUI.rooms.find(_.name == room).get.devices.size should be (1)
+      Coordinator.getDevices.size should be (3)
+      dehumidifier.isConnected should be (false)
+    }
+
+    assert(dehumidifier.connect)
+    assert(dehumidifier.subscribe)
+    dehumidifier.register
+    GUI.rooms.find(_.name==room).get.addDevice(dehumidifier)
+    /** can't add devices to home */
+    eventually {
+      Thread.sleep(testSleepTime)
+      GUI.rooms.find(_.name == kitchen).get.devices.size should be (2)
+      GUI.rooms.find(_.name == room).get.devices.size should be (2)
+      Coordinator.getDevices.size should be (4)
+    }
+
+    stop()
   }
 
-  test("BedroomDevicesTest") {
-    //assert(bedroom.bp.contents.contains(bedroom.devicePanel))
-    //assert(bedroom.devices.contains(Light("Lamp", bedroom.name)))
-    //assert(bedroom.devices.contains(AirConditioner("AirConditioner", bedroom.name)))
-    //assert(bedroom.devices.contains(Dehumidifier("Dehumidifier", bedroom.name)))
+  test("Updatable devices do actually update",BrokerRequired){
+    start()
+
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.on) ))
+    eventually {
+      Thread.sleep(testSleepTime)
+      light.isOn should be (true)
+      GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(true)
+    }
+
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.off)))
+    eventually {
+      Thread.sleep(testSleepTime)
+      light.isOn should be(false)
+      GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(false)
+    }
+
+    assert(Coordinator.publish(light.getSubTopic, "0_setIntensity_15"))
+    eventually {
+      Thread.sleep(testSleepTime)
+      light.value should be (15)
+      GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.asInstanceOf[SimulatedLight].value should be(15)
+    }
+
+    stop()
   }
 
-  test("KitchenDevicesTest") {
-    //assert(kitchen.bp.contents.contains(kitchen.devicePanel))
-    //assert(kitchen.devices.contains(Light("Lamp", kitchen.name)))
-    //assert(kitchen.devices.contains(AirConditioner("AirConditioner", kitchen.name)))
-    //assert(kitchen.devices.contains(Dehumidifier("Dehumidifier", kitchen.name)))
+  private def start():Unit = {
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    thermometerH.connect
+    thermometerH.subscribe
+    thermometerH.register
+    hygrometerH.connect
+    hygrometerH.subscribe
+    hygrometerH.register
+    for(d<- devices){
+      d.connect
+      d.subscribe
+      d.register
+    }
+
+    GUI.rooms.find(_.name == kitchen).get.addDevice(thermometerH)
+    GUI.rooms.find(_.name == kitchen).get.addDevice(hygrometerH)
+    GUI.rooms.find(_.name == room).get.addDevice(light)
+    GUI.rooms.find(_.name == room).get.addDevice(dehumidifier)
   }
 
-  test("DeviceDialogTest") {
-    println(""+deviceDialog.getClass)
-    //val m = deviceDialog.getClass.getDeclaredField("deviceType")
-    //m.setAccessible(true)
-    //assert(deviceDialog.contents.contains(m))
-  }*/
+  private def stop():Unit = {
+    Coordinator.removeAllDevices()
+    assert(Coordinator.disconnect)
+  }
 }

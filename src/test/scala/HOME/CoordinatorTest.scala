@@ -3,19 +3,67 @@ package HOME
 import java.lang.reflect.MalformedParametersException
 
 import HOME.ConstantsTest.testSleepTime
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 
-class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
+class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with BeforeAndAfterAll {
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
+  }
+
+  def prepareDevices(args: AssociableDevice*): Unit = {
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    for (device <- args){
+      assert(device.connect)
+      assert(device.subscribe)
+      device.register
+    }
+  }
+
+  def concludeTest(): Unit = {
+    Coordinator.removeAllDevices()
+    Coordinator.disconnect
+  }
+
   Rooms.addRoom("Living room")
 
   test("Basic coordinator with no devices"){
     assert(Coordinator.getDevices.isEmpty)
-    assert(Coordinator.activeProfile.name == Constants.default_profile_name)
+    assert(Coordinator.getActiveProfile.name == Constants.default_profile_name)
   }
 
   private val salotto: String = "Living room"
+
+  test("Coordinator correctly calculates Consumption"){
+    val Light1 = Light("Light1",salotto)
+    val Light2 = Light("Light2",salotto)
+
+    Light1.setValue(100)
+    Light2.setValue(100)
+
+    assert(Coordinator.getActiveConsumption == 0)
+    Coordinator.addDevice(Light1)
+    Light1.turnOn()
+    assert(Coordinator.getActiveConsumption == 5)
+    Coordinator.addDevice(Light2)
+    Light2.turnOn()
+    assert(Coordinator.getActiveConsumption == 10)
+    Light2.turnOff()
+    assert(Coordinator.getActiveConsumption == 5)
+    Coordinator.removeAllDevices()
+    assert(Coordinator.getActiveConsumption == 0)
+  }
+
   test("Adding and removing devices which are identified by ID") {
     Coordinator.addDevice(Light("Light1",salotto))
     assert(Coordinator.getDevices.size == 1)
@@ -27,9 +75,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     Coordinator.addDevice(Light("Light2","Salottino"))
     assert(Coordinator.getDevices.size == 2)
     Rooms.removeRoom("Salottino")
-    Coordinator.removeDevice("Light2")
-    assert(Coordinator.getDevices.size == 1)
-    Coordinator.removeDevice("Light1")
     assert(Coordinator.getDevices.isEmpty)
   }
 
@@ -56,23 +101,6 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     assert(Coordinator.disconnect)
   }
 
-  def prepareDevices(args: AssociableDevice*): Unit = {
-    assert(Coordinator.connect)
-    for (device <- args){
-      assert(device.connect)
-      assert(device.subscribe)
-      Coordinator.addDevice(device)
-    }
-  }
-
-  def concludeTest(args: AssociableDevice*): Unit = {
-    for (device <- args){
-      device.disconnect
-    }
-    Coordinator.removeAllDevices()
-    Coordinator.disconnect
-  }
-
   test("The coordinator correctly applies the NIGHT profile", BrokerRequired) {
     val light = Light("Light1",salotto)
     val shutter = Shutter("Shutter1",salotto)
@@ -80,29 +108,25 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
     val humid = Dehumidifier("Dehumidifier1",salotto)
 
     light.turnOn()
-    shutter.turnOn()
     shutter.open()
 
     prepareDevices(light, shutter, ac, humid)
 
     Coordinator.setProfile(Profile("NIGHT"))
-    assert(Coordinator.activeProfile.name == "NIGHT")
+    assert(Coordinator.getActiveProfile.name == "NIGHT")
 
-    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
     eventually { Thread.sleep(testSleepTime); shutter.isOpen should be (false) }
     eventually { Thread.sleep(testSleepTime); ac.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); humid.isOn should be (true) }
-    eventually { Thread.sleep(testSleepTime); ac.getValue should be (21) }
+    eventually { Thread.sleep(testSleepTime); ac.getValue should be (25) }
     eventually { Thread.sleep(testSleepTime); humid.getValue should be (40) }
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
 
-    Coordinator.activeProfile.onMotionSensorNotification(salotto)
-    eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
+    Coordinator.getActiveProfile.onMotionSensorNotification(salotto, value = true)
     eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
+    eventually { Thread.sleep(testSleepTime); light.getValue should be (30) }
 
-    Coordinator.activeProfile.onPhotometerNotification(salotto, 45)
-    eventually { Thread.sleep(testSleepTime); Coordinator.getActiveProfile should be (Profile(Constants.default_profile_name)) }
-
-    concludeTest(light, shutter, ac, humid)
+    concludeTest()
   }
 
   test("The custom profile builder builds and Saves a Set of instructions correctly", BrokerRequired) {
@@ -115,29 +139,86 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers {
 
     val commands: Set[(Device,CommandMsg)] = Set((tv,CommandMsg(cmd = Msg.on)), (tv,CommandMsg(cmd = Msg.mute)))
     val generatedCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(commands)
-    val temperatureCommands: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
-    val generatedTemperatureCommands: Set[Device => Unit] = CustomProfileBuilder.generateCommandSet(temperatureCommands)
-    val temperatureCheck = CustomProfileBuilder.generateCheckFunction(">",50)
+
+    val temperatureCheckMoreThan50 = CustomProfileBuilder.generateCheckFunction(">",50, salotto)
+    val temperatureCommandsMoreThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 100)))
+    val generatedTemperatureCommandsMoreThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsMoreThan50)
+
+    val temperatureCheckLessThan50 = CustomProfileBuilder.generateCheckFunction("<", 50, salotto)
+    val temperatureCommandsLessThan50: Set[(Device,CommandMsg)] = Set((tv, CommandMsg(Msg.nullCommandId, Msg.setVolume, 30)))
+    val generatedTemperatureCommandsLessThan50 = CustomProfileBuilder.generateCommandSet(temperatureCommandsLessThan50)
+
+    val generatedTemperatureCommandsMap = CustomProfileBuilder.generateSensorCommandsMap((temperatureCheckMoreThan50, generatedTemperatureCommandsMoreThan50), (temperatureCheckLessThan50, generatedTemperatureCommandsLessThan50))
+
 
     val dummySet: Set[Device => Unit] = Set({_.id})
-    val dummyCheck: Int => Boolean = _ => false
-    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, temperatureCheck, generatedTemperatureCommands, dummyCheck, dummySet,
-      dummyCheck, dummySet, dummySet,dummySet,{})
+    val dummyMap: Map[(String,Double) => Boolean, Set[Device => Unit]] = Map.empty
+    val dummySensorMap: Map[String, Set[Device => Unit]] = Map.empty
+
+    val builtProfile = CustomProfileBuilder.generateFromParams("Custom1","test", generatedCommands, generatedTemperatureCommandsMap, dummyMap,
+      dummyMap, dummySensorMap,dummySet,{})
 
     Profile.addProfile(builtProfile)
     assert(Profile.savedProfiles.contains(builtProfile))
 
     Coordinator.setProfile(builtProfile)
+    assert(Coordinator.getActiveProfile.name == "Custom1")
+
     eventually { Thread.sleep(testSleepTime); tv.isOn should be (true) }
     eventually { Thread.sleep(testSleepTime); tv.value should be (tv.minValue) }
 
-    Coordinator.activeProfile.onThermometerNotification(salotto, 51)
+    Coordinator.getActiveProfile.onThermometerNotification(salotto, 51)
     eventually { Thread.sleep(testSleepTime); tv.value should be (100) }
+
+    Coordinator.getActiveProfile.onThermometerNotification(salotto, 49)
+    eventually { Thread.sleep(testSleepTime); tv.value should be (30) }
 
     Profile.removeProfile("Custom1")
     assert(!Profile.savedProfiles.contains(builtProfile))
 
     Coordinator.setProfile(Profile(Constants.default_profile_name))
-    concludeTest(tv)
+    concludeTest()
+  }
+
+  test("The Coordinator correctly receives and logs Log messages", BrokerRequired) {
+    Logger.resetFile()
+
+    val light: SimulatedLight = Light("A","Living room")
+    prepareDevices(light)
+
+    assert(Coordinator.publish(light, CommandMsg(0, Msg.on)))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (true) }
+    assert(Coordinator.publish(light, CommandMsg(0, Msg.off)))
+    eventually { Thread.sleep(testSleepTime); light.isOn should be (false) }
+    val fileData = Logger.getLogAsListWithHeader
+    val firstRow = fileData.head
+    val secondRow = fileData(1)
+    assert(firstRow("ID") == "A" && firstRow("Consumption") == "5")
+    assert(secondRow("ID") == "A" && secondRow("Consumption") == "5")
+
+    concludeTest()
+  }
+
+
+  test("The Coordinator correctly calculates last month Consumption", BrokerRequired) {
+    val light: SimulatedLight = Light("A","Living room")
+    val light2: SimulatedLight = Light("B","Living room")
+    light.setValue(100)
+    light2.setValue(100)
+    prepareDevices(light, light2)
+
+    val now = org.joda.time.DateTime.now()
+    assert(Logger.log("A", Constants.outputDateFormat.print(now), Msg.on, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.off, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.on, "5"))
+    assert(Logger.log("A", Constants.outputDateFormat.print(now.plusMinutes(20)), Msg.off, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now), Msg.on, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.off, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(10)), Msg.on, "5"))
+    assert(Logger.log("B", Constants.outputDateFormat.print(now.plusMinutes(20)), Msg.off, "5"))
+
+    assert(BigDecimal(Coordinator.getTotalConsumption).setScale(3, BigDecimal.RoundingMode.HALF_UP).toDouble == 0.003)
+
+    concludeTest()
   }
 }

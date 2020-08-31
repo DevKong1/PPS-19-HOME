@@ -7,7 +7,7 @@ import HOME.ConstantsTest._
 
 class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONUtils {
   Rooms.addRoom("Living room")
-  val light: SimulatedHygrometer = Hygrometer("A","Living room")
+  val light: SimulatedLight = Light("A","Living room")
 
   test("The message + device/coordinator is encoded/decoded via JSON correctly") {
     val msgD: String = getMsg("testMsgD", light)
@@ -42,13 +42,13 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     assert(light.isConnected)
     assert(!light.isRegistered)
     val p = light.register
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
     eventually { Thread.sleep(testSleepTime); light.isRegistered should be (true) }
     eventually { Thread.sleep(testSleepTime); p.isCompleted should be (true) }
     light.register
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (1) }
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
     assert(light.isRegistered)
-    val registeredDevice: Device = Coordinator.devices.head
+    val registeredDevice: Device = Coordinator.getDevices.head
     assert(light.id == registeredDevice.id)
     assert(light.room == registeredDevice.room)
     assert(light.deviceType == registeredDevice.deviceType)
@@ -56,7 +56,7 @@ class JSONUtilsTest extends AnyFunSuite with Eventually with Matchers with JSONU
     assert(light.disconnect)
     assert(!light.isConnected)
     assert(!light.isRegistered)
-    eventually { Thread.sleep(testSleepTime); Coordinator.devices.size should be (0)}
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (0)}
     assert(Coordinator.disconnect)
   }
 }

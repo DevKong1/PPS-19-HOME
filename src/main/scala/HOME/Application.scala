@@ -1,31 +1,58 @@
 package HOME
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
+import java.io.{File, FileWriter}
+
+import scala.swing.Dialog
+import scala.swing.Dialog.Message
+import scala.util.{Failure, Try}
 
 object Application {
   private var devices: Set[AssociableDevice] = Set.empty  //Internal use for instantiating devices
 
+  /** Starts the GUI application **/
   def main(args: Array[String]): Unit = {
+    Dialog.showMessage(null, "Application Starting...", "Info", Message.Info)
+
+    checkAndCreateLoginFile(Constants.HomePath)
     Constants.defaultRooms foreach Rooms.addRoom
-    //GUI.setRooms(Constants.defaultRooms)
     if (!startCoordinator() || !startDevices()) {
       return
     }
     RegisterDevice(devices)
+
+    //Patch, need to have real sensors in Coordinator and not copies for GUI simulation purposes
+    for (d <- Coordinator.getDevices.filter(Device.isSensor)) Coordinator.removeDevice(d.id, local = true)
+    for (d <- devices.filter(_.isInstanceOf[SensorAssociableDevice[_]])) Coordinator.addDevice(d)
+
     println("Launching GUI")
-    GUI.pack()
-    GUI.top.visible = true
+    LoginPage
   }
 
   private def startCoordinator(): Boolean = {
-    if (!(Coordinator.connect && Coordinator.subscribe)) {
-      println("ERR, can't start Coordinator")
-      return false
+    Try {
+      if (!(Coordinator.connect && Coordinator.subscribe)) {
+        println("ERR, can't start Coordinator")
+        return false
+      }
+    } match {
+      case Failure(_) =>
+        Dialog.showMessage(null, "No MQTT Broker found, can't start the application!", "Error", Message.Error)
+        closeApplication()
+      case _ =>
     }
     true
+  }
+
+  private def checkAndCreateLoginFile(filePath:String): Unit ={
+    val homeDir = new File(filePath)
+    if(!homeDir.exists()){
+      homeDir.mkdir()
+    }
+    if(!new File(Constants.LoginPath).exists()){
+        ResourceOpener.open(new FileWriter(Constants.LoginPath)) { writer => {
+          writer.write("")
+        }}
+      }
   }
 
   private def stopCoordinator(): Unit = {
@@ -33,13 +60,6 @@ object Application {
   }
 
   private def startDevices(): Boolean = {
-    /*Rooms.allRooms foreach { d =>
-      devices += Light(DeviceIDGenerator(), d)
-      devices += Thermometer(DeviceIDGenerator(), d)
-      devices += Hygrometer(DeviceIDGenerator(), d)
-      devices += MotionSensor(DeviceIDGenerator(), d)
-    }*/
-
     instanceDevice()
 
     devices foreach { d =>
@@ -58,14 +78,7 @@ object Application {
     }
   }
 
-  private def registerDevices(): Unit = {
-    Await.ready(Future.sequence(devices.map(_.register)), Duration.Inf).onComplete {
-      case Failure(exception) => println("ERR, can't register device, " + exception); closeApplication()
-      case Success(_) =>
-    }
-  }
-
-  private def closeApplication(): Unit = {
+  def closeApplication(): Unit = {
     stopCoordinator()
     stopDevices()
     GUI.top.visible = false
@@ -114,7 +127,10 @@ object Application {
     val tv_bedroom: SimulatedTV = TV("TV_Bedroom", "Bedroom")
     val stereo_bedroom: SimulatedStereoSystem = StereoSystem("Stereo_Bedroom", "Bedroom")
 
-    for(room <- Rooms.allRooms) yield {
+    val externalThermometer: SimulatedThermometer = Thermometer("Thermometer_Home", "Home")
+    val externalHygrometer: SimulatedHygrometer = Hygrometer("Hygrometer_Home", "Home")
+
+    for(room <- Rooms.allRooms.filter(_ != "Home")) yield {
       val thermometer: SimulatedThermometer = Thermometer("Thermometer_"+room, room)
       val photometer: SimulatedPhotometer = Photometer("Photometer_"+room, room)
       val motionSensor: SimulatedMotionSensor = MotionSensor("MotionSensor_"+room, room)
@@ -124,6 +140,8 @@ object Application {
       devices += motionSensor
       devices += hygrometer
     }
+    devices += externalThermometer
+    devices += externalHygrometer
 
     //Add all devices to Coordinator
     devices += light_kitchen
@@ -149,7 +167,6 @@ object Application {
 
     devices += light_garage
     devices += shutter_garage
-    //Coordinator.addDevice(boiler)
 
     devices += light_corridor
     devices += shutter_corridor
@@ -161,3 +178,4 @@ object Application {
     devices += stereo_bedroom
   }
 }
+

@@ -1,23 +1,35 @@
 package HOME
 
 import HOME.MyClass._
+import HOME.MyIterable._
 
 import scala.concurrent.{Future, Promise}
 
 
+/** Trait used to catalogue the devices in macro Categories **/
 sealed trait DeviceType {
   def defaultConsumption: Int
 }
 
+/** Object of DeviceTypes with Utils and a Factory **/
 object DeviceType {
-  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType, ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
+  def listTypes: Set[DeviceType] = Set(LightType, AirConditionerType, DehumidifierType, ShutterType, BoilerType, TvType, WashingMachineType, DishWasherType, OvenType, StereoSystemType)
+  def sensorTypes: Set[DeviceType] = Set(ThermometerType, HygrometerType, MotionSensorType, PhotometerType)
 
-  def apply(devType: String): DeviceType = listTypes.find(_.getSimpleClassName == devType) match {
+  //an Enum-Like approach to check the name of case objects
+  def isSensor(senType: String): Boolean = sensorTypes.findSimpleClassName(senType)
+  def isSensor(deviceType: DeviceType): Boolean = sensorTypes.findSimpleClassName(deviceType.getSimpleClassName)
+
+  def isDevice(devType: String): Boolean = listTypes.findSimpleClassName(devType)
+  def isDevice(deviceType: DeviceType): Boolean = listTypes.findSimpleClassName(deviceType.getSimpleClassName)
+
+  def apply(devType: String): DeviceType = (listTypes ++ sensorTypes).find(_.getSimpleClassName == devType) match {
     case Some(t) => t
     case _ => this.errUnexpected(UnexpectedDeviceType, devType)
   }
 }
 
+/** The standard device Trait **/
 sealed trait Device extends JSONSender {
   def id : String
   def room : String
@@ -28,17 +40,20 @@ sealed trait Device extends JSONSender {
 
   def isOn: Boolean = _on
 
-  def turnOn(): Boolean = {_on = true; _on}
-  def turnOff(): Boolean = {_on = false; !_on}
+  def turnOn(): Boolean = {_on = true; true}
+  def turnOff(): Boolean = {_on = false; true}
+
 
   override def equals(o: Any): Boolean = o match {
     case device: Device => device.id == this.id
     case _ => false
   }
 
+  //it can't be in a non-existing room
   require(Rooms.allRooms contains room, this.errUnexpected(UnexpectedRoom, room))
 }
 
+/** Factory of Devices **/
 object Device {
 
   def apply(devType: String,name:String,room : String) : Option[Device] = DeviceType(devType) match{
@@ -59,10 +74,7 @@ object Device {
     case _ => None
   }
 
-  def isSensor(device: Device): Boolean = device.deviceType match {
-    case ThermometerType | HygrometerType | PhotometerType | MotionSensorType => true
-    case _ => false
-  }
+  def isSensor(device: Device): Boolean = DeviceType.isSensor(device.deviceType.getSimpleClassName)
 
 }
 
@@ -78,6 +90,7 @@ object AssociableDevice {
   }
 }
 
+/** Represents a device which is connected via MQTT **/
 sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   override def senderType: SenderType = SenderTypeDevice
   override def name: String = id
@@ -87,46 +100,60 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
   private var _connected: Boolean = false
   private var _registered: Boolean = false
 
-  def isConnected: Boolean = _connected
-  def isRegistered: Boolean = _registered
+  private val pubTopic: String = getPubTopic //Topic used by sensors to send data
+  private val subTopic: String = getSubTopic //Topic used by actuators to receive orders
   var registrationPromise: Promise[Unit] = _
 
-  private val pubTopic: String = getPubTopic //Topic used by sensors to send data
-  private val subTopic: String = getSubTopic  //Topic used by actuators to receive orders
+  def isConnected: Boolean = _connected
+  def isRegistered: Boolean = _registered
 
   private def getBaseTopic: String = room + topicSeparator + deviceType + topicSeparator + id
   def getPubTopic: String = getBaseTopic + topicSeparator + pubTopicPostFix
   def getSubTopic: String = getBaseTopic + topicSeparator + subTopicPostFix
 
+  /** Connects to the broker **/
   def connect: Boolean = {
     _connected = connect(this, onMessageReceived)
     _connected
   }
 
+  /** Disconnects from the broker **/
   override def disconnect: Boolean = {
+    if(isOn && turnOff()) sendLogMsg(Msg.off)
     _connected = !super.disconnect
     if (_registered && !_connected) _registered = false
     !_connected
   }
 
+  /** Subscribes to its default topics **/
   def subscribe: Boolean = subscribe(subTopic) && subscribe(broadcastTopic)
 
-  def publish(message: CommandMsg): Boolean = publish(pubTopic, message, this, retained)
+  /** Publishes a command message to its default publish topic **/
+  def publish(message: CommandMsg): Boolean = publish(pubTopic, message, retained)
 
+  /** Registers to the System sending a register message.
+   *
+   * @return  [[Future]] to be completed when the Coordinator sends back a confirmation message
+   */
   def register: Future[Unit] = {
     registrationPromise = Promise[Unit]
-    publish(regTopic, Msg.register, this)
+    publish(regTopic, Msg.register)
     registrationPromise.future
   }
 
+  /** Handles the received messages
+   *
+   * @param topic the topic the message arrived on
+   * @param msg the message itself
+   */
   def onMessageReceived(topic: String, msg: String): Unit = {
-    def message: String = getMessageFromMsg(msg)
+    lazy val message: String = getMessageFromMsg(msg)
     topic match {
       case t if t == subTopic => message match {
         case m if m == Msg.regSuccess => _registered = true; registrationPromise.success(() => Unit)
         case m if m == Msg.disconnect => disconnect
-        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) sendConfirmUpdate(message)
-        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) sendConfirmUpdate(message)
+        case m if CommandMsg.fromString(m).command == Msg.on => if(turnOn()) {sendConfirmUpdate(message); sendLogMsg(Msg.on)}
+        case m if CommandMsg.fromString(m).command == Msg.off => if(turnOff()) {sendConfirmUpdate(message); sendLogMsg(Msg.off)}
         case _ => if (handleDeviceSpecificMessage(CommandMsg.fromString(message))) sendConfirmUpdate(message)
       }
       case t if t == broadcastTopic => message match {
@@ -139,13 +166,21 @@ sealed trait AssociableDevice extends Device with JSONSender with MQTTUtils {
     }
   }
 
+  /** Each different device is able to handle messages designed specifically for him **/
   def handleDeviceSpecificMessage(message: CommandMsg): Boolean
 
-  private def sendConfirmUpdate(message: String): Unit ={
-    publish(updateTopic, CommandMsg(CommandMsg.fromString(message).id, Msg.confirmUpdate).toString, this)
+  /** Sends a confirmation message that will be collected by the Coordinator **/
+  private def sendConfirmUpdate(message: String): Unit = {
+    publish(updateTopic, message)
+  }
+
+  /** Sends a log message that will be collected by the Coordinator **/
+  private def sendLogMsg(message: String): Unit = {
+    publish(loggingTopic, message + logSeparator + Constants.outputDateFormat.print(org.joda.time.DateTime.now()))
   }
 }
 
+/** Represents a devices with a changing value **/
 sealed trait ChangeableValue extends Device {
   //min, max value for the intensity
   def minValue : Int
@@ -158,6 +193,7 @@ sealed trait ChangeableValue extends Device {
   def getValue: Int = value
 }
 
+/** Represents a devices with some extra Options which can be activated ex. DishWasher, Washing Machine **/
 sealed trait MutableExtras[A <: GenericExtra] extends Device {
   private var _activeExtras: Set[A] = Set()
 
@@ -166,22 +202,36 @@ sealed trait MutableExtras[A <: GenericExtra] extends Device {
   def removeExtra(toRemove: A): Boolean = {_activeExtras -= toRemove; true}
 }
 
+/** An associable device which also is a sensor **/
 sealed trait SensorAssociableDevice[A] extends AssociableDevice {
+  val DEFAULT_VALUE: A  //Used for simulation purposes
+  //always on
+  override def isOn: Boolean = true
+  override def turnOff(): Boolean = false
+
   private val _minDelta: Double = 0.1  //Sensors only consider variations greater than 10%
-  private var _lastVal: Option[A] = None
-  
+  private var _lastVal: Option[A] = None  //Stores the last received value
+  private var _lastVariationVal: Option[A] = None  //Stores the last used value for variation checks
+
+  //We only consider a value which changed by a predetermined % in order to avoid non-influential variations
   def valueChanged(currentVal: A, message: String): Boolean =
     try {
-      if (_lastVal.isEmpty || (currentVal match {
-        case _val: Double => Math.abs(1-_val/_lastVal.get.asInstanceOf[Double]) > _minDelta
-        case _val: Boolean => _val != _lastVal.get.asInstanceOf[Boolean]
+      if (_lastVariationVal.isEmpty && currentVal == DEFAULT_VALUE) return false
+      if (_lastVariationVal.isEmpty || (currentVal match {
+        case _val: Double => Math.abs(1-_val/_lastVariationVal.get.asInstanceOf[Double]) > _minDelta
+        case _val: Boolean => _val != _lastVariationVal.get.asInstanceOf[Boolean]
+        case _ => false
         })) {
-        return publish(CommandMsg(Msg.nullCommandId, message, currentVal))
-      }
-      false
+        _lastVariationVal = Some(currentVal)
+        publish(CommandMsg(Msg.nullCommandId, message, currentVal))
+      } else false
     } finally {
       _lastVal = Some(currentVal)
     }
+
+  override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
+
+  def getLastVariationVal: Option[A] = _lastVal
 }
 
 case object LightType extends DeviceType {
@@ -189,39 +239,39 @@ case object LightType extends DeviceType {
 }
 
 case object AirConditionerType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 30
 }
 
 case object DehumidifierType extends DeviceType {
-  override def defaultConsumption: Int = 0
-}
-
-case object ShutterType extends DeviceType {
-  override def defaultConsumption: Int = 0
-}
-
-case object BoilerType extends DeviceType {
   override def defaultConsumption: Int = 10
 }
 
+case object ShutterType extends DeviceType {
+  override def defaultConsumption: Int = 20
+}
+
+case object BoilerType extends DeviceType {
+  override def defaultConsumption: Int = 30
+}
+
 case object TvType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 25
 }
 
 case object WashingMachineType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object DishWasherType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object OvenType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 35
 }
 
 case object StereoSystemType extends DeviceType {
-  override def defaultConsumption: Int = 0
+  override def defaultConsumption: Int = 15
 }
 
 case object ThermometerType extends DeviceType {
@@ -251,7 +301,7 @@ object Light {
 
 case class SimulatedLight(override val id: String, override val room: String, override val deviceType: DeviceType,
                           override val consumption: Int, override val minValue : Int = 1, override val maxValue: Int = 100,
-                          override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                          override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == LightType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -271,7 +321,7 @@ object AirConditioner {
 
 case class SimulatedAirConditioner(override val id: String, override val room: String, override val deviceType: DeviceType,
                                    override val consumption: Int, override val minValue : Int = 10, override val maxValue: Int = 35,
-                                   override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
+                                   override var value: Int = 22) extends AssociableDevice with ChangeableValue {
   require(deviceType == AirConditionerType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -291,7 +341,7 @@ object Dehumidifier {
 
 case class SimulatedDehumidifier(override val id: String, override val room: String, override val deviceType: DeviceType,
                                  override val consumption: Int, override val minValue : Int = 1, override val maxValue: Int = 100,
-                                 override var value: Int = 10) extends Device with AssociableDevice with ChangeableValue {
+                                 override var value: Int = 10) extends AssociableDevice with ChangeableValue {
   require(deviceType == DehumidifierType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -310,19 +360,19 @@ object Shutter {
 }
 
 case class SimulatedShutter(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                 override val consumption: Int) extends Device with AssociableDevice {
+                                 override val consumption: Int) extends AssociableDevice {
   require(deviceType == ShutterType)
 
   private var _open = false
 
   def isOpen: Boolean = _open
 
-  def open(): Boolean = {_open = true; _open}
-  def close(): Boolean = {_open = false; !_open}
+  def open(): Boolean = {_open = true; true}
+  def close(): Boolean = {_open = false; true}
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
-    case Msg.open => open()
-    case Msg.close => close()
+    case Msg.open => open();
+    case Msg.close => close();
     case _ => this.errUnexpected(UnexpectedMessage, message.command)
   }
 }
@@ -338,7 +388,7 @@ object Boiler {
 
 case class SimulatedBoiler(override val id: String, override val room: String, override val deviceType: DeviceType,
                            override val consumption: Int, override val minValue : Int = 10, override val maxValue: Int = 35,
-                           override var value: Int = 22) extends Device with AssociableDevice with ChangeableValue {
+                           override var value: Int = 22) extends AssociableDevice with ChangeableValue {
   require(deviceType == BoilerType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -358,7 +408,7 @@ object TV {
 
 case class SimulatedTV(override val id: String, override val room: String, override val deviceType: DeviceType,
                        override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 100,
-                       override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                       override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == TvType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -378,7 +428,7 @@ object WashingMachine {
 }
 
 case class SimulatedWashingMachine(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                   override val consumption: Int) extends Device with AssociableDevice with MutableExtras[WashingMachineExtra] {
+                                   override val consumption: Int) extends AssociableDevice with MutableExtras[WashingMachineExtra] {
   require(deviceType == WashingMachineType)
 
   private var _activeWashing: WashingType = WashingType.MIX
@@ -409,7 +459,7 @@ object DishWasher {
 
 
 case class SimulatedDishWasher(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with MutableExtras[DishWasherExtra] {
+                               override val consumption: Int) extends AssociableDevice with MutableExtras[DishWasherExtra] {
   require(deviceType == DishWasherType)
 
   private var _activeWashing: DishWasherProgram = DishWasherProgram.FAST
@@ -436,7 +486,7 @@ object Oven {
 
 case class SimulatedOven(override val id: String, override val room: String, override val deviceType: DeviceType,
                          override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 250,
-                         override var value: Int = 0) extends Device with AssociableDevice with ChangeableValue {
+                         override var value: Int = 0) extends AssociableDevice with ChangeableValue {
   require(deviceType == OvenType)
 
   private var _activeMode: OvenMode = OvenMode.CONVENTIONAL
@@ -462,7 +512,7 @@ object StereoSystem {
 
 case class SimulatedStereoSystem(override val id: String, override val room: String, override val deviceType: DeviceType,
                                  override val consumption: Int, override val minValue : Int = 0, override val maxValue: Int = 100,
-                                 override var value: Int = 50) extends Device with AssociableDevice with ChangeableValue {
+                                 override var value: Int = 50) extends AssociableDevice with ChangeableValue {
   require(deviceType == StereoSystemType)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = message.command match {
@@ -482,10 +532,12 @@ object Thermometer {
 }
 
 case class SimulatedThermometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                                override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == ThermometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.temperatureRead)
+  override val DEFAULT_VALUE = 18.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -500,10 +552,12 @@ object Hygrometer {
 }
 
 case class SimulatedHygrometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                               override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == HygrometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.humidityRead)
+  override val DEFAULT_VALUE = 40.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -518,10 +572,12 @@ object Photometer {
 }
 
 case class SimulatedPhotometer(override val id: String, override val room: String, override val deviceType: DeviceType,
-                               override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Double] {
+                               override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Double] {
   require(deviceType == PhotometerType)
 
-  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.intensityRead)
+  override val DEFAULT_VALUE = 30.0
+
+  def valueChanged(currentVal: Double): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }
@@ -536,10 +592,12 @@ object MotionSensor {
 }
 
 case class SimulatedMotionSensor(override val id: String, override val room: String, override val deviceType: DeviceType,
-                                 override val consumption: Int) extends Device with AssociableDevice with SensorAssociableDevice[Boolean] {
+                                 override val consumption: Int) extends AssociableDevice with SensorAssociableDevice[Boolean] {
   require(deviceType == MotionSensorType)
 
-  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.motionDetected)
+  override val DEFAULT_VALUE = false
+
+  def valueChanged(currentVal: Boolean): Boolean = valueChanged(currentVal, Msg.updateBaseString)
 
   override def handleDeviceSpecificMessage(message: CommandMsg): Boolean = this.errUnexpected(UnexpectedMessage, message.command)
 }

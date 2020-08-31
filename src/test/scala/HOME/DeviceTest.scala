@@ -2,9 +2,21 @@ package HOME
 
 import java.lang.reflect.MalformedParametersException
 
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 
-class DeviceTest extends AnyFunSuite with JSONUtils {
+class DeviceTest extends AnyFunSuite with JSONUtils with BeforeAndAfterAll {
+  override def beforeAll(): Unit = {
+    Logger.setTestFile()
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    Logger.resetFile()
+    Logger.unsetTestFile()
+    super.beforeAll()
+  }
+
   Rooms.addRoom("Living room")
   val room: String = "Living room"
 
@@ -179,6 +191,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(thermometer.connect)
     assert(thermometer.valueChanged(12))
     assert(!thermometer.valueChanged(13))
+    assert(thermometer.valueChanged(14))
+    assert(!thermometer.valueChanged(15))
+    assert(thermometer.valueChanged(16))
     assert(thermometer.valueChanged(50.5))
     assert(thermometer.disconnect)
   }
@@ -207,9 +222,9 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     assert(motionSensor.id == "N")
     assert(motionSensor.deviceType == MotionSensorType)
     assert(motionSensor.connect)
-    assert(motionSensor.valueChanged(false))
-    assert(!motionSensor.valueChanged(false))
+    assert(!motionSensor.valueChanged(false))  //this is the default initial value
     assert(motionSensor.valueChanged(true))
+    assert(!motionSensor.valueChanged(true))
     assert(motionSensor.disconnect)
   }
 
@@ -255,7 +270,7 @@ class DeviceTest extends AnyFunSuite with JSONUtils {
     light.onMessageReceived(light.getSubTopic, getMsg(CommandMsg(cmd = Msg.setIntensity, value = 30), light))
     assert(light.value == 30)
     assertThrows[MalformedParametersException](light.onMessageReceived(light.getSubTopic,"setIntensity_a22"))
-    assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "off"))
+    assertThrows[IllegalArgumentException](light.onMessageReceived(light.getPubTopic, "0_off"))
     assert(light.value == 30)
     assert(light.disconnect)
   }
