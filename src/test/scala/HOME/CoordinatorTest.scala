@@ -26,7 +26,7 @@ class CoordinatorTest extends AnyFunSuite with Eventually with Matchers with Bef
     for (device <- args){
       assert(device.connect)
       assert(device.subscribe)
-      Coordinator.addDevice(device)
+      device.register
     }
   }
 

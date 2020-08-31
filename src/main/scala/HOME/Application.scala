@@ -21,7 +21,7 @@ object Application {
     RegisterDevice(devices)
 
     //Patch, need to have real sensors in Coordinator and not copies for GUI simulation purposes
-    for (d <- Coordinator.getDevices.filter(Device.isSensor)) Coordinator.removeDevice(d.name, local = true)
+    for (d <- Coordinator.getDevices.filter(Device.isSensor)) Coordinator.removeDevice(d.id, local = true)
     for (d <- devices.filter(_.isInstanceOf[SensorAssociableDevice[_]])) Coordinator.addDevice(d)
 
     println("Launching GUI")
@@ -178,3 +178,4 @@ object Application {
     devices += stereo_bedroom
   }
 }
+

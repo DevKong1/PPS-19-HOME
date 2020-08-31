@@ -47,8 +47,10 @@ object Coordinator extends JSONSender with MQTTUtils {
    */
   def removeDevice(device: String, local: Boolean = false): Unit = getDevices.find(_.id == device) match {
     case Some(dev) =>
-      if (!local && dev.isInstanceOf[AssociableDevice])
+      if (!local && dev.isInstanceOf[AssociableDevice]) {
         publish(dev.asInstanceOf[AssociableDevice].getSubTopic,Msg.disconnect)
+        GUI.removeDevice(dev)
+      }
       devices -= dev
     case _ => this.errUnexpected(UnexpectedDevice, device)
   }

@@ -20,88 +20,63 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
   }
 
   val room = "Living room"
-  val home = "Home"
-  Rooms.addRoom(home)
+  val kitchen = "Kitchen"
+  Rooms.addRoom(kitchen)
   Rooms.addRoom(room)
 
   val light: SimulatedLight = Light("A", room)
   val dehumidifier: SimulatedDehumidifier = Dehumidifier("C", room)
 
-  val thermometerH: SimulatedThermometer = Thermometer("T",home)
-  val hygrometerH: SimulatedHygrometer = Hygrometer("H",home)
+  val thermometerH: SimulatedThermometer = Thermometer("T",kitchen)
+  val hygrometerH: SimulatedHygrometer = Hygrometer("H",kitchen)
 
   val devices:Seq[AssociableDevice] = Seq(light,dehumidifier)
 
 
-
   test("GUIRoom works correctly",BrokerRequired){
-    assert(Coordinator.connect)
-    assert(Coordinator.subscribe)
+    start()
 
-    assert(thermometerH.connect)
-    assert(thermometerH.subscribe)
-    thermometerH.register
-    assert( hygrometerH.connect)
-    assert( hygrometerH.subscribe)
-    hygrometerH.register
-
-    for(d<- devices){
-      d.connect
-      d.subscribe
-      d.register
-    }
     eventually {
       Thread.sleep(testSleepTime)
-      assert(GUI.rooms.size == 2)
-      //assert(GUI.rooms.toList.map(_.devices.size).sum == 4)
+      GUI.rooms.size should be (3)
+      GUI.rooms.toList.map(_.devices.size).sum should be (4)
     }
 
     GUI.removeDevice(dehumidifier)
     eventually {
-      assert(GUI.rooms.find(_.name == "Home").get.devices.size == 2)
-      assert(GUI.rooms.find(_.name == room).get.devices.size == 1)
-      assert(Coordinator.getDevices.size == 3)
-      assert(!dehumidifier.isConnected)
+      Thread.sleep(testSleepTime)
+      GUI.rooms.find(_.name == kitchen).get.devices.size should be (2)
+      GUI.rooms.find(_.name == room).get.devices.size should be (1)
+      Coordinator.getDevices.size should be (3)
+      dehumidifier.isConnected should be (false)
     }
-    val ac = AirConditioner("AC",room)
-    GUI.rooms.find(_.name==room).get.addDevice(ac)
 
-    assert(ac.connect)
-    assert(ac.subscribe)
-    ac.register
+    assert(dehumidifier.connect)
+    assert(dehumidifier.subscribe)
+    dehumidifier.register
+    GUI.rooms.find(_.name==room).get.addDevice(dehumidifier)
     /** can't add devices to home */
     eventually {
       Thread.sleep(testSleepTime)
-      assert(GUI.rooms.find(_.name == "Home").get.devices.size == 2)
-      assert(GUI.rooms.find(_.name == room).get.devices.size == 2)
-      assert(Coordinator.getDevices.size == 4)
+      GUI.rooms.find(_.name == kitchen).get.devices.size should be (2)
+      GUI.rooms.find(_.name == room).get.devices.size should be (2)
+      Coordinator.getDevices.size should be (4)
     }
-    assert(Coordinator.disconnect)
-    Coordinator.removeAllDevices()
+
+    stop()
   }
 
   test("Updatable devices do actually update",BrokerRequired){
-    assert(Coordinator.connect)
-    assert(Coordinator.subscribe)
-    thermometerH.connect
-    thermometerH.subscribe
-    thermometerH.register
-    hygrometerH.connect
-    hygrometerH.subscribe
-    hygrometerH.register
-    for(d<- devices){
-      d.connect
-      d.subscribe
-      d.register
-    }
-    assert(Coordinator.publish(light.getSubTopic, "0_on"))
+    start()
+
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.on) ))
     eventually {
       Thread.sleep(testSleepTime)
       light.isOn should be (true)
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(true)
     }
 
-    assert(Coordinator.publish(light.getSubTopic, "0_off"))
+    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.off)))
     eventually {
       Thread.sleep(testSleepTime)
       light.isOn should be(false)
@@ -115,7 +90,32 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.asInstanceOf[SimulatedLight].value should be(15)
     }
 
-    assert(Coordinator.disconnect)
+    stop()
+  }
+
+  private def start():Unit = {
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    thermometerH.connect
+    thermometerH.subscribe
+    thermometerH.register
+    hygrometerH.connect
+    hygrometerH.subscribe
+    hygrometerH.register
+    for(d<- devices){
+      d.connect
+      d.subscribe
+      d.register
+    }
+
+    GUI.rooms.find(_.name == kitchen).get.addDevice(thermometerH)
+    GUI.rooms.find(_.name == kitchen).get.addDevice(hygrometerH)
+    GUI.rooms.find(_.name == room).get.addDevice(light)
+    GUI.rooms.find(_.name == room).get.addDevice(dehumidifier)
+  }
+
+  private def stop():Unit = {
     Coordinator.removeAllDevices()
+    assert(Coordinator.disconnect)
   }
 }

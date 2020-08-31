@@ -125,6 +125,7 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
    * @param dev device to be added
    */
   override def addDevice(dev:Device): Unit ={
+    if (this.devices.exists(_.device.id == dev.id)) return
     val tmp = PrintDevicePane(dev)
     addDevicePane(tmp)
     devices+=tmp
@@ -137,7 +138,7 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
    */
   override def removeDevice(dev:Device):Unit={
     devices -= devices.find(_.device.name == dev.name).get
-    Coordinator.removeDevice(dev.name)
+    Coordinator.removeDevice(dev.id)
   }
 }
 /**Factory for [[GUIRoom]]*/
@@ -312,7 +313,8 @@ object GUI extends MainFrame {
    * @param device device to be removed
    */
   def removeDevice(device:Device) : Unit = {
-    rooms.find(_.devices.map(_.device.name) contains device.name).get.removeDevice(device)
+    val room = rooms.find(_.devices.map(_.device.name) contains device.name)
+    if (room.isDefined) room.get.removeDevice(device)
   }
 
   /** Updates a device's feature
@@ -961,8 +963,8 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
    * called whenever a profile needs to update a device.
    */
   override def updateDevice(cmdString: String,newVal:String): Unit = cmdString match {
-    case Msg.on => device.turnOn(); status.setVal("ON")
-    case Msg.off => device.turnOff(); status.setVal("OFF")
+    case msg :String if msg == Msg.on => device.turnOn(); status.setVal("ON")
+    case msg :String if msg == Msg.off => device.turnOff(); status.setVal("OFF")
     case _ =>
   }
 

@@ -103,4 +103,22 @@ class MQTTTest extends AnyFunSuite with Eventually with Matchers with BeforeAndA
     Coordinator.removeAllDevices()
     Coordinator.setProfile(Profile(Constants.default_profile_name))
   }
+
+  test("Coordinator accepts the same device twice after disconnection", BrokerRequired) {
+    assert(Coordinator.connect)
+    assert(Coordinator.subscribe)
+    assert(Coordinator.getDevices.size == 0)
+    assert(light.connect)
+    assert(light.subscribe)
+    light.register
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
+    assert(light.disconnect)
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (0) }
+    assert(light.connect)
+    assert(light.subscribe)
+    light.register
+    eventually { Thread.sleep(testSleepTime); Coordinator.getDevices.size should be (1) }
+    assert(Coordinator.disconnect)
+    assert(light.disconnect)
+  }
 }
