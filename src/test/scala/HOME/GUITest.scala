@@ -76,13 +76,6 @@ class GUITest extends AnyFunSuite with Eventually with Matchers with BeforeAndAf
       GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(true)
     }
 
-    assert(Coordinator.publish(light, CommandMsg(cmd = Msg.off)))
-    eventually {
-      Thread.sleep(testSleepTime)
-      light.isOn should be(false)
-      GUI.rooms.find(_.name == room).get.devices.find(_.device.name == "A").get.device.isOn should be(false)
-    }
-
     assert(Coordinator.publish(light.getSubTopic, "0_setIntensity_15"))
     eventually {
       Thread.sleep(testSleepTime)
