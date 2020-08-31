@@ -137,7 +137,7 @@ class GUIRoom(override val name:String, override var devices:Set[Updatable]) ext
    */
   override def removeDevice(dev:Device):Unit={
     devices -= devices.find(_.device.name == dev.name).get
-
+    Coordinator.removeDevice(dev.name)
   }
 }
 /**Factory for [[GUIRoom]]*/
@@ -942,7 +942,7 @@ abstract class GUIDevice(override val device : Device) extends FlowPanel with Up
     new Button("Delete") {
       reactions +={
         case ButtonClicked(_) => Dialog.showConfirmation(message="Are you sure you want to delete this device? There is no coming back",title ="Delete device") match{
-          case Result.Ok =>  Coordinator.removeDevice(device.name); GUI.removeDevice(device); close
+          case Result.Ok => GUI.removeDevice(device); close
           case _ => //Do nothing
         }
       }
