@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-Per il funzionamento, l'installazione ed il testing consulta il [report](Report/HOME_Report_Finale.pdf).
+Per il funzionamento, l'installazione ed il testing consulta il [report](releases/HOME.pdf).
 
 ## Built With
 
